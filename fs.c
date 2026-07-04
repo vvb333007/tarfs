@@ -154,7 +154,7 @@ static void commit_unmount(void *ctx) {
   }
 
   if (fs->fs_vaddr != NULL) {
-    log(" unmapping (%s), vaddr=%p, size=%u\r\n", fs->fs_mountpoint, fs->fs_size);
+    log(" unmapping (%s), vaddr=%p, size=%u\r\n", fs->fs_mountpoint, fs->fs_vaddr, fs->fs_size);
     tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
     fs->fs_vaddr = NULL;
   }
@@ -162,6 +162,7 @@ static void commit_unmount(void *ctx) {
   free(fs);
 
 clear_slot:
+
   tarfs_lock();
   s_numfs--;
   if (slot >= 0)

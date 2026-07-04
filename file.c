@@ -112,8 +112,14 @@ static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
             ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
 }
 
+/* File operation handlers. These are called by VFS
+ *
+ */
 
 
+/* close()
+ *
+ */
 static int tarf_close(void* ctx, int fd) {
 
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
@@ -125,10 +131,11 @@ static int tarf_close(void* ctx, int fd) {
 
   freefd(fs, fd);
   log("closed fd=%d\r\n", fd);
+  tarfs_unref(fs);
   return $(0);
 }
 
-/* File operation handlers. These are called by VFS
+/* open()
  *
  */
 static int tarf_open(void* ctx, const char * path, int flags, int mode) {
@@ -138,19 +145,30 @@ static int tarf_open(void* ctx, const char * path, int flags, int mode) {
 
   assert(path);
 
-  // XXX: racecond on unmount()+open()
-
+  /* XXX:
+   * TOCTTOU inherited from ESP-IDF VFS (unmount() and open() race).
+   * ESP32: The VFS passes a cached filesystem context that may become invalid
+   *        before tarfs_addref() is attempted.
+   */
   if (tarfs_addref(fs)) {
 
-    struct tarfs_inode *inode = inode_lookup(fs, path);
+    int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
-    if (inode == NULL) {
+    if (idx < 0) {
       log("file %s not found\r\n",path);
-      errno = ENOENT;
+      /* errno may be set by inode_lookup or may be not */
+      if (errno == 0)
+        errno = ENOENT;
       goto unref_and_exit;
     }
 
-    assert(inode->in_vaddr != 0); /* guaranteed by the inode_lookup() */
+    struct tarfs_inode const *inode = fs->fs_ino[idx];
+
+    if (inode->in_dvaddr == 0) {
+
+      errno = EIO;
+      goto unref_and_exit;
+    }
 
     if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
@@ -167,11 +185,11 @@ static int tarf_open(void* ctx, const char * path, int flags, int mode) {
 
       struct tarfs_fp *fp = &fs->fs_fd[fd];
 
-      fp->fp_vaddr = inode->in_vaddr + sizeof(struct tarhdr);
+      fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
       fp->fp_pos   = 0;
-      fp->fp_size  = inode->in_size;
+      fp->fp_size  = inode_size(inode);
 
-      log("success, file=%s, fd=%d\r\n",path, fd);
+      log("success, file=%s, fd=%d, size=%lu\r\n",path, fd,fp->fp_size);
       errno = 0;
       return fd;
     }
@@ -179,7 +197,7 @@ static int tarf_open(void* ctx, const char * path, int flags, int mode) {
     errno = EMFILE;
   } else {
     log("mp=%s addref() failed\r\n",fs->fs_mountpoint);
-    errno = EPIPE;
+    errno = ENODEV;
   }
 
 unref_and_exit:

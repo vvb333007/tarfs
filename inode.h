@@ -77,6 +77,11 @@ static inline bool inode_is_link(struct tarfs_inode const *inode) {
   return ((inode != NULL) && (inode->in_vaddr != inode->in_dvaddr));
 }
 
+static inline size_t inode_size(struct tarfs_inode const *ino) {
+
+  return tar_octal(((tarhdr_t *)(ino->in_dvaddr))->size, sizeof(((tarhdr_t *)(ino->in_dvaddr))->size));
+}
+
 typedef struct tarfs_inode tarfs_inode_t;
 
 struct tarfs_fs;

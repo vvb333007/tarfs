@@ -23,15 +23,13 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <stddef.h>
 #include <stdbool.h>
-#include <stdatomic.h>
 
-#include <unistd.h>
-#include <dirent.h>
-#include <sys/errno.h>
-#include <sys/fcntl.h>
+#undef likely
+#undef unlikely
+#define unlikely(_X)   __builtin_expect(!!(_X), 0)
+#define likely(_X)     __builtin_expect(!!(_X), 1)
 
 
 /* OS API */
@@ -107,11 +105,3 @@ bool tarfs_os_unregister_fs(const char *prefix);
  *   - ESP-IDF returns 16.
  */
 size_t tarfs_os_mp_maxlen();
-
-
-#undef likely
-#undef unlikely
-#define unlikely(_X)   __builtin_expect(!!(_X), 0)
-#define likely(_X)     __builtin_expect(!!(_X), 1)
-
-
