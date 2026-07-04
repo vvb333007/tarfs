@@ -101,13 +101,15 @@ static void commit_unmount(void *ctx) {
   if (fs == NULL)
     return ;
 
-  for (int i = 0; slot < TARFS_MAX_FS; i++)
-    if (s_tarfs[slot] == fs) {
+  log("unmounting FS '%s'\r\n", fs->fs_mountpoint);
+
+  for (int i = 0; i< TARFS_MAX_FS; i++)
+    if (s_tarfs[i] == fs) {
       slot = i;
       break;
     }
 
-  log("unmounting FS slot #%d\r\n\r\n", slot);
+  log("unregistering VFS\r\n");
 
   /* If we can not properly unregister our FS we don't remove tarfs_fs entry
    * to prevent crashes: unregistered fs can still call read()/write()/open()
@@ -126,14 +128,17 @@ static void commit_unmount(void *ctx) {
   }
 
   if (fs->fs_vaddr != NULL) {
-    log(" unmapping (%s), vaddr=%p, size=%lu\r\n", fs->fs_mountpoint, fs->fs_vaddr, fs->fs_size);
+    log(" unmapping filesystem image, vaddr=%p, size=%lu\r\n", fs->fs_vaddr, fs->fs_size);
     tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
     fs->fs_vaddr = NULL;
   }
 
+  log("deleting FS descriptor %p\r\n", fs);
   free(fs);
 
 clear_slot:
+
+  printf("unmount() : clear FS entry\r\n");
 
   tarfs_lock();
   s_numfs--;
@@ -164,14 +169,17 @@ int tarfs_unmount(const char *mountpoint) {
 
   if (mountpoint == NULL)
     return $(EINVAL);
-
+  puts("0");
   tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
   
+  puts("1");
   if ((slot = findfs(mountpoint)) >= 0) {
+
+    puts("2");
     fs = s_tarfs[slot];
 
-//  XXX: deadlock! Must use recursive locks
     prev_refc = tarfs_unref(fs);
+    puts("3");
     if (prev_refc > 1) {
       log("Filesystem %s is in use (%u FD), umount delayed\r\n", mountpoint, prev_refc - 1);
       err = EAGAIN;
@@ -179,80 +187,115 @@ int tarfs_unmount(const char *mountpoint) {
 
   } else
     err = ENOENT;
-
+  puts("4");
   tarfs_unlock();
   return $(err);
 }
 
 
-#if 0
+#if 1
 /**
  * Actual mount procedure
  * We expect sane label pointer (ASCIIZ) and a sane mountpoint (i.e. len>1, 
  * fisrt sym is `/`, last sym != `/`)
  */
-static int tarfs_mount(const char *label, const char *mountpoint) {
+int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase) {
 
-  const void                 *vaddr;
+  size_t size;
+  int len;
+  void *map;
+  void *os_handle;
   int slot;
   struct tarfs_fs *fs = NULL;
-  size_t len;
+  char base_dir[100];
 
-  assert(label != NULL);
-  /* mount procedure */
+  if (link_rebase == NULL)
+    link_rebase = "";
 
-  /* Create a FS descriptor, mount the filesystem */
-  lock();
-  if (s_numfs < TARFS_MAX_FS) {
-    if (0 <= (slot = findfs( NULL ))) {
-      if ( NULL != (fs = calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
+
+  /* Actual memory mapping */
+  if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+
+    if (false == tar_rootdir(map, size, base_dir, sizeof(base_dir)))
+      base_dir[0] = '\0';
+
+    if (mountpoint == NULL)
+      mountpoint = base_dir;
+    else {
+      printf("Detected MP '%s' is overriden with '%s'\r\n", base_dir, mountpoint);
+    }
+
+    len = strlen(mountpoint);
+
+
+    /* Allocate free FS slot */
+    tarfs_lock();
+    if (0 > (slot = findfs( NULL ))) {
+      printf("Too many mounted filesystems\r\n");
+      errno = EBUSY;
+error:
+      tarfs_os_unmap_tarfile(os_handle, map, size);
+      tarfs_unlock();
+      return -1;
+    }
+
+    /* Allocate FS descriptor */
+    if ( NULL == (fs = calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
+      printf("Out of memory\r\n");
+      errno = ENOMEM;
+      goto error;
+    }
   
-        void *map;
-        // Copy mountpoint. Trailing zero is there already
-        memcpy(fs->fs_mountpoint, mountpoint, len);
+    /* Occupy FS slot and release the lock ASAP */
+    s_tarfs[slot] = fs;
+    s_numfs++;
+    tarfs_unlock();
 
-        // Actual memory mapping
-        if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+    log("allocated new FS descriptor %p, slot %d\r\n", fs, slot);
 
-          initref(&fs->fs_ref);
+    initref(&fs->fs_ref);
 
-          fs->fs_vaddr = map;
-          fs->fs_handle = handle;
-          fs->fs_size = size;
+    /* Store tarfile mapping parameters */
+    fs->fs_vaddr = map;
+    fs->fs_handle = (uintptr_t )os_handle;
+    fs->fs_size = size;
 
-          if (inode_mount(fs) < 0) {
-            if (fs->fs_ino == NULL) {
-              log("filesystem is unusable, no valid inodes were found\r\n");
-              goto free_memory_and_fail;
-            }
-            log("filesystem is in degraded mode\r\n");
-          }
+    /* Copy mountpoint. Trailing zero is there already */
+    log("mountpoint is '%s'\r\n", mountpoint);
+    memcpy(fs->fs_mountpoint, mountpoint, len);
 
-          s_tarfs[slot] = fs;
-          s_numfs++;
-          unlock();
+    log("mounting..\r\n");
+    if (inode_mount(fs, map, size, link_rebase) < 0) {
+      if (fs->fs_ino == NULL) {
+        log("filesystem is unusable, no valid inodes were found\r\n");
+        tarfs_lock();
+        s_tarfs[slot] = NULL;
+        s_numfs--;
+        /* errno must be set in inode_mount() */
+        goto error;
+      }
+      log("running in degraded mode\r\n");
+    }
 
-          log("mounted [%s]\r\n", label);
+    log("attached to resource '%s', %u inodes\r\n", label, fs->fs_nino);
 
-          return $(0);
-        } 
-free_memory_and_fail:
-        free(fs);
-        err = EIO;    /* MMU errors are reported as EIO */
-      } else
-        err = ENOMEM; /* calloc() failed */
-    } else
-      err = EBUSY;    /* Too many fs: all slots are occupied, unmount something first */
-  } else
-    err = EBUSY;      /* Too many fs: s_numfs hit the limit */
+    /* Registering VFS */
+    if (tarfs_os_register_fs(mountpoint) == false) {
+      log("can not register POSIX handlers, FS is unusable\r\n");
+    } else {
+      log("registered prefix '/%s' in VFS\r\n", mountpoint);
+    }
 
+    log("done\r\n");
+    return 0;
+  } 
 
+  if (errno == 0)
+    errno = EIO;
 
-  log("failed: errno=%d, s_numfs=%d, part=%s, mountpoint=%s,\r\n", errno, s_numfs, label, mountpoint);
+  log("tarfile map failed: errno=%d, label=%s\r\n", errno, label);
 
-  unlock();
-  
-  return $(err);
+  return -1;
 }
 
 

@@ -13,17 +13,25 @@
 int main(int argc, char **argv) {
 
     const char *filename    = argc > 1 ? argv[1] : "tarfs.tar";
+    const char *rebase_link = "/\?\?/D:/Arduino/dev";
+#if 0
     void *os_handle         = NULL;
     size_t size             = 0;
-    const char *rebase_link = "/\?\?/D:/Arduino/dev";
-
-
-
     unsigned char *buf;
-
+#endif
 
     
-#if 1
+
+
+    int err = tarfs_mount(filename, NULL, rebase_link);
+
+    printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
+    
+    tarfs_unmount("dev");
+
+    printf("tarfs: unmounting resource '%s', err = %d\r\n", filename, errno);
+    
+#if 0
     printf("tarfs: mounting resource '%s':\n", filename);
     buf = tarfs_os_map_tarfile(filename, &os_handle, &size);
 

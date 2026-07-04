@@ -27,9 +27,21 @@
 #include "os.h"
 
 
-size_t tarfs_os_mp_maxlen() { return 16; }
-bool tarfs_os_unregister_fs(const char *prefix) { return true; }
-bool tarfs_os_register_fs(const char *prefix,void *context) { return true; }
+size_t tarfs_os_mp_maxlen() {
+
+  return 16;
+}
+
+bool tarfs_os_unregister_fs(const char *prefix) {
+  printf("Unregister FS '%s'\r\n", prefix);
+  return true;
+}
+
+bool tarfs_os_register_fs(const char *prefix) {
+  printf("Register FS '%s'\r\n", prefix);
+  return true;
+}
+
 void tarfs_os_create_recursive_mutex() { }
 void tarfs_os_acquire_mutex() { }
 void tarfs_os_release_mutex() { }

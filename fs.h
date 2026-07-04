@@ -154,7 +154,7 @@ static inline void tarfs_unlock() {
  * this value is passed down to tarfs_os_map_tarfile() as is. For the TARFS the `label` is an opaque
  * parameter
  */
-int  tarfs_mount(const char *label, const char *mountpoint_override);
+int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase);
 
 /**
  * Unmount tar file system
