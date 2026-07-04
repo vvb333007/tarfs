@@ -454,7 +454,7 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
 }
 
 /**
- *  inode_getmst() : get inode's Type, Size and Mtime
+ *  inode_getinfo() : get inode's Type, Size and Mtime
  * These are not precached and must be calculated every time. Having this information in the tarfs_inode
  * will increase the size of inode list dramatically
  *
@@ -546,6 +546,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           link_name[last_byte] = '/';
           dest = inode_lookup((struct tarfs_inode const * const *)index, count, link_name);
           if (dest < 0) {
+            
             printf("inode_resolve() failed to resolve %s in two attempts\r\n", link_name);
             break;
           }

@@ -22,6 +22,8 @@ int main(int argc, char **argv) {
     unsigned char *buf;
 
 
+    
+#if 1
     printf("tarfs: mounting resource '%s':\n", filename, size);
     buf = tarfs_os_map_tarfile(filename, &os_handle, &size);
 
@@ -42,6 +44,6 @@ int main(int argc, char **argv) {
 
     printf("tarfs: unmap the filesystem blob\r\n");
     tarfs_os_unmap_tarfile(os_handle, buf, size);
-
+#endif
     return 0;
 }
