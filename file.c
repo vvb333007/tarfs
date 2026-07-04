@@ -120,37 +120,36 @@ static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
 /* close()
  *
  */
-static int tarf_close(void* ctx, int fd) {
+int tarf_close(void* ctx, int fd) {
 
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
 
   if (!is_sanefd(fs, fd)) {
     log("bad fd=%d\r\n", fd);
-    return $(EBADF);
+    errno = EBADF;
+    return -1;
   }
 
   freefd(fs, fd);
   log("closed fd=%d\r\n", fd);
   tarfs_unref(fs);
-  return $(0);
+  return 0;
 }
 
 /* open()
  *
  */
-static int tarf_open(void* ctx, const char * path, int flags, int mode) {
+int tarf_open(void* ctx, const char * path, int flags, int mode) {
 
   int fd = 0;
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  assert(path);
 
   /* XXX:
    * TOCTTOU inherited from ESP-IDF VFS (unmount() and open() race).
    * ESP32: The VFS passes a cached filesystem context that may become invalid
    *        before tarfs_addref() is attempted.
    */
-  if (tarfs_addref(fs)) {
+  if (path && tarfs_addref(fs)) {
 
     int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
@@ -163,7 +162,15 @@ static int tarf_open(void* ctx, const char * path, int flags, int mode) {
     }
 
     struct tarfs_inode const *inode = fs->fs_ino[idx];
-
+#if 0
+    /* open() on a directory fallbacks to opendir() */
+    if (inode_type(fs->fs_ino, fs->fs_nino,inode) == TART_DIR) {
+      log("open() on a directory, fallback to opendir()\r\n");
+      fd = tard_opendir(fs, path); //XXX: skip second lookup!
+      tarfs_unref(fs);
+      return fd;
+    }
+#endif
     if (inode->in_dvaddr == 0) {
 
       errno = EIO;
@@ -184,20 +191,21 @@ static int tarf_open(void* ctx, const char * path, int flags, int mode) {
     if ((fd = allocfd(fs)) >= 0) {
 
       struct tarfs_fp *fp = &fs->fs_fd[fd];
+      log("fd=%d allocated\r\n", fd);
 
       fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
       fp->fp_pos   = 0;
       fp->fp_size  = inode_size(inode);
 
-      log("success, file=%s, fd=%d, size=%lu\r\n",path, fd,fp->fp_size);
+      log("success, file=%s, fd=%d, size=%lu, vaddr=%p\r\n",path, fd,fp->fp_size, (void *)fp->fp_vaddr);
       errno = 0;
       return fd;
     }
-    log("allocfd failed for mp=%s\r\n",fs->fs_mountpoint);
+    log("allocfd failed for path=%s\r\n",path);
     errno = EMFILE;
   } else {
-    log("mp=%s addref() failed\r\n",fs->fs_mountpoint);
-    errno = ENODEV;
+    log("%s://%s, bad path or dead object\r\n",fs->fs_mountpoint, path);
+    errno = (path == NULL) ? EINVAL : ENODEV;
   }
 
 unref_and_exit:

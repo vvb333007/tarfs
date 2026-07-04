@@ -42,3 +42,5 @@ struct tarfs_fp {
 };
 
 //void tarf_handlers_install(esp_vfs_fs_ops_t *files);
+int tarf_open(void* ctx, const char * path, int flags, int mode);
+int tarf_close(void* ctx, int fd);

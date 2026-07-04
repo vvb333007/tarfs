@@ -153,6 +153,10 @@ static inline void tarfs_unlock() {
  * The `label` is a ascii name of the resource: it can be partition name for ESP32 or anything else -
  * this value is passed down to tarfs_os_map_tarfile() as is. For the TARFS the `label` is an opaque
  * parameter
+ *
+ * @return filesystem slot index. can be used as tarfs_getfs() to obtain raw pointer to the filesystem
+ *         pn platforms without proper VFS support
+ *         
  */
 int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase);
 
@@ -170,3 +174,10 @@ int  tarfs_unmount(const char *mountpoint);
 int  tarfs_fsck(const char *label);
 
 
+/**
+ * Obtain raw pointer to the filesystem descriptor by filesystem slot
+ * (value returned by tarfs_mount())
+ * Platforms without VFS support will require user to pass FS descriptor manually to
+ * tarfs_read()/tarfs_open()/etc. Pointer returned by this function can not be stored
+ */
+struct tarfs_fs *tarfs_getfs(int i);

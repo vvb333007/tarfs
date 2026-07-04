@@ -40,7 +40,9 @@ static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesy
 
 
 
-
+struct tarfs_fs *tarfs_getfs(int i) {
+  return s_tarfs[i];
+}
 
 
 /** Find an empty slot or mounted slot
@@ -205,7 +207,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
   int len;
   void *map;
   void *os_handle;
-  int slot;
+  int slot = -1;
   struct tarfs_fs *fs = NULL;
   char base_dir[100];
 
@@ -287,7 +289,7 @@ error:
     }
 
     log("done\r\n");
-    return 0;
+    return slot;
   } 
 
   if (errno == 0)

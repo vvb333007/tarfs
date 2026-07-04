@@ -9,7 +9,7 @@
 #include "tar.h"
 #include "fnv1a.h"
 #include "inode.h"
-
+#if 1
 int main(int argc, char **argv) {
 
     const char *filename    = argc > 1 ? argv[1] : "tarfs.tar";
@@ -26,6 +26,25 @@ int main(int argc, char **argv) {
     int err = tarfs_mount(filename, NULL, rebase_link);
 
     printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
+
+
+
+    tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+
+tarf_close(tarfs_getfs(0),  0);
+tarf_close(tarfs_getfs(0),  2);
+tarf_close(tarfs_getfs(0),  4);
+
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+
+
+
     
     tarfs_unmount("dev");
 
@@ -55,3 +74,4 @@ int main(int argc, char **argv) {
 #endif
     return 0;
 }
+     #endif

@@ -20,18 +20,13 @@
  * const char *test_vector3 = "The_Prefix/The_Name.txt";
  * const uint32_t ref_value = 0x6f914293;
  *
- * @file hash.c
- * @brief Fowler–Noll–Vo (FNV-1a) 32-bit hash implementation (optimized stream version)
- *
- *
  */
 
 #include <stdint.h>
 #include <stddef.h>
 
+#include "config.h"
 #include "fnv1a.h"
-
-// #define BIG_ENDIAN
 
 
 #define HASH32_PRIME  (uint32_t)(16777619u)     /* Special prime number */
@@ -122,7 +117,7 @@ uint32_t hash32(uint32_t prev_hash, const uint8_t *data, size_t len) {
 
     uint32_t v = *wdata++;
 
-#ifdef BIG_ENDIAN
+#if CONFIG_TARFS_BIG_ENDIAN
         HASH32_CSTEP(hash, v >> 24); // advance data pointer
         HASH32_CSTEP(hash, v >> 16);
         HASH32_CSTEP(hash, v >> 8);
@@ -153,4 +148,68 @@ uint32_t hash32(uint32_t prev_hash, const uint8_t *data, size_t len) {
   }
 
   return hash;
+}
+
+
+
+
+/**
+ * CRC-64/ECMA-182 algoritm. Used for data integrity verification
+ * This is the reference software implementation of 64bit CRC, no tables. It is slower than table
+ * version but it does not use extra ram and speed here is not an issue as this functions is usually called
+ * by tarfs_fsck() code
+ *
+ */
+uint64_t hash64(uint64_t prev_crc, void const *buffer0, size_t buf_len) {
+
+    uint64_t crc = prev_crc;
+    uint8_t const *buffer = buffer0;
+
+    while (buf_len--) {
+
+        crc ^= (uint64_t)*buffer++ << 56;
+
+        for (int i = 0; i < 8; i++) {
+            if (crc & 0x8000000000000000ULL)
+                crc = (crc << 1) ^ 0x42F0E1EBA9EA3693ULL;
+            else
+                crc <<= 1;
+        }
+    }
+
+    return crc;
+}
+
+/**
+ * Straight 64 bit sum
+ * This is the replacement of `C64` integrity check value for MCUs which are not
+ * capable of doing CRC64
+ */
+uint64_t sum64(uint64_t prev_sum, void const *buffer0, size_t buf_len) {
+
+    uint32_t sum = prev_sum;
+    uint8_t const *buffer = buffer0;
+
+    while (buf_len--)
+      sum += *buffer++;
+
+    return sum;
+}
+
+
+
+/**
+ * Straight 32 bit sum
+ * This is the replacement of `S64` integrity check value for MCUs which are not
+ * capable of doing 64 bit arith
+ */
+uint32_t sum32(uint32_t prev_sum, void const *buffer0, size_t buf_len) {
+
+    uint32_t sum = prev_sum;
+    uint8_t const *buffer = buffer0;
+
+    while (buf_len--)
+      sum += *buffer++;
+
+    return sum;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#define CONFIG_TARFS_BIG_ENDIAN 0 
+
 #define CONFIG_TARFS_INTEGRITY 1 /*!< Support for file data integrity records */
 #define CONFIG_TARFS_PAX       1 /*!< Process PAX headers; Required for looooong filenames, especially UTF8-encoded */
 #define CONFIG_TARFS_LINKS     1 /*!< Support symlinks and hardlinks */

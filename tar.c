@@ -135,6 +135,30 @@ uint32_t tar_octal(const char *p, size_t max_len) {
   return value;
 }
 
+
+/* Calculate and verify the header checksum.
+ *
+ * TAR checksum rules require the checksum field itself to be treated
+ * as eight ASCII spaces while the checksum is being calculated.
+ *
+ * The checksum field occupies bytes [148..156).
+ */
+uint32_t tar_hdrsum(tarhdr_t const * hdr) {
+
+    uint8_t const *p = (uint8_t const *)hdr;
+    uint32_t calc = 0;                         /* checksum calculated from header contents */
+
+    for (size_t i = 0; i < sizeof(tarhdr_t); i++)
+      if (i >= 148 && i < (148 + 8))
+        calc += ' ';
+      else
+        calc += p[i];
+
+    return calc;
+}
+
+
+
 /** Validate a TAR header.
  *
  * Checks:
@@ -179,27 +203,7 @@ bool tar_badhdr(tarhdr_t const * hdr) {
     if (hdr->zero != 0)
       return true;
 
-    /* Calculate and verify the header checksum.
-     *
-     * TAR checksum rules require the checksum field itself to be treated
-     * as eight ASCII spaces while the checksum is being calculated.
-     *
-     * The checksum field occupies bytes [148..156).
-     */
-    for (size_t i = 0; i < sizeof(tarhdr_t); i++)
-      if (i >= 148 && i < (148 + 8)) {
-        calc += ' ';
-
-        /* Validate checksum field contents while scanning.
-         *
-         * TAR allows only spaces, NULs and octal digits in this field.
-         */
-        if (p[i] != ' ' && p[i] != '\0' && (p[i] < '0' || p[i] > '7'))
-          return true;
-      }
-      else
-        calc += p[i];
-
+    calc = tar_hdrsum(hdr);
     expc = tar_octal(hdr->checksum, sizeof(hdr->checksum));
 
     return expc != calc;

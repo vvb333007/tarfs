@@ -62,7 +62,7 @@ struct tarhdr {
   const char gid[8];          /*!< Ignored: VFS has no user/group concept */
   const char size[12];        /*!< Octal, ASCII string, terminated with a space \20, not \0 */
   const char mtime[12];       /*!< All times are set at mount time and never change (ROFS)  */
-  const char checksum[8];     /*!< Octal, ASCII */
+        char checksum[8];     /*!< Octal, ASCII */
   const tart_t type;          /*!< Record type */
   const char link_name[100];  /*!< For records type#1 and #2 this field contains a name of the object */
   const char magic[6];        /*!< "ustar\0" signature */
@@ -75,13 +75,12 @@ struct tarhdr {
 
   
 #if CONFIG_TARFS_INTEGRITY
-  const char zero;           /*!< Must be zero by the standart */
-  const char md[3];          /*!< Message Digest algorithm. For TARFS v0 these values are defined:
-                                  "CRC" - CRC64 algo
-                                  "MD5" - MD5 algo + fold 2 times (for MCUs with built-in MD5)
-                                  "SHA" - SHA-256 algo + fold 4 times (for MCUs with built-in SHA-256)
-                                  "SUM" - 64 bit straight sum; For MCUs not capable of doing CRC/MD5 sums */
-  const char digest[8];      /*!< Integrity check value. For MD5 algo this field contains first
+        char zero;           /*!< Must be zero by the standart */
+        char md[3];          /*!< Message Digest algorithm. For TARFS v0 these values are defined:
+                                  "C64" - CRC64 algo
+                                  "S64" - 32 bit straight sum; For MCUs not capable of doing 64bit math
+                                  "S32" - 32 bit straight sum; For MCUs not capable of doing CRC64 */
+        char digest[8];      /*!< Integrity check value. For MD5 algo this field contains first
                                   bytes [0..7] xored with bytes [8..15]
                                   For "CRC" and for the "SUM", the resulting value is stored in little-endian byte order (LSB first), */
 #else
@@ -233,4 +232,14 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
  * terminator from the list above
  */
 void tar_print(const char *buf, const char *end);
+
+
+/* Calculate and verify the header checksum.
+ *
+ * TAR checksum rules require the checksum field itself to be treated
+ * as eight ASCII spaces while the checksum is being calculated.
+ *
+ * The checksum field occupies bytes [148..156).
+ */
+uint32_t tar_hdrsum(tarhdr_t const * hdr);
                                    
