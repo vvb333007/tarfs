@@ -108,50 +108,6 @@ bool tarfs_os_unregister_fs(const char *prefix);
  */
 size_t tarfs_os_mp_maxlen();
 
-#define TARFS_OS_MP_MAXLEN 16 /* Max length of the mountpoint name */
-
-/* Windows test environment; only one partition is available */
-#ifdef __CYGWIN__
-#  define ESP_OK               0
-#  define ESP_FAIL            -1
-#  define ESP_ERR_INVALID_ARG -2
-#  define ESP_PARTITION_TYPE_DATA 1
-#  define ESP_PARTITION_SUBTYPE_DATA_TARFS 2
-#  define ESP_PARTITION_MMAP_DATA 3
-#  define pdFALSE 0
-#  define pdTRUE 1
-#  define portMAX_DELAY 0xffffffffU
-#  define xSemaphoreTakeRecursive(A, B) pdTRUE
-#  define xSemaphoreGiveRecursive(A)
-#  define xSemaphoreCreateRecursiveMutex() (SemaphoreHandle_t)(1)
-#  define esp_partition_find(A,B,C) (esp_partition_iterator_t )(1)
-
-#  define esp_partition_iterator_release(A)
-#  define esp_vfs_unregister_fs(A) ESP_OK
-
-typedef void * SemaphoreHandle_t;
-typedef int  esp_err_t;
-typedef void *  esp_partition_iterator_t;
-typedef uintptr_t esp_partition_mmap_handle_t;
-
-typedef struct {
-  char label[17];
-  size_t size;
-} esp_partition_t;
-
-esp_partition_t *esp_partition_get(esp_partition_iterator_t i);
-void esp_partition_munmap(esp_partition_mmap_handle_t handle);
-esp_err_t esp_partition_mmap(const esp_partition_t *p, size_t off, size_t size, int memory, const void **out_ptr, esp_partition_mmap_handle_t *out_handle);
-
-#else
-#  include "freertos/FreeRTOS.h"
-#  include "freertos/task.h"
-#  include "freertos/semphr.h"
-#  include "esp_vfs.h"
-#  include "esp_err.h"
-#  include "esp_partition.h"
-#  include "esp_rom_spiflash.h"
-#endif
 
 #undef likely
 #undef unlikely

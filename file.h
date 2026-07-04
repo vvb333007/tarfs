@@ -17,10 +17,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#ifndef __XTENSA__
-typedef int esp_vfs_fs_ops_t;
-#endif
 
+#include "config.h"
+#include "os.h"
+#include "fs.h"
 
 /* Compile-time sanity checks. */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
@@ -41,4 +41,4 @@ struct tarfs_fp {
 
 };
 
-void tarf_handlers_install(esp_vfs_fs_ops_t *files);
+//void tarf_handlers_install(esp_vfs_fs_ops_t *files);

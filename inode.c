@@ -824,6 +824,99 @@ skip_header_and_data:
 
 
 
+
+
+void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size) {
+
+  if (fs != NULL && fs->fs_ino != NULL) {
+    printf("tarfs: free inodes\r\n");
+    inode_free((struct tarfs_inode **)fs->fs_ino, fs->fs_nino, (uintptr_t )tar_start, tar_size);
+  }
+}
+int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link) {
+
+    char base_dir[100];
+    int nino;
+
+    fs->fs_vaddr= buf;
+    fs->fs_size = size;
+    fs->fs_ino  = NULL;
+    fs->fs_nino = 0;
+    fs->fs_root = NULL;
+
+
+    // PASS1: count inodes, count all required memory
+    printf("tarfs: PASS1, analyzing..\n");
+    nino = tar_getnino(buf, size);
+
+    printf("tarfs: %u inodes, expected RAM usage: %u bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
+    if (nino < 1)
+      return -1;
+
+    // PASS2: guess TARFS root (will be the mountpoint)
+    printf("tarfs: PASS2, analyzing..\n");
+    if (false == tar_rootdir(buf, size, base_dir, sizeof(base_dir)))
+      base_dir[0] = '\0';
+
+    printf("tarfs: filesystem prefix '%s' \n", base_dir);
+
+    struct tarfs_inode **index = inode_alloc( nino );
+    struct tarfs_inode *inodes = (struct tarfs_inode *)(index + nino);
+
+    if (index != NULL) {
+
+      // PASS3: populate inodes
+      printf("tarfs: PASS3, populating inodes..\n");
+      inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
+
+
+      /* Sort inode index table (pointers to inodes are sorted by inode's hash value)
+       * so inode_lookup() can be used
+       */
+      printf("tarfs: building binary search index..\n");
+      inode_sort(index, nino);
+
+      /*Resolve symlinks and hardlinks; For inodes which can not be resolved to a valid type5 or type0
+      * tar entries, the corresponding ->in_dvaddr is set to NULL, indicating that this inode has no valid data.
+      * Resolve other dpendencies; Free tmp memory used by linkpath strings. Link path pointer is placed to the in_next
+      * by the code above and is freed by the inode_resolve().
+      * 
+      */
+      printf("tarfs: symlinks and hardlinks resolution..\n");
+      inode_resolve(index, nino);
+
+      /* 
+       * Perform alphasorting by the in_path; index is not changed, only ->in_next is manipulated
+       * to build an alphasorted list of entries.
+       * root
+       */
+      printf("tarfs: lexigraphical sorting..\n");
+      struct tarfs_inode *root = inode_alphasort(inodes, nino);
+
+      /* PUBLISH */
+
+      fs->fs_ino = (struct tarfs_inode const * const *)index;
+      fs->fs_nino = nino;
+      fs->fs_root = (struct tarfs_inode const * )root;
+
+
+      if (root != NULL) {
+      
+        printf("tarfs: root inode is exp=<2a0c975e>, real=<%08x> \"%s\"\r\n",root->in_hash, (const char *)root->in_path);
+        inode_dumppath_sorted(root);
+        return 0;
+      }
+
+      printf("tarfs: WARNING: no root inode after alphasort, opendir() is disabled\r\n");
+      inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino);
+    }      
+
+    return -1;
+}
+
+
+
+
 /**
  *
  *

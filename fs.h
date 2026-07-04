@@ -21,19 +21,15 @@
 #include <time.h>
 
 #include "config.h"
-
-#ifdef __CYGWIN__
 #include "os.h"
-#else
-#include "esp_vfs.h"
-#include "esp_err.h"
-#include "esp_partition.h"
-#include "esp_rom_spiflash.h"
-#include "esp_tarfs.h"
-#endif
 
 #define TARFS_MAX_FS  CONFIG_TARFS_MAX_FS
 #define TARFS_MAX_FDS CONFIG_TARFS_MAX_FDS
+
+#include "inode.h"
+#include "file.h"
+#include "refc.h"
+
 
 /* Set errno and return 0 or -1, depending on the errno */
 static inline int $(int err) {

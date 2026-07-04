@@ -94,3 +94,6 @@ void inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_
 tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *size, time_t *mtime);
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count);
 void inode_dumppath_sorted(struct tarfs_inode const * root);
+
+void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size);
+int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link);
