@@ -242,4 +242,12 @@ void tar_print(const char *buf, const char *end);
  * The checksum field occupies bytes [148..156).
  */
 uint32_t tar_hdrsum(tarhdr_t const * hdr);
-                                   
+
+
+/**
+ * Insert CRC64 file checksums into tar archive. 
+ * This function is used by `tarsum.c` utility
+ *
+ */
+int tar_addsum(uint8_t *tar_start, size_t tar_length);
+                               

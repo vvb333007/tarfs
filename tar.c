@@ -22,6 +22,7 @@
 #include "os.h"
 #include "fs.h"
 #include "tar.h"
+#include "fnv1a.h"
 
 
 /*
@@ -173,7 +174,7 @@ uint32_t tar_hdrsum(tarhdr_t const * hdr) {
  */
 bool tar_badhdr(tarhdr_t const * hdr) {
 
-    uint8_t const *p = (uint8_t const *)hdr;
+
     uint32_t calc = 0,                         /* checksum calculated from header contents */
              expc;                             /* checksum stored in the TAR header */
 
@@ -353,3 +354,80 @@ void tar_print(const char *buf, const char *end) {
   printf("%s",b);
 }
 
+/**
+ * Insert CRC64 file checksums into tar archive. This function is used by `tarsum.c` utility
+ *
+ */
+int tar_addsum(uint8_t *tar_start, size_t tar_length) {
+
+    int inserted = 0;
+    uint32_t size;
+    size_t off = 0;
+    bool bad = 0;
+    uintptr_t tar_end = (uintptr_t )(tar_start + tar_length);
+
+    while (off + sizeof(tarhdr_t) <= tar_length) {
+
+        tarhdr_t *hdr = (tarhdr_t *)(tar_start + off);
+
+        if (tar_badhdr(hdr)) {
+
+bad_header:
+          if (!bad)
+            bad = true;
+
+          off += sizeof(tarhdr_t);
+          continue;
+        }
+
+        bad = 0;
+        size = tar_octal(hdr->size, sizeof(hdr->size));
+
+        /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
+        if (((uintptr_t)(hdr + 1)) + size >= tar_end)
+          goto bad_header;
+        
+
+        /* For entries having data (including PAX headers) we calculate CRC64 and inject it
+         * into header->padding[] field.
+         *
+         */
+        if (size > 0) {
+          uint32_t    new_sum;
+          uint8_t     octet;
+          char        tmp[9] = { ' ',' ',' ',' ',' ',' ',' ',' ',' '};
+          void const *data   = (void *)(hdr + 1);
+          uint64_t icv;
+
+          /* calculate integrity check value */
+          icv = hash64(0, data, size);
+
+          /* inject it byte by byte in Little Endian byte order */
+          for (int i = 0; i < 8; i++) {
+            octet = icv & 0xff;
+            icv >>= 8;
+            hdr->digest[i] = octet;
+          }
+
+          /* insert CRC type signature (CRC64)*/
+          hdr->md[0] = 'C';
+          hdr->md[1] = '6';
+          hdr->md[2] = '4';
+
+          hdr->zero = 0;
+
+          /* calculate new header checksum */
+          new_sum = tar_hdrsum(hdr);
+          
+          /* inject it into header in octal ASCII form. */
+          snprintf(tmp, sizeof(tmp), "%-8o", new_sum);
+          memcpy(hdr->checksum, tmp, 8);
+          inserted++;
+        }
+  
+        /* Real size is 512 bytes aligned */
+        off += sizeof(tarhdr_t) + (((size_t)size + 511) & ~511u);
+    }
+
+    return inserted;
+}

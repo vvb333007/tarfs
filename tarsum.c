@@ -1,3 +1,16 @@
+/*
+ * TARFS - Immutable (read-only) filesystem for embedded systems.
+ *
+ * Copyright (c) 2024-2026 Viacheslav Logunov
+ * SPDX-License-Identifier: MIT
+ *
+ * Author:
+ *   Viacheslav Logunov <vvb333007@gmail.com>
+ *
+ * Project:
+ *   https://github.com/vvb333007/tarfs
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -10,80 +23,6 @@
 #include "fnv1a.h"
 #include "inode.h"
 
-void tar_addsum(uint8_t *tar_start, size_t tar_length) {
-
-    uint32_t size;
-    size_t off = 0, hdr_no = 0;
-    int bad = 0, bad_total = 0;
-    uintptr_t tar_end = (uintptr_t )(tar_start + tar_length);
-
-    while (off + sizeof(tarhdr_t) <= tar_length) {
-
-        tarhdr_t *hdr = (tarhdr_t *)(tar_start + off);
-
-        if (tar_badhdr(hdr)) {
-
-          if (!bad) {
-bad_header:
-            bad++;
-            
-          }
-
-          off += sizeof(tarhdr_t);
-          continue;
-        }
-
-        if (bad) {
-          bad_total += bad;
-          bad = 0;
-        }
-
-        size = tar_octal(hdr->size, sizeof(hdr->size));
-
-        /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
-        if (((uintptr_t)(hdr + 1)) + size >= tar_end) {
-          goto bad_header;
-        }
-
-        /* For entries having data (including PAX headers) we calculate CRC64 and inject it
-         * into header->padding[] field.
-         *
-         */
-        if (size > 0) {
-
-          void const *data = (void *)(hdr + 1);
-
-          uint64_t icv = hash64(0, data, size);
-
-          for (int i = 0; i < 8; i++) {
-
-            uint8_t octet;
-            octet = icv & 0xff;
-            icv >>= 8;
-            hdr->digest[i] = octet;
-          }
-
-          hdr->md[0] = 'C';
-          hdr->md[1] = '6';
-          hdr->md[2] = '4';
-
-          hdr->zero = 0;
-
-          uint32_t new_sum = tar_hdrsum(hdr);
-          char tmp[9] = { ' ',' ',' ',' ',' ',' ',' ',' ',' '};
-          snprintf(tmp, sizeof(tmp), "%-8o", new_sum);
-          memcpy(hdr->checksum, tmp, 8);
-        }
-  
-        off += sizeof(tarhdr_t);
-
-
-        /* Real size is 512 bytes aligned */
-        off += ((size_t)size + 511) & ~511u;
-
-        hdr_no++;
-    }
-}
 
 
 int main(int argc, char **argv) {

@@ -22,46 +22,15 @@
 #include <dirent.h>
 #include <sys/errno.h>
 
-#ifdef __XTENSA__
-#  include "esp_heap_caps.h"
-#else
-#  define heap_caps_malloc(length_, caps_) malloc(length_) 
-#  define heap_caps_free(ptr_) free(ptr_) 
-#endif
+#include "config.h"
+#include "os.h"
 #include "fs.h"
 #include "file.h"
+#include "inode.h"
+#include "tar.h"
 
 #define $$( Errno_ ) ({ errno = (Errno_); MAP_FAILED; })
 
-
-static void *mmap_anon_emulated(size_t length, int prot) {
-
-  void *ret;
-
-  if (prot & PROT_EXEC)
-    ret = heap_caps_malloc(length, MALLOC_CAP_EXEC);
-  else
-    ret = heap_caps_malloc(length, MALLOC_CAP_8BIT);
-
-  if (ret == NULL) {
-    return $$(ENOMEM);
-  }
-
-  errno = 0;
-  return ret;
-}
-
-static int munmap_anon_emulated(void *addr, size_t length) {
-
-  int ret = EINVAL;
-
-  if (addr != NULL && length != 0) {
-
-    heap_caps_free(addr);
-    ret = 0;
-  }
-  return $(ret);
-}
 
 /**
  * POSIX mmap().
@@ -75,22 +44,17 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
   struct tarfs_fp *fp;
   struct tarfs_fs *fs;
 
-  if ((flags & MAP_FIXED) && addr != NULL) {
-    log("esp32 mmu does not support MAP_FIXED\r\n");
-    return $$(EINVAL);
+  if (((flags & MAP_FIXED) && addr != NULL) ||
+      ((flags & MAP_ANONYMOUS) && fd < 0) ||
+      ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
+
+    log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
+    return $$(ENOTSUP);
   }
 
-  if ((flags & MAP_ANONYMOUS) && fd < 0)
-    return mmap_anon_emulated(length,prot);
-
-  /* Do not support WRITE|EXEC */
-  if ((prot & (PROT_WRITE|PROT_EXEC)) != 0 || fd < 0)
-    return $$(ENOTSUP);
-
-  /* For RO filesystem MAP_SHARED equals MAP_PRIVATE. ESP32's MMU only allows for shared entries */
-  
-
-  /* Obtain corresponding FS and FD pointers, add reference to the filesystem (done in ioctl()) */
+  /* For RO filesystem MAP_SHARED equals MAP_PRIVATE. ESP32's MMU only allows for shared entries
+   * Obtain corresponding FS and FD pointers, add reference to the filesystem (done in ioctl()) 
+   */
   if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
 
     fs = req.fs;
@@ -100,10 +64,15 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
         offset < 0 || 
         offset > fp->fp_size || 
         length > (fp->fp_size - offset)) {
+
       /* addref'ed in the ioctl() */
+
       log("failed: fp_vaddr=0x%x, offset=%d, fp_size=%u, length=%u\r\n",fp->fp_vaddr, offset, fp->fp_size, length);
+
       tarfs_unref(fs);
-      return $$(EINVAL);
+      errno = EINVAL;
+
+      return MAP_FAILED;
     }
 
 
@@ -111,11 +80,14 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
      * memory offset
      */
     log("fd=%d, mapped %u bytes vaddr=0x%x, offset=0x%x\r\n",fd, fp->fp_vaddr, offset);
-    errno = 0;
     return (void *)(fp->fp_vaddr + offset);
   }
+  if (errno == 0)
+    errno = EBADF;
 
-  return $$(EBADF);
+  log("fd=%d, ioctl(FIOGETFD) failed\r\n",fd);
+  
+  return MAP_FAILED;
 }
 
 
@@ -129,7 +101,7 @@ int munmap(void *addr, size_t length) {
   uintptr_t vaddr = (uintptr_t )addr;
 
   if (addr != NULL && length > 0) {
-    lock();
+    tarfs_lock();
     for (int i = 0; i < TARFS_MAX_FS; i++) {
 
       fs = &s_tarfs[i];
@@ -137,15 +109,15 @@ int munmap(void *addr, size_t length) {
       if (fs != NULL && 
           vaddr >= fs->fs_vaddr &&
           vaddr < (fs->fs_vaddr + fs->fs_size)) {
-        unlock();
+        tarfs_unlock();
         tarfs_unref(fs);
-        return $(0);
+        return 0;
       }
     }
-    unlock();
+
+    tarfs_unlock();
   }
 
-  /* must be malloced or we are doomed */
-  munmap_anon_emulated(addr, length);
-  return $(0);
+  errno = EINVAL;
+  return -1;
 }
