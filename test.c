@@ -16,15 +16,15 @@ int main(int argc, char **argv) {
     void *os_handle         = NULL;
     size_t size             = 0;
     const char *rebase_link = "/\?\?/D:/Arduino/dev";
-    char base_dir[100];
-    int nino;
+
+
 
     unsigned char *buf;
 
 
     
 #if 1
-    printf("tarfs: mounting resource '%s':\n", filename, size);
+    printf("tarfs: mounting resource '%s':\n", filename);
     buf = tarfs_os_map_tarfile(filename, &os_handle, &size);
 
     if (buf == NULL) {

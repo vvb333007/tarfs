@@ -118,16 +118,55 @@ struct tarfs_fs {
   char                          fs_mountpoint[0];     /*!< Mount point */
 };
 
+/**
+ * Add 1 to the FS' reference count
+ */
 static inline int tarfs_addref(struct tarfs_fs *fs) {
   return fs == NULL ? 0 : addref(&fs->fs_ref);
 }
 
+/**
+ * Substract 1. If counter reaches zero then  the FS destructor is called
+ */
 int tarfs_unref(struct tarfs_fs *fs);
 
-void tarfs_lock();
-void tarfs_unlock();
-int  tarfs_mount(const char *label, const char *mountpoint);
+/**
+ * Lock access to s_tarfs[] table and to the s_numfs counter
+ */
+static inline void tarfs_lock() {
+  tarfs_os_acquire_mutex();  
+}
+
+/**
+ * Unlock access to s_tarfs[] table and to the s_numfs counter
+ *  
+ */
+static inline void tarfs_unlock() {
+  tarfs_os_release_mutex();  
+}
+
+
+
+/**
+ * Mount tar file system, use resource named `label`. Mount point is automatically detected from
+ * the tarfile but can be overriden with `mountpoint_override` parameter
+ * The `label` is a ascii name of the resource: it can be partition name for ESP32 or anything else -
+ * this value is passed down to tarfs_os_map_tarfile() as is. For the TARFS the `label` is an opaque
+ * parameter
+ */
+int  tarfs_mount(const char *label, const char *mountpoint_override);
+
+/**
+ * Unmount tar file system
+ * @return 0  on success
+ *         <0 FS is scheduled for unmount, but unmount is delayed because FS has some active users
+ */
 int  tarfs_unmount(const char *mountpoint);
+
+/**
+ * Deeper filesystem check: verifies content integrity (if enabled), 
+ *
+ */
 int  tarfs_fsck(const char *label);
 
 

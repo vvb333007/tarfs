@@ -373,7 +373,7 @@ static bool inode_pathcmp(const struct tarfs_inode *inode, const char *src) {
   if (inode == NULL || src == NULL)
     return NULL;
 
-  struct tarhdr const *in_vaddr = (struct tarhdr const *)inode->in_vaddr;
+  //struct tarhdr const *in_vaddr = (struct tarhdr const *)inode->in_vaddr;
   const char *in_path = (const char *)inode->in_path;
 
   if (in_path == NULL)
@@ -437,7 +437,7 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
 
 
       /* Scan collision chain, left to right */
-      for (size_t i = first;  i < num_inodes && index[i]->in_hash == hash; i++) {
+      for (int i = first;  i < num_inodes && index[i]->in_hash == hash; i++) {
         //struct tarhdr *hdr = (struct tarhdr *)index[i]->in_vaddr;
         if (inode_pathcmp(index[i], path)) {
           printf("inode_lookup(): inode#%u, <e8bb5ed2> path=%s\r\n", i, path);
@@ -516,7 +516,7 @@ time_t inode_mtime(struct tarfs_fs *fs, int idx, size_t *size) {
  */
 int inode_resolve(struct tarfs_inode **index, size_t count) {
 
-  int dest = -1, floating = 0, resolved = 0, attempted = 0;
+  int floating = 0, resolved = 0, attempted = 0;
 
   for (int i = 0; i < count; i++ ) {
 
@@ -601,8 +601,10 @@ static char const * s_bad_path = "<bad path>";
 /**
  * Populate inodes. Inodes must be allocated, and the allocation size must match
  * real amount of inodes, which can be obtained through tar_getnino
+ *
+ * @return Total size of all files containing data
  */
-void inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder) {
+size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder) {
 
     uint32_t total_data_size = 0;
     uint32_t total_headers_size = 0;
@@ -757,7 +759,11 @@ bad_header:
           /* PAX has preference over link_name field */
           if (pax_entry_link) {
 
-            pax_entry_link = remove_subpath(pax_entry_link, pax_entry_end, link_rebase);
+            if (pax_entry_link[0] == '/')
+              pax_entry_link = remove_subpath(pax_entry_link, pax_entry_end, link_rebase);
+            else
+              pax_entry_link = remove_subpath(pax_entry_link, pax_entry_end, root_folder);
+
             inodes[idx].in_next = (void *)tar_strdup1(pax_entry_link, pax_entry_end);
 
             pax_entry_link = NULL;
@@ -818,9 +824,11 @@ skip_header_and_data:
       
 
   printf("tarfs: TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
-  printf("tarfs: Bad path: %u inodes\r\n", bad_path);  
+//  printf("tarfs: Bad path: %u inodes\r\n", bad_path);  
   printf("tarfs: TAR data/headers ratio: %u data bytes, %u header bytes\r\n", total_data_size, total_headers_size);  
-  printf("tarfs: RAM overhead (total RAM used by the FS): %u bytes\r\n", overhead);  
+  printf("tarfs: RAM overhead (total RAM used by the FS): %u bytes\r\n", overhead);
+
+  return total_data_size;
 }
 
 
@@ -841,6 +849,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
     fs->fs_vaddr= buf;
     fs->fs_size = size;
+    fs->fs_dsize= 0;
     fs->fs_ino  = NULL;
     fs->fs_nino = 0;
     fs->fs_root = NULL;
@@ -850,7 +859,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
     printf("tarfs: PASS1, analyzing..\n");
     nino = tar_getnino(buf, size);
 
-    printf("tarfs: %u inodes, expected RAM usage: %u bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
+    printf("tarfs: %u inodes, expected RAM usage: %lu bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
     if (nino < 1)
       return -1;
 
@@ -868,7 +877,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
       // PASS3: populate inodes
       printf("tarfs: PASS3, populating inodes..\n");
-      inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
+      size_t dsize = inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
 
 
       /* Sort inode index table (pointers to inodes are sorted by inode's hash value)
@@ -896,10 +905,10 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
       /* PUBLISH */
 
-      fs->fs_ino = (struct tarfs_inode const * const *)index;
-      fs->fs_nino = nino;
-      fs->fs_root = (struct tarfs_inode const * )root;
-
+      fs->fs_ino   = (struct tarfs_inode const * const *)index;
+      fs->fs_nino  = nino;
+      fs->fs_root  = (struct tarfs_inode const * )root;
+      fs->fs_dsize = dsize;
 
       if (root != NULL) {
       

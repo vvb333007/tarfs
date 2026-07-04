@@ -1,3 +1,4 @@
+
 /*
  * TARFS - Immutable (read-only) filesystem for embedded systems.
  *
@@ -95,7 +96,7 @@ tart_t inode_type(struct tarfs_inode **index, int idx);
 void inode_sort(struct tarfs_inode **iarr, size_t count);
 struct tarfs_inode *inode_alphasort(struct tarfs_inode *array, size_t count);
 int inode_resolve(struct tarfs_inode **index, size_t count);
-void inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder);
+size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder);
 tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *size, time_t *mtime);
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count);
 void inode_dumppath_sorted(struct tarfs_inode const * root);

@@ -40,20 +40,6 @@ static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesy
 
 
 
-/**
- * Lock access to s_tarfs[] table and to the s_numfs counter
- */
-void tarfs_lock() {
-  tarfs_os_acquire_mutex();  
-}
-
-/**
- * Unlock access to s_tarfs[] table and to the s_numfs counter
- *  
- */
-void tarfs_unlock() {
-  tarfs_os_release_mutex();  
-}
 
 
 
@@ -99,24 +85,6 @@ static int findfs(const char *mountpoint) {
   return $(ENOENT);
 }
 
-/**
- * Find filesystem slot [0..TARFS_MAX_FS) which is used to hold given fs
- *
- */
-static int slot_index(struct tarfs_fs *fs) {
-
-  if (fs != NULL) {
-    intptr_t diff = (uintptr_t)fs - (uintptr_t)(&s_tarfs[0]);
-    if (diff >= 0 && (diff % sizeof(struct tarfs_fs) == 0)) {
-      int slot;
-      slot = diff / sizeof(struct tarfs_fs);
-      if (slot < TARFS_MAX_FS)
-        return slot;
-    }
-  }
-  return -1;
-}
-
 
 /** Actual "unmount" procedure. Called by unref(). Finalizes unmount procedure, unmaps memory region,
  *  clears s_tarfs[] entry. This destructor is called by the last user of unmounted filesystem: if filesystem
@@ -125,15 +93,19 @@ static int slot_index(struct tarfs_fs *fs) {
  */
 static void commit_unmount(void *ctx) {
 
-  int tmp;
 
-  int slot;
+
+  int slot = -1;
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
 
   if (fs == NULL)
     return ;
 
-  slot = slot_index(fs);
+  for (int i = 0; slot < TARFS_MAX_FS; i++)
+    if (s_tarfs[slot] == fs) {
+      slot = i;
+      break;
+    }
 
   log("unmounting FS slot #%d\r\n\r\n", slot);
 
@@ -154,7 +126,7 @@ static void commit_unmount(void *ctx) {
   }
 
   if (fs->fs_vaddr != NULL) {
-    log(" unmapping (%s), vaddr=%p, size=%u\r\n", fs->fs_mountpoint, fs->fs_vaddr, fs->fs_size);
+    log(" unmapping (%s), vaddr=%p, size=%lu\r\n", fs->fs_mountpoint, fs->fs_vaddr, fs->fs_size);
     tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
     fs->fs_vaddr = NULL;
   }
@@ -175,6 +147,43 @@ clear_slot:
 int tarfs_unref(struct tarfs_fs *fs) {
   return fs == NULL ? 0 : unrefx(&fs->fs_ref, fs, commit_unmount);
 }
+
+/** 
+ * Unmounting a filesystem with a zero open files AND opening a file at the same time
+ * MAY result in racecond which eventually lead to crash. This must be fixed at ESP-IDF VFS level.
+
+ */
+int tarfs_unmount(const char *mountpoint) {
+  
+  int slot,
+      err = 0;
+
+  struct tarfs_fs *fs;
+
+  refc_type_t prev_refc;
+
+  if (mountpoint == NULL)
+    return $(EINVAL);
+
+  tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
+  
+  if ((slot = findfs(mountpoint)) >= 0) {
+    fs = s_tarfs[slot];
+
+//  XXX: deadlock! Must use recursive locks
+    prev_refc = tarfs_unref(fs);
+    if (prev_refc > 1) {
+      log("Filesystem %s is in use (%u FD), umount delayed\r\n", mountpoint, prev_refc - 1);
+      err = EAGAIN;
+    }
+
+  } else
+    err = ENOENT;
+
+  tarfs_unlock();
+  return $(err);
+}
+
 
 #if 0
 /**
@@ -248,39 +257,4 @@ free_memory_and_fail:
 
 
 
-/** 
- * Unmounting a filesystem with a zero open files AND opening a file at the same time
- * MAY result in racecond which eventually lead to crash. This must be fixed at ESP-IDF VFS level.
-
- */
-int tarfs_unmount(const char *mountpoint) {
-  
-  int slot,
-      err = 0;
-
-  struct tarfs_fs *fs;
-
-  refc_type_t prev_refc;
-
-  if (mountpoint == NULL)
-    return $(EINVAL);
-
-  lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
-  
-  if ((slot = findfs(mountpoint)) >= 0) {
-    fs = s_tarfs[slot];
-
-//  XXX: deadlock! Must use recursive locks
-    prev_refc = tarfs_unref(fs);
-    if (prev_refc > 1) {
-      log("Filesystem %s is in use (%u FD), umount delayed\r\n", mountpoint, prev_refc - 1);
-      err = EAGAIN;
-    }
-
-  } else
-    err = ENOENT;
-
-  unlock();
-  return $(err);
-}
 #endif

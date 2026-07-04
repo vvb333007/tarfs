@@ -42,21 +42,19 @@
  * @param hash_ hash accumulator
  * @param pb_   pointer to byte pointer (will be incremented)
  */
-#define HASH32_PSTEP(hash_, pb_) ({ \
+#define HASH32_PSTEP(hash_, pb_) do { \
   (hash_) ^= *(const uint8_t *)(pb_++); \
   (hash_) *= HASH32_PRIME; \
-  (hash_); \
-})
+} while(0)
 
 /**
  * @brief Same as the above but second arg is the value, not pointer.
  * @note No pointer autoincrement
  */
-#define HASH32_CSTEP(hash_, b_) ({ \
+#define HASH32_CSTEP(hash_, b_) do { \
   (hash_) ^= (uint8_t)(b_); \
   (hash_) *= HASH32_PRIME; \
-  (hash_); \
-})
+} while( 0 )
 
 
 // !! WARNING This macro contains a `return` statement !!

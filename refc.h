@@ -53,7 +53,7 @@ typedef _Atomic(refc_type_t) refc_t;
  *
  * @note If /ref/ is NULL, this function does nothing.
  */
-static void inline initref(refc_t *ref) {
+static inline void initref(refc_t *ref) {
 
   if (ref != NULL)
     atomic_init(ref, 1);
@@ -70,7 +70,7 @@ static void inline initref(refc_t *ref) {
  *
  * @note If /ref/ is NULL, this function does nothing.
  */
-static void inline initrefn(refc_t *ref, refc_type_t n) {
+static inline void initrefn(refc_t *ref, refc_type_t n) {
 
   if (ref != NULL)
     atomic_init(ref, n);
@@ -109,7 +109,7 @@ bool addrefn(refc_t *ref, refc_type_t n);
  *
  * @note This function fails if reference counter is zero.
  */
-static bool inline addref(refc_t *ref) {
+static inline bool addref(refc_t *ref) {
 
   return addrefn(ref, 1);
 }
