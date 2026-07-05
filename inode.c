@@ -280,27 +280,6 @@ struct tarfs_inode *inode_alphasort(struct tarfs_inode *array, size_t count) {
     return merge_sort(array);
 }
 
-
-
-
-#if 0
-int inode_index(struct tarfs_inode **index, size_t nindex, struct tarfs_inode *node) {
-
-  intptr_t i;
-  struct tarfs_inode *inodes = (struct tarfs_inode *)(index + nindex);
-  
-  /* node address is out of range? */
-  if ((uintptr_t)node < inodes)
-    return -1;
-
-  /* calculated node index is out of range? */
-  i = ((uintptr_t)node - (uintptr_t)inodes) / sizeof (struct tarfs_inode );
-  if (i >= nindex)
-    return -1;
-
-  return index;    
-}
-#endif
 /**
  * Returns an array of pointers to tarfs_inode structures.
  * Inodes are allocated and initialized to all zeros, array of pointers is allocated in populated
@@ -363,10 +342,6 @@ void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, s
  * Check if given inode is exactly given path. This function is used as final check as collision avoidance
  * step after hash-based binary search. Unless we are using perfect hash (which should be possible to generate 
  * on mount()) we have to verify our search results.
- *
- * @param inode Pointer to inode
- * @param path An absolute path with a leading / to compare against
- * @return a boolean value. true if full match, false otherwise
  */
 static bool inode_pathcmp(const struct tarfs_inode *inode, const char *src) {
 
@@ -832,9 +807,9 @@ skip_header_and_data:
 }
 
 
-
-
-
+/* Free all inodes and associated data
+ *
+ */
 void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size) {
 
   if (fs != NULL && fs->fs_ino != NULL) {
@@ -842,6 +817,10 @@ void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size)
     inode_free((struct tarfs_inode **)fs->fs_ino, fs->fs_nino, (uintptr_t )tar_start, tar_size);
   }
 }
+
+/* Create inodes (filesystem index), perform all sortings, link resolution and etc
+ * to make things faster later
+ */
 int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link) {
 
     char base_dir[100];
@@ -939,7 +918,7 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
     printf("<%08x> %c %s path=", inode->in_hash,
       inode_getinfo(index, i, NULL, NULL) ,
-      inode_is_link(inode) ? "*" : " ");
+      inode->in_vaddr != inode->in_dvaddr ? "*" : " ");
       tar_print((char const *)inode->in_path, NULL);
       puts("");
   }
@@ -956,7 +935,7 @@ void inode_dumppath_sorted(struct tarfs_inode const * root) {
   for (size_t i = 0; root != NULL; i++) {
     printf("<%08x> %s%s path=", 
             root->in_hash,
-            inode_is_link(root) ? "*" : " ",
+            root->in_vaddr != root->in_dvaddr ? "*" : " ",
             root->in_dvaddr == 0 ? "X" : " "
 );
     tar_print((char const *)root->in_path, NULL);

@@ -74,32 +74,134 @@ struct tarfs_inode  {
 
 
 
-static inline bool inode_is_link(struct tarfs_inode const *inode) {
-  return ((inode != NULL) && (inode->in_vaddr != inode->in_dvaddr));
-}
-
-static inline size_t inode_size(struct tarfs_inode const *ino) {
-
-  return tar_octal(((tarhdr_t *)(ino->in_dvaddr))->size, sizeof(((tarhdr_t *)(ino->in_dvaddr))->size));
-}
 
 typedef struct tarfs_inode tarfs_inode_t;
 
 struct tarfs_fs;
-int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, const char *path);
+
+
+/**
+ * @brief Get information about an inode.
+ *
+ * Retrieves metadata for the inode referenced by an inode index entry.
+ * Either @p size or @p mtime may be @c NULL if the corresponding value
+ * is not required.
+ *
+ * @param index Inode index.
+ * @param idx   Inode number within the index.
+ * @param size  Optional output for file size.
+ * @param mtime Optional output for modification time.
+ *
+ * @return TAR entry type.
+ */
+tart_t inode_getinfo(struct tarfs_inode const * const *index,
+                     int idx,
+                     size_t *size,
+                     time_t *mtime);
+
+
+
+/**
+ * @brief Find an inode by pathname.
+ *
+ * Performs a pathname lookup in the inode index.
+ *
+ * @param index      Inode index.
+ * @param num_inodes Number of entries in the index.
+ * @param path       Absolute path to search for.
+ *
+ * @return Inode index on success, or -1 if not found.
+ */
+int inode_lookup(struct tarfs_inode const * const *index,
+                 size_t num_inodes,
+                 const char *path);
+
+
+
+
+
+/**
+ * @brief Allocate an inode index.
+ *
+ * Allocates an array of inode pointers capable of holding
+ * @p count entries.
+ *
+ * @param count Number of inode pointers to allocate.
+ *
+ * @return Newly allocated inode index, or @c NULL on failure.
+ */
 struct tarfs_inode **inode_alloc(size_t count);
-void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, size_t tar_length);
+
+
+/**
+ * @brief Destroy an inode index.
+ *
+ * Frees an inode index previously created by inode_alloc() together with
+ * all associated inode objects.
+ *
+ * @param index      Inode index.
+ * @param count      Number of entries in the index.
+ * @param tar_start  Start address of the mounted TAR image.
+ * @param tar_length TAR image size in bytes.
+ */
+void inode_free(struct tarfs_inode **index,
+                size_t count,
+                uintptr_t tar_start,
+                size_t tar_length);
+
+
+/**
+ * @brief Unmount a TAR image.
+ *
+ * Releases all in-memory data structures associated with a mounted TARFS
+ * instance.
+ *
+ * @param fs        Filesystem instance.
+ * @param tar_start Start address of the mounted TAR image.
+ * @param tar_size  TAR image size in bytes.
+ */
+void inode_unmount(struct tarfs_fs *fs,
+                   const void *tar_start,
+                   size_t tar_size);
 
 
 
+/**
+ * @brief Build an inode index for a TAR image.
+ *
+ * Scans the TAR archive, creates the inode index and initializes the
+ * filesystem state.
+ *
+ * @param fs          Filesystem instance.
+ * @param buf         Start address of the TAR image.
+ * @param size        TAR image size in bytes.
+ * @param rebase_link Optional path prefix applied to symbolic links.
+ *
+ * @retval 0  Success.
+ * @retval -1 Mount failed.
+ */
+int inode_mount(struct tarfs_fs *fs,
+                const unsigned char *buf,
+                size_t size,
+                const char *rebase_link);
 
-void inode_sort(struct tarfs_inode **iarr, size_t count);
-struct tarfs_inode *inode_alphasort(struct tarfs_inode *array, size_t count);
-int inode_resolve(struct tarfs_inode **index, size_t count);
-size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder);
-tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *size, time_t *mtime);
-void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count);
-void inode_dumppath_sorted(struct tarfs_inode const * root);
 
-void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size);
-int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link);
+/**
+ * @brief Dump the inode hash table in sorted order.
+ *
+ * Debug helper used to inspect the inode index.
+ *
+ * @param index Inode index.
+ * @param count Number of entries.
+ */
+void inode_dumphash_sorted(struct tarfs_inode const * const *index,
+                           size_t count);
+
+/**
+ * @brief Dump the directory tree sorted by pathname.
+ *
+ * Debug helper that recursively prints the filesystem hierarchy.
+ *
+ * @param root Root inode.
+ */
+void inode_dumppath_sorted(struct tarfs_inode const *root);
