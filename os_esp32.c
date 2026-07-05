@@ -39,6 +39,15 @@
 #include "file.h"
 #include "inode.h"
 
+enum {
+
+  ESP_PARTITION_SUBTYPE_DATA_TARFS  = 0xF0, /* !< TARFS partition, v0 */
+  ESP_PARTITION_SUBTYPE_DATA_TARFS1 = 0xF1, /* !< TARFS partition, v1, encrypted */
+  ESP_PARTITION_SUBTYPE_DATA_TARFS2 = 0xF2, /* !< TARFS partition, v2, ImFS overlay support */
+
+};
+
+
 static const esp_vfs_dir_ops_t s_tarfs_dir = {
 
     .stat_p      = &tarfs_stat,

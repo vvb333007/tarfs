@@ -56,7 +56,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
   if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
 
     fs = req.fs;
-    fp = &fs->fs_fds[req.fd];
+    fp = &fs->fs_fd[req.fd];
 
     if (fp->fp_vaddr == NULL ||
         offset < 0 || 
