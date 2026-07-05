@@ -12,11 +12,33 @@
  */
 
 
+
+/*
+ * Thread-safety notes
+ * ===================
+ *
+ * Simultaneious open() + unmount() is not thread-safe:
+ *
+ *   Subject to a TOCTTOU race inherited from the ESP-IDF VFS.
+ *   unmount() and open() may execute concurrently because the VFS passes
+ *   a cached filesystem context that can become invalid before
+ *   tarfs_addref() is attempted. Not much we can do here unless ESP-IDF
+ *   get improved VFS
+ *
+ * close() is not thread safe: 
+ *   closing a file descriptor may create an UB
+ *   closing a descriptor while performing active read on it AND opening another descriptor afterwards
+ *   may create a race: newly opened FD could be treated by running read() as the sane old descriptor
+ *   resulting in wrong data being read
+ */ 
+
 #include <stdint.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <dirent.h>
@@ -118,7 +140,11 @@ static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
 
 
 /* close()
+ * FS has at least 1 extra ref, because of open()
  *
+ * close() is not thread-safe. It is not as bad as it seems: no crashes, no sigsegv.
+ * Just DO NOT close() files being read() at the same time by another thread. Or, if you do, 
+ * do not open another file immediately :)
  */
 int tarf_close(void* ctx, int fd) {
 
@@ -136,12 +162,18 @@ int tarf_close(void* ctx, int fd) {
   return 0;
 }
 
-/* open()
+/**
+ * Open a TARFS file or directory.
  *
+ * Opens an existing TAR archive entry and returns a TARFS file descriptor.
+ * Both regular files and directories may be opened.
  */
 int tarf_open(void* ctx, const char * path, int flags, int mode) {
 
-  int fd = 0;
+  tart_t type;
+  size_t size;
+  time_t mtime;
+  int    fd = 0;
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
 
   /* XXX:
@@ -162,17 +194,10 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
     }
 
     struct tarfs_inode const *inode = fs->fs_ino[idx];
-#if 0
-    /* open() on a directory fallbacks to opendir() */
-    if (inode_type(fs->fs_ino, fs->fs_nino,inode) == TART_DIR) {
-      log("open() on a directory, fallback to opendir()\r\n");
-      fd = tard_opendir(fs, path); //XXX: skip second lookup!
-      tarfs_unref(fs);
-      return fd;
-    }
-#endif
+
     if (inode->in_dvaddr == 0) {
 
+      log("inode '%s' was found but has NULL DVADDR\r\n", path);
       errno = EIO;
       goto unref_and_exit;
     }
@@ -184,6 +209,10 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
       goto unref_and_exit;
     }
 
+
+    /* Get node type and size */
+    type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
+
     /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
      * Instead we rely on that fact that fd becomes available only upon open() return, so publishing is done by
      * function return
@@ -193,11 +222,21 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
       struct tarfs_fp *fp = &fs->fs_fd[fd];
       log("fd=%d allocated\r\n", fd);
 
+      /* Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
+       * is that read() must fail when reading any fd associated with a directory
+       */
+      if (type == TART_DIR) {
+
+        log("size forced to 0 (it is a directory)\r\n");
+        size = 0;
+      }
+
       fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
       fp->fp_pos   = 0;
-      fp->fp_size  = inode_size(inode);
+      fp->fp_size  = size;
+      fp->fp_idx   = idx;
 
-      log("success, file=%s, fd=%d, size=%lu, vaddr=%p\r\n",path, fd,fp->fp_size, (void *)fp->fp_vaddr);
+      log("success, ino=%d, type=%c, path=%s, fd=%d, size=%lu, vaddr=%p\r\n",idx, type, path, fd,fp->fp_size, (void *)fp->fp_vaddr);
       errno = 0;
       return fd;
     }
@@ -214,91 +253,284 @@ unref_and_exit:
   return -1;
 }
 
-#if 0
-//
-//
-//
-static ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
 
-  if (!allocated(fd))
-    return $(EBADF);
-
-  return $(EROFS);
-}
-
-static ssize_t tarf_read(void* ctx, int fd, void * dst, size_t size) {
-
-  if (!allocated(fd))
-    return $(EBADF);
-
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-    ssize_t res = TARFS_read(efs->fs, fd, dst, size);
-    if (res < 0) {
-        errno = tarfs_res_to_errno(TARFS_errno(efs->fs));
-        TARFS_clearerr(efs->fs);
-        return -1;
-    }
-    return res;
-}
-
-
-static off_t tarf_lseek(void* ctx, int fd, off_t offset, int mode) {
-
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-  if (!allocated(fd))
-    return $(EBADF);
-
-    off_t res = TARFS_lseek(efs->fs, fd, offset, mode);
-    if (res < 0) {
-        errno = tarf_res_to_errno(TARFS_errno(efs->fs));
-        TARFS_clearerr(efs->fs);
-        return -1;
-    }
-    return res;
-}
-
-static int tarf_fstat(void* ctx, int fd, struct stat * st) {
-
-    assert(st);
-    tarfs_stat s;
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-  if (!allocated(fd))
-    return $(EBADF);
-
-    off_t res = TARFS_fstat(efs->fs, fd, &s);
-    if (res < 0) {
-        errno = tarf_res_to_errno(TARFS_errno(efs->fs));
-        TARFS_clearerr(efs->fs);
-        return -1;
-    }
-    memset(st, 0, sizeof(*st));
-    st->st_size = s.size;
-    st->st_mode = S_IRWXU | S_IRWXG | S_IRWXO | S_IFREG;
-    st->st_mtime = tarf_get_mtime(&s);
-    st->st_atime = 0;
-    st->st_ctime = 0;
-    return res;
-}
-
-static int tarf_fsync(void* ctx, int fd) {
-  if (!allocated(fd))
-    return $(EBADF);
-  return $(0);
-}
-
-static int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
+/**
+ * Write data to a TARFS file.
+ *
+ * TARFS is a read-only filesystem and does not support write operations.
+ * This function always fails.
+ */
+ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
 
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
 
-  if (!allocated(fd))
-    return $(EBADF);
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+  } else
+    errno = EROFS;
+
+  return -1;    
+}
+
+/**
+ * Read data from an open TARFS file.
+ */
+ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return -1;
+  }
+
+  struct tarfs_fp *fp = &fs->fs_fd[fd];
+
+  /* Compute the source address: file_base + current_position.
+   * In case of EOF this address will point 1 byte past the buffer. This is allowed by the C standart
+   * as long as we do not dereference that pointer
+   */
+  void const *src = (void *)(fp->fp_vaddr + fp->fp_pos);
+
+  /* Clamp the read size so we never read past the end of the file.
+   * `size` can become zero after the clamp (happens for directories for example), it is normal
+   */
+  if (fp->fp_size - fp->fp_pos < size)
+    size = fp->fp_size - fp->fp_pos;
+
+  /*
+   * Advance the file position.
+   */
+  fp->fp_pos += size;
+
+  /* Copy the requested data.
+   * TODO: Use an architecture-optimized memcpy() where available
+   * (e.g. ESP32-S3, P4, etc.).
+   */
+  if (size > 0)
+    memcpy(dst, src, size);
+
+  /* Return number of data copied */
+  return size;
+}
+
+/**
+ * Read data from an open TARFS file at a specified offset.
+ * Copies up to @p size bytes starting at @p offset into @p dst.
+ * Unlike read(), this function does not modify the current file position.
+ */
+ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return -1;
+  }
+
+  struct tarfs_fp *fp = &fs->fs_fd[fd];
+
+  if (offset <0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  size_t off = (size_t)offset;
+
+  if (fp->fp_size <= off)
+    return 0;
+
+
+  /* Compute the source address: file_base + requested offset.
+   * In case of EOF this address will point one byte past the file end.
+   * This is permitted by the C standard as long as the pointer is not
+   * dereferenced.
+   */
+
+  void const *src = (void *)(fp->fp_vaddr + off);
+
+  /* Clamp the read size so we never read past the end of the file.
+   * `size` can become zero after the clamp (happens for directories for example), it is normal
+   */
+  if (fp->fp_size - off < size)
+    size = fp->fp_size - off;
+
+  /* Copy the requested data.
+   * TODO: Use an architecture-optimized memcpy() where available
+   * (e.g. ESP32-S3, P4, etc.).
+   */
+  if (size > 0)
+    memcpy(dst, src, size);
+
+  /* Return number of data copied */
+  return size;
+}
+
+/**
+ * lseek()
+ *
+ */
+off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return (off_t)(-1);
+  }
+
+  struct tarfs_fp *fp = (struct tarfs_fp *)(&fs->fs_fd[fd]);
+
+  /* Check if lseek() results in a valid fp_pos:
+   * it is different from POSIX which allows lseek() to set pos beyond the file end.
+   * We allow pointer to be set to the first byte after the file end. In this case
+   * lseek(fd, 0, SEEK_END) will position the pointer, while read() will return 0;
+   */
+
+  if (whence == SEEK_SET) {
+
+    if (offset < 0 || offset > fp->fp_size) {
+return_einval:
+      errno = EINVAL;
+      return (off_t)(-1);
+    }
+    fp->fp_pos = offset;
+    return offset;
+
+  } else if (whence == SEEK_END) {
+
+    /* Unlike POSIX, TARFS never allows the file position to move past EOF.
+     * The only valid position at the end of the file is exactly EOF:
+     *
+     *     lseek(fd, 0, SEEK_END)
+     *
+     * After positioning at EOF, subsequent read() calls return 0.
+     */
+    if (offset > 0 || offset < -fp->fp_size)
+      goto return_einval;
+
+    fp->fp_pos = (off_t)fp->fp_size + offset; /* offset is <= 0*/
+
+  } else if (whence == SEEK_CUR) {
+
+    off_t new_offset = offset + (off_t)fp->fp_pos;
+    if (new_offset < 0 || new_offset > fp->fp_size)
+      goto return_einval;
+
+    fp->fp_pos = new_offset;
+  } else
+    goto return_einval;
+
+  return fp->fp_pos;
+}
+
+/**
+ * Get file status information.
+ *
+ */
+int tarf_fstat(void* ctx, int fd, struct stat * st) {
+
+  tart_t type;
+  time_t mtime;
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return -1;
+  }
+
+  struct tarfs_fp *fp = &fs->fs_fd[fd];
+
+  type = inode_getinfo(fs->fs_ino, fp->fp_idx, NULL, &mtime);
+
+  memset(st, 0, sizeof(struct stat));
+
+  uint32_t perm = S_IRUSR|S_IRGRP|S_IROTH; /* default read-only permissions */
+        
+  if (type == TART_DIR)
+    perm |= S_IXUSR|S_IXGRP|S_IXOTH|S_IFDIR;
+  else
+    perm |= S_IFREG;
+
+  st->st_size = fp->fp_size;
+  st->st_mode = perm;
+  st->st_mtime = fs->fs_mtime;
+  st->st_atime = 0;
+  st->st_ctime = fs->fs_mtime;
+
+  return 0;
+}
+
+/**
+ * Synchronize file contents.
+ *
+ */
+int tarf_fsync(void* ctx, int fd) {
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return -1;
+  }
+
+  return 0;
+}
+
+/*
+ * Perform file descriptor control operations.
+ *
+ * Supports a minimal subset of POSIX @c fcntl() commands.
+ * TARFS is inherently non-blocking, therefore @c F_SETFL is accepted
+ * but ignored. @c F_GETFL always reports @c O_NONBLOCK.
+ */
+int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
+
+  switch (cmd) {
+
+    case F_GETFL:
+      return O_NONBLOCK;
+
+    case F_SETFL:
+      return 0;
+
+    default:
+      errno = ENOSYS;
+  };
+  return -1;
+}
+
+/**
+ * Perform TARFS-specific I/O control operations.
+ *
+ */
+int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
+
+  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+
+  if (!is_sanefd(fs, fd)) {
+    log("bad fd=%d\r\n", fd);
+    errno = EBADF;
+    return -1;
+  }
 
   switch (cmd) {
 
     /* Bytes left == File_Size - File_Current_Position */
     case FIONREAD:
-      int *out = va_arg(args, int *);
-      *out = fs->fs_fds[fd].fp_size - fs->fs_fds[fd].fp_pos;
+      int *o = va_arg(args, int *);
+      if (o == NULL) {
+        errno = EINVAL;
+        return -1;
+      }
+      *o = fs->fs_fd[fd].fp_size - fs->fs_fd[fd].fp_pos;
       return 0;
 
     /* TARFS is non-blocking by design. Just ignore O_NONBLOCK */
@@ -321,40 +553,15 @@ static int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
           out->fs = fs;
           return 0;
         }
-        return $(EPIPE);
+        errno = ENODEV;
+        return -1;
       }
-      return $(EINVAL);
+      errno = EINVAL;
+      return -1;
 
     default:
-    break;
+      break;
   };
-
-  return $(ENOSYS);
+  errno = ENOSYS;
+  return -1;
 }
-
-
-static int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
-
-    switch (cmd) {
-    default:
-        return $(ENOSYS);
-    }
-}
-
-
-void tarf_handlers_install(esp_vfs_fs_ops_t *files) {
-
-  if (files) {
-    files->write_p = &tarf_write,
-    files->lseek_p = &tarf_lseek,
-    files->read_p  = &tarf_read,
-    files->open_p  = &tarf_open,
-    files->close_p = &tarf_close,
-    files->fstat_p = &tarf_fstat,
-    files->fcntl_p = &tarf_fcntl,
-    files->ioctl_p = &tarf_ioctl,
-    files->fsync_p = &tarf_fsync,
-
-  }
-}
-#endif

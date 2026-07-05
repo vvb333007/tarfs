@@ -29,9 +29,6 @@
 #include "inode.h"
 #include "tar.h"
 
-#define $$( Errno_ ) ({ errno = (Errno_); MAP_FAILED; })
-
-
 /**
  * POSIX mmap().
  * Intended to be used like this:
@@ -49,7 +46,8 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
       ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
 
     log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
-    return $$(ENOTSUP);
+    errno = EINVAL; 
+    return -1;
   }
 
   /* For RO filesystem MAP_SHARED equals MAP_PRIVATE. ESP32's MMU only allows for shared entries
@@ -70,7 +68,8 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
       log("failed: fp_vaddr=0x%x, offset=%d, fp_size=%u, length=%u\r\n",fp->fp_vaddr, offset, fp->fp_size, length);
 
       tarfs_unref(fs);
-      errno = EINVAL;
+      if (errno == 0)
+        errno = EBADF;
 
       return MAP_FAILED;
     }

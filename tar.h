@@ -72,10 +72,8 @@ struct tarhdr {
   const char major[8];     
   const char minor[8];
   const char prefix[155];     /*!< First (if prefix[0] != 0) part of the entry name. A slash at the end does not exist but is assumed */
-
-  
+        char zero;           /*!< Must be zero by the standart */  
 #if CONFIG_TARFS_INTEGRITY
-        char zero;           /*!< Must be zero by the standart */
         char md[3];          /*!< Message Digest algorithm. For TARFS v0 these values are defined:
                                   "C64" - CRC64 algo
                                   "S64" - 32 bit straight sum; For MCUs not capable of doing 64bit math
@@ -84,7 +82,7 @@ struct tarhdr {
                                   bytes [0..7] xored with bytes [8..15]
                                   For "CRC" and for the "SUM", the resulting value is stored in little-endian byte order (LSB first), */
 #else
-  const char pad[12];        /*!< Must be zero by the standart */
+  const char pad[11];        /*!< Must be zero by the standart */
 #endif                                  
 
 } __attribute__((packed));

@@ -29,19 +29,7 @@ int main(int argc, char **argv) {
 
 
 
-    tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-
-tarf_close(tarfs_getfs(0),  0);
-tarf_close(tarfs_getfs(0),  2);
-tarf_close(tarfs_getfs(0),  4);
-
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
-tarf_open(tarfs_getfs(0), "/list/refc.c", 0, 0);
+    tarf_open(tarfs_getfs(0), "/dir2/dir22/file33_symlink.txt", 0, 0);
 
 
 

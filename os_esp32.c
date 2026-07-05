@@ -39,6 +39,47 @@
 #include "file.h"
 #include "inode.h"
 
+static const esp_vfs_dir_ops_t s_tarfs_dir = {
+
+    .stat_p      = &tarfs_stat,
+
+    .link_p      = &tarfs_link,
+    .unlink_p    = &tarfs_unlink,
+    .rename_p    = &tarfs_rename,
+
+    .opendir_p   = &tarfs_opendir,
+    .closedir_p  = &tarfs_closedir,
+    .readdir_p   = &tarfs_readdir,
+    .readdir_r_p = &tarfs_readdir_r,
+    .seekdir_p   = &tarfs_seekdir,
+    .telldir_p   = &tarfs_telldir,
+
+    .mkdir_p     = &tarfs_mkdir,
+    .rmdir_p     = &tarfs_rmdir,
+
+    .truncate_p  = &tarfs_truncate,
+    .ftruncate_p = &tarfs_ftruncate,
+
+    .utime_p     = &tarfs_utime,
+};
+
+static const esp_vfs_fs_ops_t s_tarfs_fs = {
+
+    .write_p = &tarf_write,
+    .lseek_p = &tarf_lseek,
+    .read_p  = &tarf_read,
+    .pread_p = &tarf_read,
+    .pwrite_p= &tarf_pwrite,
+    .open_p  = &tarf_open,
+    .close_p = &tarf_close,
+    .fstat_p = &tarf_fstat,
+    .fcntl_p = &tarf_fcntl,
+    .ioctl_p = &tarf_ioctl,
+    .fsync_p = &tarf_fsync,
+
+    .dir     = &s_tarfs_dir,
+}
+
 
 static SemaphoreHandle_t s_lock = NULL;
 
@@ -129,10 +170,11 @@ bool tarfs_os_unregister_fs(const char *prefix) {
 
 
 
+
 bool tarfs_os_register_fs(const char *prefix, void *context) {
 
   return ESP_OK == esp_vfs_register_fs(prefix,
-                                      &s_handlers_tbl,
+                                      &s_tarfs_fs,
                                        ESP_VFS_FLAG_CONTEXT_PTR |
                                        ESP_VFS_FLAG_STATIC |
                                        ESP_VFS_FLAG_READONLY_FS,

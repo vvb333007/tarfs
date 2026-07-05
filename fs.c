@@ -171,17 +171,15 @@ int tarfs_unmount(const char *mountpoint) {
 
   if (mountpoint == NULL)
     return $(EINVAL);
-  puts("0");
+
   tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
   
-  puts("1");
   if ((slot = findfs(mountpoint)) >= 0) {
 
-    puts("2");
     fs = s_tarfs[slot];
 
     prev_refc = tarfs_unref(fs);
-    puts("3");
+
     if (prev_refc > 1) {
       log("Filesystem %s is in use (%u FD), umount delayed\r\n", mountpoint, prev_refc - 1);
       err = EAGAIN;
@@ -189,13 +187,13 @@ int tarfs_unmount(const char *mountpoint) {
 
   } else
     err = ENOENT;
-  puts("4");
+
   tarfs_unlock();
   return $(err);
 }
 
 
-#if 1
+
 /**
  * Actual mount procedure
  * We expect sane label pointer (ASCIIZ) and a sane mountpoint (i.e. len>1, 
@@ -282,7 +280,7 @@ error:
     log("attached to resource '%s', %u inodes\r\n", label, fs->fs_nino);
 
     /* Registering VFS */
-    if (tarfs_os_register_fs(mountpoint) == false) {
+    if (tarfs_os_register_fs(mountpoint, (void *)fs) == false) {
       log("can not register POSIX handlers, FS is unusable\r\n");
     } else {
       log("registered prefix '/%s' in VFS\r\n", mountpoint);
@@ -299,7 +297,3 @@ error:
 
   return -1;
 }
-
-
-
-#endif

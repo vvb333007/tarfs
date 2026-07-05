@@ -90,7 +90,7 @@ void  tarfs_os_unmap_tarfile(void *os_handle, void *ptr, size_t size);
  *             free crashes. This intentionally trades a memory leak for
  *             safety.
  */
-bool tarfs_os_register_fs(const char *prefix);
+bool tarfs_os_register_fs(const char *prefix, void *context);
 bool tarfs_os_unregister_fs(const char *prefix);
 
 /**

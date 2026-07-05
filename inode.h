@@ -91,7 +91,7 @@ struct tarfs_inode **inode_alloc(size_t count);
 void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, size_t tar_length);
 
 
-tart_t inode_type(struct tarfs_inode **index, int idx);
+
 
 void inode_sort(struct tarfs_inode **iarr, size_t count);
 struct tarfs_inode *inode_alphasort(struct tarfs_inode *array, size_t count);

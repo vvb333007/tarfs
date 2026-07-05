@@ -207,7 +207,16 @@ bool tar_badhdr(tarhdr_t const * hdr) {
     calc = tar_hdrsum(hdr);
     expc = tar_octal(hdr->checksum, sizeof(hdr->checksum));
 
-    return expc != calc;
+    if (expc != calc)
+      return true;
+#if CONFIG_TARFS_INTEGRITY
+    /* Verify embedded CRC64 sums if they are present */
+    if (hdr->md[0] == 'C' && hdr->md[1] == '6' && hdr->md[2] == '4') {
+      log("CRC64\r\n");
+    }
+#endif
+
+    return false;
 }
 
 /**

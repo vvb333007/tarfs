@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/errno.h>
+#include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <assert.h>
 
@@ -37,7 +38,7 @@ bool tarfs_os_unregister_fs(const char *prefix) {
   return true;
 }
 
-bool tarfs_os_register_fs(const char *prefix) {
+bool tarfs_os_register_fs(const char *prefix, void *context) {
   printf("Register FS '%s'\r\n", prefix);
   return true;
 }
