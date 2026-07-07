@@ -41,7 +41,10 @@ static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesy
 
 
 struct tarfs_fs *tarfs_getfs(int i) {
-  return s_tarfs[i];
+  if (i>=0 && i < TARFS_MAX_FS)
+    return s_tarfs[i];
+  log("filesystem #%d does not exist!\r\n",i);
+  return NULL;
 }
 
 
@@ -89,27 +92,23 @@ static int findfs(const char *mountpoint) {
 
 
 /** Actual "unmount" procedure. Called by unref(). Finalizes unmount procedure, unmaps memory region,
- *  clears s_tarfs[] entry. This destructor is called by the last user of unmounted filesystem: if filesystem
+ *  Thread safety is ensured by refcounting mechanism: the function below can not be called twice with the same
+ *  argument, refcounter destructors are called only once, by design
+ *
+ *  Clears s_tarfs[] entry. This destructor is called by the last user of unmounted filesystem: if filesystem
  *  had no open files then this destructor is called from unmount() only. Otherwise it may be close(), closedir() etc
  *
  */
 static void commit_unmount(void *ctx) {
 
-
-
-  int slot = -1;
+  int i;
   struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
 
   if (fs == NULL)
     return ;
 
-  log("unmounting FS '%s'\r\n", fs->fs_mountpoint);
+  log(">>> unmounting FS '%s' started\r\n", fs->fs_mountpoint);
 
-  for (int i = 0; i< TARFS_MAX_FS; i++)
-    if (s_tarfs[i] == fs) {
-      slot = i;
-      break;
-    }
 
   log("unregistering VFS\r\n");
 
@@ -118,37 +117,46 @@ static void commit_unmount(void *ctx) {
    */  
   if (!tarfs_os_unregister_fs(fs->fs_mountpoint)) {
 
-    log(" failed to unregister (%s ; slot=%d), memory leaked!\r\n", fs->fs_mountpoint, slot);
+    log(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
     /* This will create a memory leak, but prevents crashes */
-    goto clear_slot;
+    return ;
   }
 
+  /* Once FS is unregistered, no handlers with ctx==fs will be called. 
+   * Now we can start data structures removal
+   */
+  /* Clear slot: pointer is going to become invalid
+   */
+  log("clearing slot..\r\n");
+  tarfs_lock();
+  for (i = 0; i< TARFS_MAX_FS; i++)
+    if (s_tarfs[i] == fs) {
+      s_numfs--;
+      s_tarfs[i] = NULL;
+      log("FS slot %d cleared\r\n", i);
+      break;
+    }
+  tarfs_unlock();
+
+  /* Release all associated memory: inodes, inode index*/
   if (fs->fs_ino != NULL && fs->fs_nino > 0) {
 
     log(" deleting inodes (%u)\r\n", fs->fs_nino);
     inode_unmount(fs, (const void *)fs->fs_vaddr, fs->fs_size);
+    fs->fs_ino = NULL;
   }
 
+  /* Release the FS image */
   if (fs->fs_vaddr != NULL) {
-    log(" unmapping filesystem image, vaddr=%p, size=%lu\r\n", fs->fs_vaddr, fs->fs_size);
-    tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
+    if (fs->fs_handle != 0) {
+      log(" unmapping filesystem image, vaddr=%p, size=%lu\r\n", fs->fs_vaddr, fs->fs_size);
+      tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
+    }
     fs->fs_vaddr = NULL;
   }
 
   log("deleting FS descriptor %p\r\n", fs);
   free(fs);
-
-clear_slot:
-
-  printf("unmount() : clear FS entry\r\n");
-
-  tarfs_lock();
-  s_numfs--;
-  if (slot >= 0)
-    s_tarfs[slot] = NULL;
-  tarfs_unlock();
-
-  log(" %d more filesystems left\r\n", s_numfs);
 }
 
 int tarfs_unref(struct tarfs_fs *fs) {
@@ -158,7 +166,7 @@ int tarfs_unref(struct tarfs_fs *fs) {
 /** 
  * Unmounting a filesystem with a zero open files AND opening a file at the same time
  * MAY result in racecond which eventually lead to crash. This must be fixed at ESP-IDF VFS level.
-
+ * To prevent this type of race completely do not unmount filesystems once mounted
  */
 int tarfs_unmount(const char *mountpoint) {
   
@@ -181,7 +189,7 @@ int tarfs_unmount(const char *mountpoint) {
     prev_refc = tarfs_unref(fs);
 
     if (prev_refc > 1) {
-      log("Filesystem %s is in use (%u FD), umount delayed\r\n", mountpoint, prev_refc - 1);
+      log("Filesystem %s is in use (%u open fds), umount delayed\r\n", mountpoint, prev_refc - 1);
       err = EAGAIN;
     }
 
@@ -192,6 +200,125 @@ int tarfs_unmount(const char *mountpoint) {
   return $(err);
 }
 
+/* Mount TARfile which is already mmaped/loaded into RAM
+ *
+ */
+int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, const char *link_rebase) {
+  
+  int len;
+  
+
+  int slot = -1;
+  struct tarfs_fs *fs = NULL;
+
+  char base_dir[128] = { '/' };
+
+  if (link_rebase == NULL)
+    link_rebase = "";
+
+  if (false == tar_rootdir(map, size, &base_dir[1], sizeof(base_dir) - 1))
+    base_dir[0] = '\0';
+
+  if (mountpoint == NULL)
+    mountpoint = base_dir;
+  else {
+    log("detected MP '%s' is overriden with '%s'\r\n", base_dir, mountpoint);
+  }
+
+  len = strlen(mountpoint);
+
+
+
+    if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
+      log("ERR: mountpoint is too short or invalid '%s'\r\n", mountpoint);
+      errno = EINVAL;
+unmap_and_return_error:
+      
+      return -1;
+    }
+
+    log("mountpoint: '%s'\r\n", mountpoint);
+
+    if (base_dir[0] == '\0') {
+      log("WARN: tarfile has no root directory\r\n");
+    } else {
+      log("common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
+    }
+
+    if (*link_rebase != '\0') {
+      log("absolute path rewrite: '%s'\r\n",link_rebase);
+    } else {
+      log("preserving absolute paths in hardlinks/symlinks\r\n");
+    }
+
+    /* Allocate FS descriptor */
+    if ( NULL == (fs = calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
+      log("ERR: out of memory\r\n");
+      errno = ENOMEM;
+      goto unmap_and_return_error;
+    }
+
+    /* Allocate free FS slot */
+    /* ------- locked -------*/
+    tarfs_lock();
+    if (0 > (slot = findfs( NULL ))) {
+      tarfs_unlock();
+      free(fs);
+      log("ERR: too many mounted filesystems (%u)\r\n",s_numfs);
+      errno = EBUSY;
+      goto unmap_and_return_error;
+    }
+  
+    /* Occupy FS slot and release the lock ASAP */
+    s_tarfs[slot] = fs;
+    s_numfs++;
+    tarfs_unlock();
+  /* ------- unlocked -------*/
+
+    log("allocated new FS descriptor s_tarfs[%d] = %p\r\n", slot, fs);
+
+    /* set refcounter to 1 */
+    initref(&fs->fs_ref);
+
+    /* Store tarfile mapping parameters in the FS descriptor */
+    fs->fs_vaddr  = map;
+    fs->fs_handle = 0;     /* populated by tarfs_mount() if required */
+    fs->fs_size   = size;
+
+    /* Copy mountpoint. Trailing zero is there already */
+    memcpy(fs->fs_mountpoint, mountpoint, len);
+
+    log("INFO: mounting..\r\n");
+    if (inode_mount(fs, map, size, link_rebase) < 0) {
+      if (fs->fs_ino == NULL) {
+        log("ERR: filesystem is unusable, no valid inodes were found\r\n");
+        tarfs_lock();
+        s_tarfs[slot] = NULL;
+        s_numfs--;
+        tarfs_unlock();
+        /* errno must be set in inode_mount() */
+        goto unmap_and_return_error;
+      } 
+      log("WARN: running in degraded mode\r\n");
+    }
+
+  log("addr %p:%lu --> %u inodes successfully mounted\r\n", map, size, fs->fs_nino);
+
+  /* Registering VFS */
+  log("registering TARFS in VFS..\r\n");
+  if (tarfs_os_register_fs(mountpoint, (void *)fs) == false) {
+    log("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
+  } else {
+    log("registered. (prefix '%s' in VFS)\r\n", mountpoint);
+  }
+
+  log("Congrats! Mount is done. Filesystem slot is %d\r\n", slot);
+  errno = 0;
+  return slot;
+
+  return -1;
+
+}
 
 
 /**
@@ -201,95 +328,29 @@ int tarfs_unmount(const char *mountpoint) {
  */
 int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase) {
 
+  int slot;
   size_t size;
-  int len;
   void *map;
   void *os_handle;
-  int slot = -1;
-  struct tarfs_fs *fs = NULL;
-  char base_dir[100];
-
-  if (link_rebase == NULL)
-    link_rebase = "";
 
 
   /* Actual memory mapping */
+  log("loading OS-specific resource '%s'..\r\n", label);
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+    log("resource is available at %p, %lu bytes. mounting from memory..\r\n", map, size);
+    slot = tarfs_mount_memory(map, size, mountpoint, link_rebase);
+    if (slot >= 0) {
+      log("success, filesystem slot %d was assigned\r\n", slot);
 
-    if (false == tar_rootdir(map, size, base_dir, sizeof(base_dir)))
-      base_dir[0] = '\0';
+      struct tarfs_fs *fs = tarfs_getfs(slot);
+      log("resource handle is %p, commit_unmount() will do tarfs_os_unmap_tarfile()\r\n", (void *)os_handle);
+      fs->fs_handle = (uintptr_t)os_handle;
 
-    if (mountpoint == NULL)
-      mountpoint = base_dir;
-    else {
-      printf("Detected MP '%s' is overriden with '%s'\r\n", base_dir, mountpoint);
+      return slot;
     }
-
-    len = strlen(mountpoint);
-
-
-    /* Allocate free FS slot */
-    tarfs_lock();
-    if (0 > (slot = findfs( NULL ))) {
-      printf("Too many mounted filesystems\r\n");
-      errno = EBUSY;
-error:
-      tarfs_os_unmap_tarfile(os_handle, map, size);
-      tarfs_unlock();
-      return -1;
-    }
-
-    /* Allocate FS descriptor */
-    if ( NULL == (fs = calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
-      printf("Out of memory\r\n");
-      errno = ENOMEM;
-      goto error;
-    }
+    tarfs_os_unmap_tarfile(os_handle, map, size);
+  }
   
-    /* Occupy FS slot and release the lock ASAP */
-    s_tarfs[slot] = fs;
-    s_numfs++;
-    tarfs_unlock();
-
-    log("allocated new FS descriptor %p, slot %d\r\n", fs, slot);
-
-    initref(&fs->fs_ref);
-
-    /* Store tarfile mapping parameters */
-    fs->fs_vaddr = map;
-    fs->fs_handle = (uintptr_t )os_handle;
-    fs->fs_size = size;
-
-    /* Copy mountpoint. Trailing zero is there already */
-    log("mountpoint is '%s'\r\n", mountpoint);
-    memcpy(fs->fs_mountpoint, mountpoint, len);
-
-    log("mounting..\r\n");
-    if (inode_mount(fs, map, size, link_rebase) < 0) {
-      if (fs->fs_ino == NULL) {
-        log("filesystem is unusable, no valid inodes were found\r\n");
-        tarfs_lock();
-        s_tarfs[slot] = NULL;
-        s_numfs--;
-        /* errno must be set in inode_mount() */
-        goto error;
-      }
-      log("running in degraded mode\r\n");
-    }
-
-    log("attached to resource '%s', %u inodes\r\n", label, fs->fs_nino);
-
-    /* Registering VFS */
-    if (tarfs_os_register_fs(mountpoint, (void *)fs) == false) {
-      log("can not register POSIX handlers, FS is unusable\r\n");
-    } else {
-      log("registered prefix '/%s' in VFS\r\n", mountpoint);
-    }
-
-    log("done\r\n");
-    return slot;
-  } 
-
   if (errno == 0)
     errno = EIO;
 
@@ -297,3 +358,49 @@ error:
 
   return -1;
 }
+
+
+
+
+
+
+#if 0
+/**
+ * Get information for TARFS
+ * @param fs_slot the value returned by tarfs_mount(), a non-negative value
+ * @return
+ */
+bool tarfs_info(int fs_slot, size_t *raw_size, size_t *data_size) {
+  if (fs_slot < 0 || fs_slot >= TARFS_MAX_FS) {
+    log("slot %d is invalid\r\n", fs_slot);
+    return false;
+  }
+  tarfs_lock();
+  tarfs_unlock();
+}
+
+/**
+ * Check if a filesystem at mountpoint is a mounted TARFS
+ *
+ * @param Base path (i.e. a mountpoint)
+ *        
+ *
+ * @return
+ *          - true    if mounted
+ *          - false   if not mounted
+ */
+bool esp_tarfs_is_registered(const char *mountpoint) {
+  return ESP_OK == esp_tarfs_info(mountpoint, NULL, NULL);
+}
+
+
+/**
+ * Dump runtime stats and open file descriptors. 
+ *
+ * @param vty           Opaque pointer, required by the vtyout
+ * @param vtyout        Pointer to the fprintf-like function, which is called as vtyout(vty, format, ...)
+ *
+ * Usage: esp_tarfs_dump(stdout, fprintf)
+ */
+void esp_tarfs_dump(void *vty, int (*vtyout)(void *, const char *, ...));
+#endif

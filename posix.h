@@ -1,0 +1,89 @@
+/*
+ * TARFS - Immutable (read-only) filesystem for embedded systems.
+ *
+ * Copyright (c) 2024-2026 Viacheslav Logunov
+ * SPDX-License-Identifier: MIT
+ *
+ * Author:
+ *   Viacheslav Logunov <vvb333007@gmail.com>
+ *
+ * Project:
+ *   https://github.com/vvb333007/tarfs
+ */
+
+#pragma once
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <sys/types.h>
+
+/**
+ * @brief POSIX mmap()/munmap() support for TARFS
+ */
+#define PROT_READ     1 /*!< Supported */
+#define PROT_WRITE    2 /*!< Ignored, if used together with PROT_READ. Alone causes mmap() error (RO filesystem!) */
+#define PROT_EXEC     4 /*!< Ignored */
+
+#define MAP_SHARED    1 /*!< Supported */
+#define MAP_PRIVATE   2 /*!< Supported */
+
+#define MAP_FIXED     4 /*!< Ignored, no legit use for this flag :) */
+#define MAP_ANONYMOUS 8 /*!< Unsupported, use malloc() instead */
+#define MAP_ANON      8 
+
+#define MAP_FAILED   ((void *)(-1))
+
+
+/**
+ * Map a file into the process address space.
+ *
+ * Typical usage:
+ *
+ * @code
+ * int fd = open(...);
+ * void *ptr = mmap(NULL, length, PROT_READ, flags, fd, offset);
+ * close(fd);
+ *
+ * // use ptr
+ * @endcode
+ *
+ * The mapping remains valid after the file descriptor has been closed.
+ *
+ * Since TARFS is a read-only filesystem, this implementation does not support
+ * the PROT_WRITE protection flag. MAP_ANONYMOUS is also not supported:
+ * mmap() is intended exclusively for mapping files.
+ *
+ * There is no limit on the number of active mappings. Every file in TARFS may
+ * be mapped simultaneously, provided the underlying flash memory can hold it.
+ * Mappings do not consume any runtime resources. In contrast, each open file
+ * occupies one file descriptor until it is closed.
+ *
+ * @param addr Must be NULL. Fixed-address mappings are not supported.
+ * @param length Number of bytes to map.
+ * @param prot Memory protection flags. Only PROT_READ is supported.
+ * @param flags Mapping flags. Use MAP_SHARED or MAP_PRIVATE. On a read-only
+ *              filesystem both behave identically.
+ * @param fd Open file descriptor to map.
+ * @param offset File offset where the mapping begins.
+ *
+ * @return Pointer to the mapped file data, or MAP_FAILED on error.
+ */
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+
+
+/**
+ * Remove a previously created memory mapping.
+ *
+ * Since mappings themselves do not allocate runtime resources, failing to call
+ * munmap() does not lead to resource leaks. However, an active mapping keeps
+ * the filesystem mounted, preventing it from being unmounted until the mapping
+ * is removed.
+ *
+ * @param addr Address previously returned by mmap().
+ * @param length Length of the mapped region.
+ *
+ * @return 0 on success, or -1 on error.
+ */
+int munmap(void *addr, size_t length);

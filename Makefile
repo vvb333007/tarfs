@@ -1,3 +1,4 @@
+# сраные пробелы вместо табов
 .RECIPEPREFIX := >
 
 # Compiler
@@ -18,7 +19,8 @@ COMMON_SRC := \
     os_cygwin.c \
     fnv1a.c \
     fs.c \
-    refc.c
+    refc.c \
+    posix.c
 
 # Для test
 TEST_SRC := test.c $(COMMON_SRC)

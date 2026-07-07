@@ -32,8 +32,14 @@ int main(int argc, char **argv) {
     size_t size;
     int processed = 0;
 
-    const char *filename     = argc > 1 ? argv[1] : "tarfs.tar";
+    if (argc < 2) {
+      printf("Usage: %s INPUT.TAR [OUTPUT.TAR]\r\n", argv[0]);
+      return 0;
+    }
+
+    const char *filename     = argv[1];
     const char *filename2    = argc > 2 ? argv[2] : "out.tar";
+
 
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
 

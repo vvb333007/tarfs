@@ -12,6 +12,30 @@
  */
 
 
+/* Common functions prologue. Note that tarf_open() uses hardcoded version of PROLOGUE() macro 
+ * whenever this macro is changed, then tarf_open() code should be changed accordingly. Right now
+ * hardcoded version of PROLOGUE() macro is different from the macro in is_sanefd() check
+ */
+
+#define PROLOGUE( TYPE ) \
+  struct tarfs_fs *fs = NULL; \
+\
+  int fs_idx = (intptr_t )ctx; \
+\
+  if (false == (fs_idx >= 0 && \
+                fs_idx < TARFS_MAX_FS && \
+                ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
+\
+    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); \
+    return (TYPE)(-1); \
+  } \
+  if (!is_sanefd(fs, fd)) { \
+    log("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
+    errno = EBADF; \
+    return (TYPE)(-1); \
+  }
+
+
 
 /*
  * Thread-safety notes
@@ -139,28 +163,6 @@ static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
  */
 
 
-/* close()
- * FS has at least 1 extra ref, because of open()
- *
- * close() is not thread-safe. It is not as bad as it seems: no crashes, no sigsegv.
- * Just DO NOT close() files being read() at the same time by another thread. Or, if you do, 
- * do not open another file immediately :)
- */
-int tarf_close(void* ctx, int fd) {
-
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
-
-  freefd(fs, fd);
-  log("closed fd=%d\r\n", fd);
-  tarfs_unref(fs);
-  return 0;
-}
 
 /**
  * Open a TARFS file or directory.
@@ -174,7 +176,18 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
   size_t size;
   time_t mtime;
   int    fd = 0;
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  struct tarfs_fs *fs = NULL; 
+
+  int fs_idx = (intptr_t )ctx; 
+
+  if (false == (fs_idx >= 0 && 
+                fs_idx < TARFS_MAX_FS && 
+                ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
+
+    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    return -1; 
+  } 
 
   /* XXX:
    * TOCTTOU inherited from ESP-IDF VFS (unmount() and open() race).
@@ -253,6 +266,23 @@ unref_and_exit:
   return -1;
 }
 
+/* close()
+ * FS has at least 1 extra ref, because of open()
+ *
+ */
+int tarf_close(void* ctx, int fd) {
+
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( int );
+
+  log("closing fd=%d, fs_idx=%d\r\n", fd, fs_idx);
+
+  freefd(fs, fd);
+  tarfs_unref(fs);
+
+  return 0;
+}
+
 
 /**
  * Write data to a TARFS file.
@@ -262,15 +292,12 @@ unref_and_exit:
  */
 ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( ssize_t );
 
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-  } else
-    errno = EROFS;
+  errno = EROFS;
 
-  return -1;    
+  return (ssize_t)(-1);    
 }
 
 /**
@@ -278,13 +305,8 @@ ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
  */
 ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( ssize_t );
 
   struct tarfs_fp *fp = &fs->fs_fd[fd];
 
@@ -323,13 +345,8 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
  */
 ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( ssize_t );
 
   struct tarfs_fp *fp = &fs->fs_fd[fd];
 
@@ -375,13 +392,8 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
  */
 off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return (off_t)(-1);
-  }
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( off_t );
 
   struct tarfs_fp *fp = (struct tarfs_fp *)(&fs->fs_fd[fd]);
 
@@ -434,16 +446,11 @@ return_einval:
  */
 int tarf_fstat(void* ctx, int fd, struct stat * st) {
 
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( int );
+
   tart_t type;
   time_t mtime;
-
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
 
   struct tarfs_fp *fp = &fs->fs_fd[fd];
 
@@ -464,6 +471,8 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
   st->st_atime = 0;
   st->st_ctime = fs->fs_mtime;
 
+  printf("fstat ------- %ld\r\n",fp->fp_size);
+
   return 0;
 }
 
@@ -473,13 +482,8 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
  */
 int tarf_fsync(void* ctx, int fd) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( int );
 
   return 0;
 }
@@ -492,6 +496,8 @@ int tarf_fsync(void* ctx, int fd) {
  * but ignored. @c F_GETFL always reports @c O_NONBLOCK.
  */
 int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
+
+  PROLOGUE( int );
 
   switch (cmd) {
 
@@ -513,13 +519,8 @@ int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
  */
 int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
 
-  struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
-
-  if (!is_sanefd(fs, fd)) {
-    log("bad fd=%d\r\n", fd);
-    errno = EBADF;
-    return -1;
-  }
+  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  PROLOGUE( int );
 
   switch (cmd) {
 
@@ -550,7 +551,7 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
          */
         if (tarfs_addref(fs)) {
           out->fd = fd;
-          out->fs = fs;
+          out->fs_idx = fs_idx;
           return 0;
         }
         errno = ENODEV;

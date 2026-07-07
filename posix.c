@@ -12,6 +12,12 @@
  */
 
 
+/**
+ * Subset of POSIX functions
+ *
+ */
+
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,6 +27,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/errno.h>
+#include <sys/ioctl.h>
 
 #include "config.h"
 #include "os.h"
@@ -28,12 +35,16 @@
 #include "file.h"
 #include "inode.h"
 #include "tar.h"
+#include "posix.h"
+
+
+
+//ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
+//}
 
 /**
- * POSIX mmap().
- * Intended to be used like this:
- * 
- * ptr = mmap(NULL, length, PROT_READ, flags, fd, offset);
+ * Mimic POSIX mmap().
+ *
  */
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
 
@@ -47,44 +58,53 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
     log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
     errno = EINVAL; 
-    return -1;
+    return MAP_FAILED;
   }
 
-  /* For RO filesystem MAP_SHARED equals MAP_PRIVATE. ESP32's MMU only allows for shared entries
-   * Obtain corresponding FS and FD pointers, add reference to the filesystem (done in ioctl()) 
+
+  /* The 'fd' argument is a global VFS file descriptor and must be translated
+   * into the local file descriptor used by this filesystem. This is done via
+   * ioctl(): the VFS resolves the global descriptor to its local counterpart,
+   * allowing us to retrieve the local file descriptor from the returned data.
+   *
+   * Yes, the filesystem is asking the VFS to translate its own file descriptor.
+   *
+   * ioctl() also returns a pointer to the corresponding filesystem instance and
+   * increments its reference count.
    */
   if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
 
-    fs = req.fs;
-    fp = &fs->fs_fd[req.fd];
+    fs = tarfs_getfs(io.fs_idx);
+    fp = &fs->fs_fd[io.fd];
 
-    if (fp->fp_vaddr == NULL ||
+    if (fp->fp_vaddr == 0 ||
         offset < 0 || 
         offset > fp->fp_size || 
         length > (fp->fp_size - offset)) {
 
       /* addref'ed in the ioctl() */
-
-      log("failed: fp_vaddr=0x%x, offset=%d, fp_size=%u, length=%u\r\n",fp->fp_vaddr, offset, fp->fp_size, length);
-
       tarfs_unref(fs);
+
+      log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
+      
       if (errno == 0)
         errno = EBADF;
 
       return MAP_FAILED;
     }
+    
 
 
     /* Partition is mmaped already by mount, here we just calculate the right 
      * memory offset
      */
-    log("fd=%d, mapped %u bytes vaddr=0x%x, offset=0x%x\r\n",fd, fp->fp_vaddr, offset);
+    log("fd=%d, mapped %lu bytes vaddr=%px, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
     return (void *)(fp->fp_vaddr + offset);
   }
   if (errno == 0)
     errno = EBADF;
 
-  log("fd=%d, ioctl(FIOGETFD) failed\r\n",fd);
+  log("fd=%d, ioctl(FIOGETFD) failed or is not supported\r\n",fd);
   
   return MAP_FAILED;
 }
@@ -103,20 +123,22 @@ int munmap(void *addr, size_t length) {
     tarfs_lock();
     for (int i = 0; i < TARFS_MAX_FS; i++) {
 
-      fs = &s_tarfs[i];
+      fs = tarfs_getfs(i);
 
       if (fs != NULL && 
-          vaddr >= fs->fs_vaddr &&
-          vaddr < (fs->fs_vaddr + fs->fs_size)) {
+          vaddr >= (uintptr_t)fs->fs_vaddr &&
+          vaddr < ((uintptr_t)fs->fs_vaddr + fs->fs_size)) {
+
         tarfs_unlock();
         tarfs_unref(fs);
+        log(" success\r\n");
         return 0;
       }
     }
 
     tarfs_unlock();
   }
-
+  log(" address %p is not virtual mmap() address\r\n", addr);
   errno = EINVAL;
   return -1;
 }

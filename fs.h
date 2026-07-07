@@ -67,8 +67,8 @@ static inline int $(int err) {
  * Return/Request argument for FIOGETFD ioctl 
  */
 struct ioctl_req {
-  struct tarfs_fs *fs;
-  int              fd;
+  int fs_idx; /*!< filesystem index, [0..TARFS_MAX_FS) */
+  int fd; /*!< fd number */
 };
 
 
@@ -129,18 +129,72 @@ static inline void tarfs_unlock() {
 
 
 /**
- * Mount tar file system, use resource named `label`. Mount point is automatically detected from
- * the tarfile but can be overriden with `mountpoint_override` parameter
- * The `label` is a ascii name of the resource: it can be partition name for ESP32 or anything else -
- * this value is passed down to tarfs_os_map_tarfile() as is. For the TARFS the `label` is an opaque
- * parameter
+ * @brief Mount a TARFS filesystem from an OS-specific resource.
  *
- * @return filesystem slot index. can be used as tarfs_getfs() to obtain raw pointer to the filesystem
- *         pn platforms without proper VFS support
- *         
+ * The filesystem image is obtained using the OS abstraction layer function
+ * tarfs_os_map_tarfile(). The `label` parameter is passed to this function
+ * unchanged and is treated as an opaque identifier by TARFS.
+ *
+ * Depending on the platform, `label` may represent a partition name,
+ * resource name, device identifier, or any other OS-specific object.
+ *
+ * The mount point is normally obtained from the TARFS image metadata.
+ * It can be overridden explicitly by providing `mountpoint`.
+ *
+ * @param label
+ *        Opaque resource identifier passed to tarfs_os_map_tarfile().
+ *
+ * @param mountpoint
+ *        Optional mount point override. If NULL, the mount point stored
+ *        in the TARFS image is used.
+ *
+ * @param link_rebase
+ *        Optional path prefix used to rebase symbolic links.
+ *
+ * @return
+ *        Filesystem slot index. The returned value can be passed to
+ *        tarfs_getfs() to obtain the raw filesystem pointer.
+ *
+ * @note
+ *        On platforms without a native VFS layer, the returned filesystem
+ *        index can be used for direct TARFS access.
  */
 int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase);
 
+
+/**
+ * @brief Mount a TARFS filesystem from an already mapped memory buffer.
+ *
+ * Unlike tarfs_mount(), this function does not use OS-specific resource
+ * mapping. The caller provides a pointer to an existing TAR image and its
+ * size directly.
+ *
+ * This mode is suitable for TARFS images stored as linked firmware resources,
+ * embedded binary blobs, or any other memory region accessible by the
+ * application.
+ * @note
+ *        TARFS does not copy the filesystem image. The supplied memory region
+ *        must remain valid and unchanged while the filesystem is mounted.
+ *
+ * @param addr
+ *        Pointer to the beginning of the TAR image.
+ *
+ * @param length
+ *        Size of the TAR image in bytes.
+ *
+ * @param mountpoint
+ *        Mount point assigned to the filesystem.
+ *
+ * @param link_rebase
+ *        Optional path prefix used to rebase symbolic links.
+ *
+ * @return
+ *        Filesystem slot index. The returned value can be passed to
+ *        tarfs_getfs() to obtain the raw filesystem pointer.
+ */
+int tarfs_mount_memory(const void *addr, size_t length,
+                       const char *mountpoint,
+                       const char *link_rebase);
 /**
  * Unmount tar file system
  * @return 0  on success

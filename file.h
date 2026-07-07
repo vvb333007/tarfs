@@ -41,6 +41,36 @@ struct tarfs_fp {
   int       fp_idx;    /*!< associated inode index */
 };
 
+
+/* VFS handlers below are normally invoked through a VFS.
+ *
+ * On systems without VFS support, applications should call the tarfs_(),
+ * tarf_() and tard_() APIs directly. Unlike their POSIX counterparts, these
+ * functions take an additional first argument: a pointer to the mounted
+ * filesystem context.
+ *
+ * Typical usage without a VFS:
+ *
+ * 1. Mount the filesystem and save its identifier.
+ *
+ *      int fsid = tarfs_mount(...);
+ *      if (fsid < 0)
+ *          exit_error("failed to mount filesystem");
+ *
+ * 2. Obtain the filesystem context.
+ *
+ *      void *ctx = tarfs_getfs(fsid);
+ *
+ * 3. Use the context pointer in subsequent filesystem calls.
+ *
+ *      int fd1 = tarf_open(ctx, "/home/file1.txt", flags);
+ *      int fd2 = tarf_open(ctx, "/home/file2.txt", flags);
+ *      int fd3 = tarf_open(ctx, "/home/file3.txt", flags);
+ */
+
+
+
+
 /* close()
  * FS has at least 1 extra ref, because of open()
  *

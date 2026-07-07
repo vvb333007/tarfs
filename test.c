@@ -23,20 +23,33 @@ int main(int argc, char **argv) {
     
 
 
-    int err = tarfs_mount(filename, NULL, rebase_link);
+    int err = tarfs_mount(filename, "/jopa", rebase_link);
 
     printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 
 
 
-    tarf_open(tarfs_getfs(0), "/dir2/dir22/file33_symlink.txt", 0, 0);
+    int fd = tarf_open((0), "/syslib/fnv1a.h", 0, 0);
+    int ad = tarf_open((0), "/symlink", 0, 0);
 
 
+    struct stat st;
+    tarf_fstat((0),fd, &st);
+    log("!!!: fd st.st_size == %ld\r\n", st.st_size);
 
+    tarf_fstat((0),ad, &st);
+    log("!!!: ad st.st_size == %ld\r\n", st.st_size);
     
-    tarfs_unmount("dev");
+    tarf_close((0), fd);
+    tarf_close((0), ad);
 
-    printf("tarfs: unmounting resource '%s', err = %d\r\n", filename, errno);
+  
+    tarf_close((0), fd);
+    tarf_close((0), ad);
+
+    tarfs_unmount("/jopa");
+    
+    
     
 #if 0
     printf("tarfs: mounting resource '%s':\n", filename);

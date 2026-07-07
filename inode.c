@@ -435,8 +435,8 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
  *
  * @param fs a pointer to mounted FS
  * @param idx inode of intereset (inode index)
- * @param size if not NULL, provides the location to store entry size
- * @param mtime if not NULL, provides the location to store entry mtime
+ * @param size if not NULL, provides the location to store the entry size
+ * @param mtime if not NULL, provides the location to store the entry mtime
  * @return Entry type (e.g. TART_FILE or TART_DIR etc). If return value is TART_BAD, then this is an
  *         indication of an invalid/unusable inode
  */
