@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <fcntl.h>
 
 #include "fs.h"
 #include "tar.h"
@@ -31,6 +32,9 @@ int main(int argc, char **argv) {
 
     int fd = tarf_open((0), "/syslib/fnv1a.h", 0, 0);
     int ad = tarf_open((0), "/symlink", 0, 0);
+    int az = tarf_open((0), "/Гарвульзепа/Зыка", O_DIRECTORY, 0);
+    int ag = tarf_open((0), "/Гарвульзепа/Зыка/", O_DIRECTORY, 0);
+
 
 
     struct stat st;

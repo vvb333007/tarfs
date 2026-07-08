@@ -39,8 +39,17 @@
 
 
 
-//ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
-//}
+/**
+ * readlink() relies on a mount-time link table: when image is mounted, the inode_resolve() function,
+ * which does all kind of link resolution, also builds a "link index": a sorted array of {hash, cchar *points_to} pairs
+ * where points_to is the address if in_path, so each "link index" occupies 8 bytes on 32-bit machines
+ *
+ */
+ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
+
+  return (ssize_t)(-1);
+}
+
 
 /**
  * Mimic POSIX mmap().
@@ -77,13 +86,15 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     fs = tarfs_getfs(io.fs_idx);
     fp = &fs->fs_fd[io.fd];
 
-    if (fp->fp_vaddr == 0 ||
+    if (fs == NULL ||
+        fp->fp_vaddr == 0 ||
         offset < 0 || 
         offset > fp->fp_size || 
         length > (fp->fp_size - offset)) {
 
       /* addref'ed in the ioctl() */
-      tarfs_unref(fs);
+      if (fs != NULL)
+        tarfs_unref(fs);
 
       log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
       

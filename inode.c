@@ -11,6 +11,9 @@
  *   https://github.com/vvb333007/tarfs
  */
 
+#if CONFIG_HAVE_READLINK
+#  error Not yet
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
@@ -493,6 +496,29 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
 
   int floating = 0, resolved = 0, attempted = 0;
 
+#if CONFIG_HAVE_READLINK
+  int links = 0;
+
+  /* count total number of links. this could be done in inode_populate() but
+   * it is too complex already. ENOMEM on building link descriptors database is not a big deal - we continue
+   * to mount, just disable readlink()
+   */
+  for (int i = 0; i < count; i++ ) {
+    if (index[i]->in_next != 0) /* inode_populate() put link_name here for links and 0 for everything else
+                                   inode_resolve() clears this field. Later, alphasorting routine start to use this field
+                                 */
+      links++;
+  }
+  log("total %d links", links);
+
+  struct tarfs_link *ldesc = malloc(links * sizeof(struct tarfs_links));
+  if (ldesc != NULL) {
+    memset(ldesc,0, links * sizeof(struct tarfs_links));
+  }
+
+  int ln = 0;
+#endif /* CONFIG_HAVE_READLINK */
+
   for (int i = 0; i < count; i++ ) {
 
     char *link_name = (char *)index[i]->in_next;
@@ -502,6 +528,20 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
       attempted++;
 
       index[i]->in_dvaddr = 0;
+
+#if CONFIG_HAVE_READLINK
+      const char *p = (const char *)index[i]->in_path;
+      ldesc[ln].li_hash = hash32(HASH32_IV, p, tar_strlen(p, NULL));
+      ldesc[ln].li_src  = p;
+      ldesc[ln].li_dest = (const char *)link_name;
+
+      /* prevent pointer deletion: link_name is sytdup()ed memory which
+       * is freed at the end of this function. Since we transferred memory owbership to ldesc,
+       *lets zeroize corresoinding field
+       */
+      index[i]->in_next = 0;
+      ln++;
+#endif /* CONFIG_HAVE_READLINK */
 
       int depth = 16;
       do {
@@ -542,7 +582,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
         }
 
         link_name = (char *)index[dest]->in_next;
-        printf("link to a link\r\n");
+        printf("link to a link, continuing  to resolve..\r\n");
 
       } while(--depth > 0);
 
@@ -823,7 +863,7 @@ void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size)
  */
 int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link) {
 
-    char base_dir[100];
+    char base_dir[100]; /* FIXME: no magic numbers! */
     int nino;
 
     fs->fs_vaddr= buf;

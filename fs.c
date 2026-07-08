@@ -91,6 +91,46 @@ static int findfs(const char *mountpoint) {
 }
 
 
+/**
+ * Find the filesystem responsible for a given path. This function is NOT lockless
+ *
+ * @return
+ *        Filesystem slot index, or -1 if no mounted filesystem matches the
+ *        specified path.
+ */
+int tarfs_fsindex(const char *path) {
+
+    int best = -1;
+    size_t best_len = 0;
+
+    tarfs_lock();
+    for (int i = 0; i < TARFS_MAX_FS; i++) {
+
+        const char *mp = s_tarfs[i]->fs_mountpoint; /* can't be NULL, it is an inplace array */
+        size_t len = strlen(mp);
+
+        if (len <= best_len)
+            continue;
+
+        if (strncmp(path, mp, len) != 0)
+            continue;
+
+        /* Match exactly "/foo" or "/foo/..." */
+        if (path[len] != '\0' &&
+            path[len] != '/' &&
+            mp[len - 1] != '/')
+            continue;
+
+        best = i;
+        best_len = len;
+    }
+    tarfs_unlock();
+
+    return best;
+}
+
+
+
 /** Actual "unmount" procedure. Called by unref(). Finalizes unmount procedure, unmaps memory region,
  *  Thread safety is ensured by refcounting mechanism: the function below can not be called twice with the same
  *  argument, refcounter destructors are called only once, by design
@@ -288,7 +328,7 @@ unmap_and_return_error:
     /* Copy mountpoint. Trailing zero is there already */
     memcpy(fs->fs_mountpoint, mountpoint, len);
 
-    log("INFO: mounting..\r\n");
+    log("mounting..\r\n");
     if (inode_mount(fs, map, size, link_rebase) < 0) {
       if (fs->fs_ino == NULL) {
         log("ERR: filesystem is unusable, no valid inodes were found\r\n");

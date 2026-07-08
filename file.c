@@ -69,7 +69,10 @@
 #include <sys/errno.h>
 #include <sys/fcntl.h>
 #include <assert.h>
+#include <fcntl.h>
 
+#include "config.h"
+#include "os.h"
 #include "tar.h"
 #include "fs.h"
 #include "refc.h"
@@ -170,13 +173,15 @@ static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
  * Opens an existing TAR archive entry and returns a TARFS file descriptor.
  * Both regular files and directories may be opened.
  */
-int tarf_open(void* ctx, const char * path, int flags, int mode) {
+int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
   tart_t type;
   size_t size;
   time_t mtime;
   int    fd = 0;
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  const char *path = path0;
+  char *tmp;
+  
   struct tarfs_fs *fs = NULL; 
 
   int fs_idx = (intptr_t )ctx; 
@@ -189,12 +194,26 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
     return -1; 
   } 
 
-  /* XXX:
-   * TOCTTOU inherited from ESP-IDF VFS (unmount() and open() race).
-   * ESP32: The VFS passes a cached filesystem context that may become invalid
-   *        before tarfs_addref() is attempted.
-   */
+
   if (path && tarfs_addref(fs)) {
+
+    
+
+    if (flags & O_DIRECTORY) {
+      log("O_DIRECTORY, path='%s'\r\n", path);
+      int i = strlen(path);
+      if (i > 0) {
+        if (path[i - 1] != '/') {
+          log("O_DIRECTORY, appending a slash (MALLOC)\r\n");
+          char *p = tar_strdup1(path, NULL);
+          if (p != NULL) {
+            p[i] = '/';
+            path = (const char *)p;
+            log("path has been changed to '%s'\r\n", path);
+          }
+        }
+      }
+    }
 
     int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
@@ -251,16 +270,29 @@ int tarf_open(void* ctx, const char * path, int flags, int mode) {
 
       log("success, ino=%d, type=%c, path=%s, fd=%d, size=%lu, vaddr=%p\r\n",idx, type, path, fd,fp->fp_size, (void *)fp->fp_vaddr);
       errno = 0;
+
+      /* free strduped path */
+      if (path != path0) {
+        log("free strduped path\r\n");
+        free(path);
+      }
+
       return fd;
     }
     log("allocfd failed for path=%s\r\n",path);
     errno = EMFILE;
   } else {
-    log("%s://%s, bad path or dead object\r\n",fs->fs_mountpoint, path);
+    log("%s://%s, bad path or dead object\r\n",fs->fs_mountpoint, path0);
     errno = (path == NULL) ? EINVAL : ENODEV;
   }
 
 unref_and_exit:
+
+  /* free strduped path */
+  if (path != path0) {
+    log("free strduped path\r\n");
+    free(path);
+  }
 
   tarfs_unref(fs);
   return -1;
@@ -272,7 +304,7 @@ unref_and_exit:
  */
 int tarf_close(void* ctx, int fd) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( int );
 
   log("closing fd=%d, fs_idx=%d\r\n", fd, fs_idx);
@@ -292,7 +324,7 @@ int tarf_close(void* ctx, int fd) {
  */
 ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( ssize_t );
 
   errno = EROFS;
@@ -305,7 +337,7 @@ ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
  */
 ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( ssize_t );
 
   struct tarfs_fp *fp = &fs->fs_fd[fd];
@@ -345,7 +377,7 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
  */
 ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( ssize_t );
 
   struct tarfs_fp *fp = &fs->fs_fd[fd];
@@ -392,7 +424,7 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
  */
 off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( off_t );
 
   struct tarfs_fp *fp = (struct tarfs_fp *)(&fs->fs_fd[fd]);
@@ -446,7 +478,7 @@ return_einval:
  */
 int tarf_fstat(void* ctx, int fd, struct stat * st) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( int );
 
   tart_t type;
@@ -471,8 +503,6 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
   st->st_atime = 0;
   st->st_ctime = fs->fs_mtime;
 
-  printf("fstat ------- %ld\r\n",fp->fp_size);
-
   return 0;
 }
 
@@ -481,8 +511,7 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
  *
  */
 int tarf_fsync(void* ctx, int fd) {
-
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( int );
 
   return 0;
@@ -519,7 +548,7 @@ int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
  */
 int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
 
-  //struct tarfs_fs *fs = (struct tarfs_fs *)ctx;
+  
   PROLOGUE( int );
 
   switch (cmd) {

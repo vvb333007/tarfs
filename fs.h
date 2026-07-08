@@ -71,6 +71,13 @@ struct ioctl_req {
   int fd; /*!< fd number */
 };
 
+#if CONFIG_HAVE_READLINK
+struct tarfs_link {
+  uint32_t    li_hash; /*!< hashed link name */
+  const char *li_src;  /*!<        link name, for collision resolution */
+  const char *li_dest; /*!< "points to" name (has to be free()ed, allocated by inode_populate() for inode_resolve()) */
+};
+#endif
 
 /**
  * This descriptor holds all file descriptors opened. Created by tarfs_mount()
@@ -94,6 +101,10 @@ struct tarfs_fs {
   struct tarfs_inode const *    fs_root;              /*!< First record of alphasorted (in_path) list of entries (linked via in_next) */
   _Atomic(uint32_t)             fs_usedfd;            /*!< A bitmask for fs_fd[] array: 0100 means FD #2 is 
                                                            used. Indicates which elements of fs_fd[] array are used */
+#if CONFIG_HAVE_READLINK
+  struct tarfs_link const      *fs_lin;               /*!< for readlink() */
+  uint32_t                      fs_nlin;              /*!< Number of entries in fs_lin array */
+#endif
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
   time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS)>*/
   char                          fs_mountpoint[0];     /*!< Mount point */
@@ -216,3 +227,24 @@ int  tarfs_fsck(const char *label);
  * tarfs_read()/tarfs_open()/etc. Pointer returned by this function can not be stored
  */
 struct tarfs_fs *tarfs_getfs(int i);
+
+/**
+ * @brief Find the filesystem responsible for a given path.
+ *
+ * Searches all mounted filesystems and returns the filesystem whose mount
+ * point is the longest prefix of the supplied path. This allows nested mount
+ * points to work correctly. For example, if both `/data` and `/data/logs`
+ * are mounted, the path `/data/logs/app.txt` resolves to the latter.
+ *
+ * A mount point matches only if it forms a complete path component. For
+ * example, `/foo` matches `/foo` and `/foo/bar`, but does not match
+ * `/foobar`.
+ *
+ * @param path
+ *        Absolute path to resolve.
+ *
+ * @return
+ *        Filesystem slot index, or -1 if no mounted filesystem matches the
+ *        specified path.
+ */
+int tarfs_fsindex(const char *path);
