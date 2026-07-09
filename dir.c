@@ -16,38 +16,94 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/errno.h>
 #include <sys/fcntl.h>
+#include <sys/dirent.h>
 
-#include "esp_vfs.h"
-#include "esp_err.h"
-#include "esp_partition.h"
-#include "esp_rom_spiflash.h"
-
+#include "config.h"
+#include "os.h"
 #include "fs.h"
 #include "inode.h"
 #include "refc.h"
 #include "tar.h"
+#include "dir.h"
+
+
+/* How readdir() works:
+ *
+ * Inodes are stored in two independent orderings:
+ *
+ *  1. Hash-sorted index used for fast pathname lookup (fs->fs_ino array)
+ *  2. Lexicographically sorted list of full pathnames, used by readdir() (linked list via inode->in_next ).
+ *
+ * Example:
+ *
+ *      /dir3/dir33/              <-- opendir() / open()
+ *      /dir3/dir33/file33.txt    <-- direct child readdir()
+ *      /dir3/dir33/file44.txt    <-- direct child readdir()
+ *      /dir3/dir33/file55/       <-- direct child readdir()
+ *      /dir3/dir33/file55/jopa   <-- indirect child skip
+ *      /dir3/dir33/file55/ssaka  <-- indirect child skip
+ *      /dir3/dir33/file66/       <-- direct child readdir()
+ *      /dir3/dir33/file55.txt    <-- direct child readdir()
+ *      /dir3/dir33/file77.txt    <-- direct child readdir()
+ *      /dir3/dir44/              <-- end of this directory, readdir() returns NULL
+ *      /dir3/dir44/test          
+ *
+ * Because all pathnames are lexicographically sorted, every direct child of a
+ * directory immediately follows its own inode in the sorted list.
+ *
+ * opendir() returns the index of the directory inode. readdir() then starts
+ * scanning from the next entry (idx + 1), returning only direct children while
+ * skipping descendants located in subdirectories (e.g. file55/jopa). Scanning
+ * stops as soon as the pathname no longer belongs to the opened directory
+ * (e.g. "/dir3/dir44/").
+ */
+
+
+
+typedef struct {
+  int a;
+  int b;
+} xDIR;
 
 
 
 /**
  * @brief TARFS DIR structure
  */
-struct tarfs_DIR {
+struct tarfs_dir {
 
-    DIR           di_dir;       /*!< Opaque VFS DIR struct */
-    struct dirent di_ent;       /*!< Last open dirent */
-    long          di_off;       /*!< Offset of the current dirent */
-    char          di_path[256]; /*!< Requested directory name, populated by opendir() */
-
+    xDIR          di_dir;       /*!< Opaque VFS DIR struct */
+    struct dirent di_ent;       /*!< dirent to return to the caller */
+    size_t        di_off;       /*!< offset to the current dir; actually - the next inode to read */
+    int           di_fd;
+    struct tarfs_inode const *di_ino;
+    struct tarfs_inode const *di_cino;
 };
 
-static int tarfs_is_direct_child(const char *path, const char *prefix)
-{
+
+
+
+static bool is_sanefd(struct tarfs_fs *fs, int fd) {
+
+    return  (fd >= 0) &&
+            (fd < TARFS_MAX_FDS) &&
+            ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
+}
+
+
+
+/**
+ * Check if 'path' is direct child of 'prefix'; 
+ * Prefix MUST NOT have '/' at the end.
+ */
+static int is_direct_child(const char *path, const char *prefix) {
+
     const char *tail;
     const char *slash;
     size_t plen;
@@ -55,13 +111,24 @@ static int tarfs_is_direct_child(const char *path, const char *prefix)
     plen = strlen(prefix);
 
     if (strncmp(path, prefix, plen) != 0)
-        return 0;
+        return -1;
 
     tail = path + plen;
 
-    /* сам каталог */
+    /* the dir itself */
     if (*tail == '\0')
         return 1;
+
+
+    /* the dir itself when prefix does not end with '/' */
+    if (*tail == '/') {
+      
+        tail++;
+        if (*tail == '\0')
+          return 1;
+    } else
+    /* we only tolerate / and NUL here. Any other character just mean that paths are different */
+      return -1;
 
     slash = strchr(tail, '/');
 
@@ -76,245 +143,184 @@ static int tarfs_is_direct_child(const char *path, const char *prefix)
 
 
 /**
- * stat() system call
- */
-static int tarfs_stat(void* ctx, const char * path, struct stat * st) {
-
-    int fd = tarf_open(ctx, path, O_RDONLY, 0);
-
-    if (fd < 0)
-        return -1;
-
-    int rc = tarf_fstat(ctx, fd, st);
-
-    tarf_close(ctx, fd);
-
-    return rc;
-}
-
-
-/**
  * opendir() system call
  */
-static DIR* tarfs_opendir(void* ctx, const char* name) {
+DIR* tard_opendir(void* ctx, const char* name) {
 
-    assert(name);
+  struct tarfs_dir *dir;
 
-    struct tarfs_fs * fs = (struct tarfs_fs *)ctx;
+  int fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0);
+  if (fd >= 0) {
 
-    if (tarfs_addref(fs)) {
+    dir = calloc(1, sizeof(struct tarfs_dir));
 
-      /* XXX: name must end with '/' */
-      int idx = inode_lookup(fs, name);
-      if (idx >= 0 && inode_type(fs, idx) ==  TART_DIR) {
+    if (dir != NULL) {
 
-        /* 
-            Paths of intereset start from inode index idx+1 since all paths are alphasorted.
-            If for example we are opening /dir/dir33, then idx will point to the /dir/dir33's inode
-            while idx+1, idx+2 and so on are direct child of that dir
+      struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
 
-            /dir2/dir22/file33_symlink.txt",
-            /dir2/dir33_symlink",
-            /dir3/",
-            /dir3/dir22_symlink -> /dir4/dir3_dir_junction/dir22_symlink",
-            /dir3/dir33/",         <--------------------------------------------- ino
-            /dir3/dir33/file33.txt",   <-- direct child
-            /dir3/dir33/file44.txt",   <-- direct child
-            /dir3/dir33/file55/"        <-- direct child
-            /dir3/dir33/file55/jopa"  
-            /dir3/dir33/file55/ssaka"  
-            /dir3/dir33/file66/",          <-- indirect child
-            /dir3/dir33/file55.txt
-            /dir3/dir33/file77.txt
-            /dir3/dir44/",           <-- readdir() limit
-            
+      if (fs != NULL) {
 
-        */
+        dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
+        dir->di_fd   = fd;          /* Underlying directory file descriptor */
+        dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
+        dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
+
+        log("dir '%s' opened, fd=%d\r\n", name, fd);
+        return (DIR*)dir;
       }
-      tarfs_unref(fs);
-    }
-
-    
-
-//    dir->offset = 0;
-//    strlcpy(dir->path, name, TARFS_OBJ_NAME_LEN);
-
-    return (DIR*) dir;
+      log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
+      free(dir);
+    } else
+      errno = ENOMEM;
+    tarf_close(ctx, fd);
+  }
+  log("failed for '%s'\r\n", name);
+  return NULL;
 }
 
-static int tarfs_closedir(void* ctx, DIR* pdir)
-{
-    assert(pdir);
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-    tarfs_dir_t * dir = (tarfs_dir_t *)pdir;
-    int res = TARFS_closedir(&dir->d);
+/**
+ *
+ */
+int tard_closedir(void* ctx, DIR* pdir) {
+
+  if (pdir) {
+
+    struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
+
+    log("closing dir, fd=%d\r\n", dir->di_fd);
+
+    tarf_close(ctx, dir->di_fd);
     free(dir);
-    if (res < 0) {
-        errno = tarfs_res_to_errno(TARFS_errno(efs->fs));
-        TARFS_clearerr(efs->fs);
-        return -1;
-    }
-    return res;
-}
 
-static struct dirent* tarfs_readdir(void* ctx, DIR* pdir)
-{
-    assert(pdir);
-    tarfs_dir_t * dir = (tarfs_dir_t *)pdir;
-    struct dirent* out_dirent;
-    int err = tarfs_readdir_r(ctx, pdir, &dir->e, &out_dirent);
-    if (err != 0) {
-        errno = err;
-        return NULL;
-    }
-    return out_dirent;
-}
-
-static int tarfs_readdir_r(void* ctx, DIR* pdir, struct dirent* entry,
-                                struct dirent** out_dirent)
-{
-    assert(pdir);
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-    tarfs_dir_t * dir = (tarfs_dir_t *)pdir;
-    struct tarfs_dirent out;
-    size_t plen;
-    char * item_name;
-    do {
-        if (TARFS_readdir(&dir->d, &out) == 0) {
-            errno = tarfs_res_to_errno(TARFS_errno(efs->fs));
-            TARFS_clearerr(efs->fs);
-            if (!errno) {
-                *out_dirent = NULL;
-            }
-            return errno;
-        }
-        item_name = (char *)out.name;
-        plen = strlen(dir->path);
-
-    } while ((plen > 1) && (strncasecmp(dir->path, (const char*)out.name, plen) || out.name[plen] != '/' || !out.name[plen + 1]));
-
-    if (plen > 1) {
-        item_name += plen + 1;
-    } else if (item_name[0] == '/') {
-        item_name++;
-    }
-    entry->d_ino = 0;
-    entry->d_type = out.type;
-    strncpy(entry->d_name, item_name, TARFS_OBJ_NAME_LEN);
-    entry->d_name[TARFS_OBJ_NAME_LEN - 1] = '\0';
-    dir->offset++;
-    *out_dirent = entry;
     return 0;
+  }
+
+  errno = EINVAL;
+  return -1;
 }
 
-static long tarfs_telldir(void* ctx, DIR* pdir)
-{
-    assert(pdir);
-    tarfs_dir_t * dir = (tarfs_dir_t *)pdir;
-    return dir->offset;
+
+static const char *remove_subpath(const char *path, const char *subpath) {
+
+  const char *text = path;
+
+  while(*text && *text != '\r' && *text != '\n' &&
+        *subpath && *subpath != '\r' && *subpath != '\n' &&
+        *text == *subpath) {
+    text++;
+    subpath++;
+  }
+
+  if (*subpath != 0 && *subpath != '\r' && *subpath != '\n')  /* subpath failed: prefix differs */
+    text = path; 
+
+  return text;
 }
 
-static void tarfs_seekdir(void* ctx, DIR* pdir, long offset)
-{
-    assert(pdir);
-    struct tarfs_fs * efs = (struct tarfs_fs *)ctx;
-    tarfs_dir_t * dir = (tarfs_dir_t *)pdir;
-    struct tarfs_dirent tmp;
-    if (offset < dir->offset) {
-        //rewind dir
-        TARFS_closedir(&dir->d);
-        if (!TARFS_opendir(efs->fs, NULL, &dir->d)) {
-            errno = tarfs_res_to_errno(TARFS_errno(efs->fs));
-            TARFS_clearerr(efs->fs);
-            return;
-        }
-        dir->offset = 0;
+
+/*
+ *
+ */
+struct dirent* tard_readdir(void* ctx, DIR* pdir) {
+
+  struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
+  struct tarfs_inode const *cur;
+
+  cur = dir->di_cino;
+
+  while (cur->in_next != NULL) {
+
+    cur = cur->in_next;
+
+  /*
+    int x = is_direct_child(cur->in_path, dir->di_prefix);
+
+    if (x < 0) {
+      log("end of directory '%s' reached\r\n", dir->di_prefix);
+      return NULL;
     }
-    while (dir->offset < offset) {
-        if (TARFS_readdir(&dir->d, &tmp) == 0) {
-            errno = tarfs_res_to_errno(TARFS_errno(efs->fs));
-            TARFS_clearerr(efs->fs);
-            return;
-        }
-        size_t plen = strlen(dir->path);
-        if (plen > 1) {
-            if (strncasecmp(dir->path, (const char *)tmp.name, plen) || tmp.name[plen] != '/' || !tmp.name[plen+1]) {
-                continue;
-            }
-        }
-        dir->offset++;
+
+    if (x > 0) {
+      log("next entry '%s' read\r\n", cur->in_path);
+      const char *p = remove_subpath(cur->in_path, dir->di_prefix);
+      int len = tar_strlen(p, NULL);
+      if (len < sizeof(dir->di_ent.d_name)) {
+
+        memcpy(dir->di_ent.d_name, p, len);
+        dir->di_ent.d_name[len] = '\0';
+
+        dir->di_ent.d_ino = 0; //TODO: inode number.
+        dir->di_ent.d_type = inode_rawtype(cur);
+
+        dir->di_cino = cur;
+        dir->di_off++; 
+
+        return &dir->di_ent;
     }
-}
+  }
+*/
+  }  
 
-static int tarfs_mkdir(void* ctx, const char* name, mode_t mode) {
-  return $(EROFS);
-}
-
-static int tarfs_rmdir(void* ctx, const char* name) {
-  return $(EROFS);
-}
-
-static int tarfs_truncate(void* ctx, const char *path, off_t length) {
-  return $(EROFS);
-}
-
-static int tarfs_ftruncate(void* ctx, int fd, off_t length) {
-  if (!allocated(fd))
-    return $(EBADF);
-  return $(EROFS);
-}
-
-static int tarfs_link(void* ctx, const char* n1, const char* n2) {
-  return $(EROFS);
-}
-
-static int tarfs_unlink(void* ctx, const char *path) {
-  return $(EROFS);
-}
-
-static int tarfs_rename(void* ctx, const char *src, const char *dst) {
-  return $(EROFS);
-}
-
-static int tarfs_utime(void *ctx, const char *path, const struct utimbuf *times) {
-  return $(EROFS);
+  log("end of alphalist is reached\r\n");
+  return NULL;
 }
 
 
+long tard_telldir(void* ctx, DIR* pdir) {
 
-static const esp_vfs_dir_ops_t s_tarfs_dir = {
-
-    .stat_p      = &tarfs_stat,
-
-    .link_p      = &tarfs_link,
-    .unlink_p    = &tarfs_unlink,
-    .rename_p    = &tarfs_rename,
-
-    .opendir_p   = &tarfs_opendir,
-    .closedir_p  = &tarfs_closedir,
-    .readdir_p   = &tarfs_readdir,
-    .readdir_r_p = &tarfs_readdir_r,
-    .seekdir_p   = &tarfs_seekdir,
-    .telldir_p   = &tarfs_telldir,
-
-    .mkdir_p     = &tarfs_mkdir,
-    .rmdir_p     = &tarfs_rmdir,
-
-    .truncate_p  = &tarfs_truncate,
-    .ftruncate_p = &tarfs_ftruncate,
-
-    .utime_p     = &tarfs_utime,
-};
-
-
-
-
-void tard_handlers_install(void *opaque) {
-
-  esp_vfs_dir_ops_t *files = (esp_vfs_dir_ops_t *)opaque;
-
-  if (files != NULL)
-    files->dir = &s_tarfs_dir,
+  struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
+  return dir->di_off;
 }
 
+
+void tard_seekdir(void* ctx, DIR* pdir, long offset) {
+
+  struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
+
+  if (dir->di_off > offset) {
+
+    //struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
+
+    dir->di_off = 0; 
+    dir->di_cino = dir->di_ino;
+  }
+
+  while(dir->di_off < offset) {
+    if (NULL == tard_readdir(ctx, pdir)) {
+      log("offset %ld is not reachable, stopped at offset %lu\r\n", offset, dir->di_off);
+      break;
+    }
+  }
+}
+
+/**
+ * The function dirfd() returns the file descriptor associated with the directory stream pdir.
+*/
+int tard_dirfd(void* ctx, DIR *pdir) {
+  if (pdir != NULL) {
+    struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
+    return dir->di_fd;
+  }
+  errno = EINVAL;
+  return -1;
+}
+
+
+
+
+int tard_mkdir(void* ctx, const char* name, mode_t mode) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+
+int tard_rmdir(void* ctx, const char* name) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
 

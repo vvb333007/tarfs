@@ -24,10 +24,20 @@
 #include "tar.h"
 #include "fnv1a.h"
 
+/* Checked Tar String == a byte sequence, within TAR image, which is terminated with \0, \r, or \n
+ * Unchecked Tar String == a byte sequence, POSIIBLY unterminated
+ * C String == a byte sequence, uterminated with \0
+ *
+ * Strings in TAR image may end with a terminator or may not. For this reason we have bunch of string helpers
+ * which emulate string.h behaviour. In case of Unchecked Tar String (UTS) user must provide pointer to the
+ * string's explicit end (e.g. tar_strcmp(),  tar_strlen()..).
+ */
 
 /*
- * Compare a TAR string with a regular C string.
- *
+ * Compare an Unchecked TAR string with a Checked TAR string.
+ * s1 -     UTS
+ * s1_end - UTS limit
+ * s2     - CTS
  */
 int tar_strcmp(const char *s1, const char *s1_end, const char *s2) {
 
@@ -68,7 +78,47 @@ int tar_strcmp(const char *s1, const char *s1_end, const char *s2) {
 }
 
 /*
- * Return the length of a TAR string.
+ * strncmp() for two Checked TAR Strings
+ *
+ */
+int tar_strncmp(const char *s1, const char *s2, size_t len) {
+
+    while (len > 0) {
+
+        unsigned char c1 = (unsigned char)*s1;
+        unsigned char c2 = (unsigned char)*s2;
+
+        if (c1 == '\0' || c1 == '\r' || c1 == '\n')
+            c1 = '\0';
+
+        if (c2 == '\0' || c2 == '\r' || c2 == '\n')
+            c2 = '\0';
+
+        if (c1 != c2)
+            return (int)c1 - (int)c2;
+
+        if (c1 == '\0')
+            return 0;
+
+        ++s1;
+        ++s2;
+        --len;
+    }
+
+   /* Reached the explicit end of the TAR field.
+    * Treat it as an implicit end-of-string. 
+    */
+    unsigned char c2 = (unsigned char)*s2;
+
+    if (c2 == '\r' || c2 == '\n')
+        c2 = '\0';
+
+    return -(int)c2;
+}
+
+
+/*
+ * Return the length of an Unchecked TAR string.
  *
  */
 int tar_strlen(const char *s1, const char *s1_end) {
@@ -90,7 +140,22 @@ int tar_strlen(const char *s1, const char *s1_end) {
 }
 
 /*
- * Duplicate a TAR string as a special NUL-NUL-terminated C string.
+ * Copy CTS to a C string
+ *
+ */
+void tar_strcpy(char *dst, const char *src) {
+
+  while ( true ) {
+    if (*src == 0 || *src == '\r' || *src == '\n')
+      break;
+    *dst++ = *src++;
+  }
+  *dst = '\0';
+}
+
+
+/*
+ * Duplicate an CTS or UTS as a special NUL-NUL-terminated C string.
  *
  * The returned buffer contains one additional byte after the terminating
  * NUL, allowing a single character (typically '/') to be appended without
@@ -113,8 +178,10 @@ char *tar_strdup1(const char *s1, const char *s1_end) {
 
 
 
-/* Parse an octal number from a TAR field.
- *
+/* Parse an octal number from a TAR field. This is the only function which accepts UTS+len
+ * instead of UTS+UTS_end
+ * p - UTS
+ * max_len - UTS limit.
  */
 uint32_t tar_octal(const char *p, size_t max_len) {
 

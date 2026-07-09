@@ -248,3 +248,13 @@ struct tarfs_fs *tarfs_getfs(int i);
  *        specified path.
  */
 int tarfs_fsindex(const char *path);
+
+
+/**
+ * Find the filesystem responsible for a given path. This function is NOT lockless
+ *
+ * @return
+ *        Filesystem slot index, or -1 if no mounted filesystem matches the
+ *        specified path.
+ */
+time_t tarfs_getmtime(int fs_idx);

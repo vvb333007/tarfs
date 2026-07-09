@@ -5,9 +5,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include <dirent.h>
+#include <sys/dirent.h>
 
 #include "fs.h"
 #include "tar.h"
+#include "dir.h"
 #include "fnv1a.h"
 #include "inode.h"
 #if 1
@@ -30,26 +33,13 @@ int main(int argc, char **argv) {
 
 
 
-    int fd = tarf_open((0), "/syslib/fnv1a.h", 0, 0);
-    int ad = tarf_open((0), "/symlink", 0, 0);
-    int az = tarf_open((0), "/Гарвульзепа/Зыка", O_DIRECTORY, 0);
-    int ag = tarf_open((0), "/Гарвульзепа/Зыка/", O_DIRECTORY, 0);
+    DIR *dir = tard_opendir((0), "/Гарвульзепа/Зыка/");
 
 
+    log("dir=%p\r\n", dir);
 
-    struct stat st;
-    tarf_fstat((0),fd, &st);
-    log("!!!: fd st.st_size == %ld\r\n", st.st_size);
-
-    tarf_fstat((0),ad, &st);
-    log("!!!: ad st.st_size == %ld\r\n", st.st_size);
-    
-    tarf_close((0), fd);
-    tarf_close((0), ad);
-
-  
-    tarf_close((0), fd);
-    tarf_close((0), ad);
+    if (dir != NULL)
+      tard_closedir((0), dir);
 
     tarfs_unmount("/jopa");
     

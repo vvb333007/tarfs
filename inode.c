@@ -463,6 +463,37 @@ tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *s
   return TART_BAD;
 }
 
+
+tart_t inode_rawtype(struct tarfs_inode const *ino) {
+
+  if (ino != NULL) {
+    struct tarhdr const *hdr;
+
+    if (NULL != (hdr = (struct tarhdr const *)ino->in_dvaddr))
+      return hdr->type;
+  }
+  return TART_BAD;
+}
+
+
+bool inode_islink(struct tarfs_inode const *ino) {
+
+  if (ino != NULL) {
+
+    struct tarhdr const *hdr = (struct tarhdr const *)ino->in_vaddr;
+
+    /* bad inode: null data (damaged archive for example). return inode type. */
+    if (ino->in_dvaddr == 0)
+      return hdr->type == TART_SYMLINK || hdr->type == TART_HARDLINK;
+
+    /* good inode: good inodes only have vaddr != dvaddr is they are link-type inodes  */
+    return ino->in_vaddr != ino->in_dvaddr;
+  }  
+  return false;
+}
+
+
+
 /* 
  *
  */

@@ -8,7 +8,8 @@ CC      := gcc
 OBJDIR  := obj
 
 # Flags
-CFLAGS  := -Wall -std=c11 -D_POSIX_C_SOURCE=200809L -g
+#CFLAGS  := -Wall -std=c11 -D_POSIX_C_SOURCE=200809L -g
+CFLAGS  := -Wall -Os
 CFLAGS += -MMD -MP
 
 # Общие исходники
@@ -20,7 +21,8 @@ COMMON_SRC := \
     fnv1a.c \
     fs.c \
     refc.c \
-    posix.c
+    posix.c \
+    dir.c
 
 # Для test
 TEST_SRC := test.c $(COMMON_SRC)
@@ -54,6 +56,6 @@ $(OBJDIR):
 >mkdir -p $(OBJDIR)
 
 clean:
->rm -rf $(OBJDIR) $(TARGET)
+>rm -rf $(OBJDIR) $(TARGETS)
 
 -include $(OBJ:.o=.d)

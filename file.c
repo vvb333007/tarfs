@@ -27,6 +27,7 @@
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
 \
     log("bad filesystem context: %d, %p\r\n",fs_idx, fs); \
+    errno = EIO; \
     return (TYPE)(-1); \
   } \
   if (!is_sanefd(fs, fd)) { \
@@ -34,7 +35,6 @@
     errno = EBADF; \
     return (TYPE)(-1); \
   }
-
 
 
 /*
@@ -68,8 +68,10 @@
 #include <dirent.h>
 #include <sys/errno.h>
 #include <sys/fcntl.h>
+#include <sys/utime.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "config.h"
 #include "os.h"
@@ -154,7 +156,7 @@ static void freefd(struct tarfs_fs *fs, int index) {
  * Extra paranoia: we check fds which are passed to us by VFS layer
  * for being in our range [0 .. TARFS_MAX_FDS]. Check if that fd is alive (file is opened)
  */
-static inline bool is_sanefd(struct tarfs_fs *fs, int fd) {
+static bool is_sanefd(struct tarfs_fs *fs, int fd) {
 
     return  (fd >= 0) &&
             (fd < TARFS_MAX_FDS) &&
@@ -180,7 +182,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   time_t mtime;
   int    fd = 0;
   const char *path = path0;
-  char *tmp;
+
   
   struct tarfs_fs *fs = NULL; 
 
@@ -245,6 +247,13 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     /* Get node type and size */
     type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
 
+    /* If user has requested a directory but we found that it is a file */
+    if (type != TART_DIR && (flags & O_DIRECTORY)) {
+      log("target is file, but O_DIRECTORY is set. failing\r\n");
+      errno = ENOENT; //TODO: return proper code
+      goto unref_and_exit;
+    }
+
     /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
      * Instead we rely on that fact that fd becomes available only upon open() return, so publishing is done by
      * function return
@@ -274,7 +283,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       /* free strduped path */
       if (path != path0) {
         log("free strduped path\r\n");
-        free(path);
+        free((void *)path);
       }
 
       return fd;
@@ -291,7 +300,7 @@ unref_and_exit:
   /* free strduped path */
   if (path != path0) {
     log("free strduped path\r\n");
-    free(path);
+    free((void *)path);
   }
 
   tarfs_unref(fs);
@@ -478,8 +487,7 @@ return_einval:
  */
 int tarf_fstat(void* ctx, int fd, struct stat * st) {
 
-  
-  PROLOGUE( int );
+  PROLOGUE( int ); /* defines fs_idx */
 
   tart_t type;
   time_t mtime;
@@ -497,6 +505,10 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
   else
     perm |= S_IFREG;
 
+  st->st_dev = (dev_t)fs_idx;         /* Filesystem index [0..TARFS_MAX_FS) */
+  st->st_ino = (ino_t)fp->fp_idx;     /* Inode index */
+  st->st_blksize = 512;
+  st->st_blocks =  ((fp->fp_size + 511) & ~511) / 512;
   st->st_size = fp->fp_size;
   st->st_mode = perm;
   st->st_mtime = fs->fs_mtime;
@@ -595,3 +607,170 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
   errno = ENOSYS;
   return -1;
 }
+
+
+/**
+ * stat() system call
+ */
+int tarf_stat(void* ctx, const char * path, struct stat * st) {
+
+    int fd;
+
+
+    if ((fd = tarf_open(ctx, path, O_RDONLY, 0)) < 0) {
+      if ((fd = tarf_open(ctx, path, O_RDONLY | O_DIRECTORY, 0)) < 0) {
+        log("path does not exist (not file not directory)");
+        return -1;
+      }
+    }
+
+    int rc = tarf_fstat(ctx, fd, st);
+
+    tarf_close(ctx, fd);
+
+    return rc;
+}
+
+
+/**
+ * Query or update file timestamps.
+ *
+ * TARFS is a read-only filesystem and does not support changing file
+ * timestamps. If @p times is non-NULL, the structure is filled with the
+ * current access time and the file modification time stored in the TAR
+ * archive. No filesystem metadata is modified.
+ *
+ * @param ctx    Filesystem context.
+ * @param path   Path to the file (currently unused).
+ * @param times  Pointer to a structure to receive timestamps.
+ *
+ * @return 0 on success, or -1 if @p times is NULL.
+ *
+ * @retval EINVAL  @p times is NULL.
+ *
+ * @note TARFS does not store file access times. Therefore the returned
+ *       access time is set to the current system time.
+ */
+int tarf_utime(void *ctx, const char *path, struct utimbuf *times) {
+
+  if (times != NULL) {
+
+    times->actime = time(NULL);  /* Access time; We do not keep atime in inodes, so what else we can do? */
+    times->modtime = tarfs_getmtime((int)(uintptr_t)ctx);
+
+    return 0;
+  }
+  errno = EINVAL;
+  return -1;
+}
+
+
+/**
+ * Truncate a file to the specified length.
+ *
+ * TARFS is a read-only filesystem and does not support modifying files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx     Filesystem context.
+ * @param path    Path to the file.
+ * @param length  Requested file length.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_truncate(void *ctx, const char *path, off_t length) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+
+/**
+ * Truncate an open file to the specified length.
+ *
+ * TARFS is a read-only filesystem and does not support modifying files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx     Filesystem context.
+ * @param fd      File descriptor.
+ * @param length  Requested file length.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_ftruncate(void* ctx, int fd, off_t length) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+
+/**
+ * Create a hard link.
+ *
+ * TARFS is a read-only filesystem and does not support creating links.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx  Filesystem context.
+ * @param n1   Existing pathname.
+ * @param n2   New pathname.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_link(void* ctx, const char* n1, const char* n2) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+
+/**
+ * Remove a directory entry.
+ *
+ * TARFS is a read-only filesystem and does not support deleting files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx   Filesystem context.
+ * @param path  Path to the file.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_unlink(void* ctx, const char *path) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+
+/**
+ * Rename or move a file.
+ *
+ * TARFS is a read-only filesystem and does not support renaming files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx  Filesystem context.
+ * @param src  Source pathname.
+ * @param dst  Destination pathname.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_rename(void* ctx, const char *src, const char *dst) {
+
+  log("read-only file system\r\n");
+  errno = EROFS;
+
+  return -1;
+}
+

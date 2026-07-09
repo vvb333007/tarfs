@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/utime.h>
 #include "config.h"
 //#include "os.h"
 //#include "fs.h"
@@ -46,26 +47,22 @@ struct tarfs_fp {
  *
  * On systems without VFS support, applications should call the tarfs_(),
  * tarf_() and tard_() APIs directly. Unlike their POSIX counterparts, these
- * functions take an additional first argument: a pointer to the mounted
- * filesystem context.
+ * functions take an additional first argument: an index of the mounted
+ * filesystem
  *
  * Typical usage without a VFS:
  *
  * 1. Mount the filesystem and save its identifier.
  *
- *      int fsid = tarfs_mount(...);
- *      if (fsid < 0)
+ *      int ctx = tarfs_mount(...);
+ *      if (ctx < 0)
  *          exit_error("failed to mount filesystem");
  *
- * 2. Obtain the filesystem context.
+ * 2. Use the context pointer in subsequent filesystem calls.
  *
- *      void *ctx = tarfs_getfs(fsid);
- *
- * 3. Use the context pointer in subsequent filesystem calls.
- *
- *      int fd1 = tarf_open(ctx, "/home/file1.txt", flags);
- *      int fd2 = tarf_open(ctx, "/home/file2.txt", flags);
- *      int fd3 = tarf_open(ctx, "/home/file3.txt", flags);
+ *      int fd1 = tarf_open((void *)ctx, "/home/file1.txt", flags);
+ *      int fd2 = tarf_open((void *)ctx, "/home/file2.txt", flags);
+ *      int fd3 = tarf_open((void *)ctx, "/home/file3.txt", flags);
  */
 
 
@@ -240,3 +237,112 @@ int tarf_fcntl(void *ctx, int fd, int cmd, int arg);
  *             - @c ENOSYS  Unsupported ioctl command.
  */
 int tarf_ioctl(void *ctx, int fd, int cmd, va_list args);
+
+/**
+ * stat() system call
+ */
+int tarf_stat(void* ctx, const char * path, struct stat * st);
+
+/**
+ * Query or update file timestamps.
+ *
+ * TARFS is a read-only filesystem and does not support changing file
+ * timestamps. If @p times is non-NULL, the structure is filled with the
+ * current access time and the file modification time stored in the TAR
+ * archive. No filesystem metadata is modified.
+ *
+ * @param ctx    Filesystem context.
+ * @param path   Path to the file (currently unused).
+ * @param times  Pointer to a structure to receive timestamps.
+ *
+ * @return 0 on success, or -1 if @p times is NULL.
+ *
+ * @retval EINVAL  @p times is NULL.
+ *
+ * @note TARFS does not store file access times. Therefore the returned
+ *       access time is set to the current system time.
+ */
+int tarf_utime(void *ctx, const char *path, struct utimbuf *times);
+
+
+
+
+/**
+ * Truncate a file to the specified length.
+ *
+ * TARFS is a read-only filesystem and does not support modifying files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx     Filesystem context.
+ * @param path    Path to the file.
+ * @param length  Requested file length.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_truncate(void *ctx, const char *path, off_t length);
+
+/**
+ * Truncate an open file to the specified length.
+ *
+ * TARFS is a read-only filesystem and does not support modifying files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx     Filesystem context.
+ * @param fd      File descriptor.
+ * @param length  Requested file length.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_ftruncate(void* ctx, int fd, off_t length);
+
+/**
+ * Create a hard link.
+ *
+ * TARFS is a read-only filesystem and does not support creating links.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx  Filesystem context.
+ * @param n1   Existing pathname.
+ * @param n2   New pathname.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_link(void* ctx, const char* n1, const char* n2);
+
+/**
+ * Remove a directory entry.
+ *
+ * TARFS is a read-only filesystem and does not support deleting files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx   Filesystem context.
+ * @param path  Path to the file.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_unlink(void* ctx, const char *path);
+
+/**
+ * Rename or move a file.
+ *
+ * TARFS is a read-only filesystem and does not support renaming files.
+ * This function always fails with ::EROFS.
+ *
+ * @param ctx  Filesystem context.
+ * @param src  Source pathname.
+ * @param dst  Destination pathname.
+ *
+ * @return Always -1.
+ *
+ * @retval EROFS  Filesystem is read-only.
+ */
+int tarf_rename(void* ctx, const char *src, const char *dst);
+

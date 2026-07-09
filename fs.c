@@ -129,6 +129,23 @@ int tarfs_fsindex(const char *path) {
     return best;
 }
 
+/**
+ * Find the filesystem responsible for a given path. This function is NOT lockless
+ *
+ * @return
+ *        Filesystem slot index, or -1 if no mounted filesystem matches the
+ *        specified path.
+ */
+time_t tarfs_getmtime(int fs_idx) {
+  time_t t = 0;
+  tarfs_lock();
+  if (s_tarfs[fs_idx] != NULL)
+    t = s_tarfs[fs_idx]->fs_mtime;
+  tarfs_unlock();
+  return t;
+}
+
+
 
 
 /** Actual "unmount" procedure. Called by unref(). Finalizes unmount procedure, unmaps memory region,

@@ -50,26 +50,25 @@ enum {
 
 static const esp_vfs_dir_ops_t s_tarfs_dir = {
 
-    .stat_p      = &tarfs_stat,
+    .stat_p      = &tarf_stat,
+    .link_p      = &tarf_link,
+    .unlink_p    = &tarf_unlink,
+    .rename_p    = &tarf_rename,
 
-    .link_p      = &tarfs_link,
-    .unlink_p    = &tarfs_unlink,
-    .rename_p    = &tarfs_rename,
+    .opendir_p   = &tard_opendir,
+    .closedir_p  = &tard_closedir,
+    .readdir_p   = &tard_readdir,
+    .readdir_r_p = NULL,
+    .seekdir_p   = &tard_seekdir,
+    .telldir_p   = &tard_telldir,
 
-    .opendir_p   = &tarfs_opendir,
-    .closedir_p  = &tarfs_closedir,
-    .readdir_p   = &tarfs_readdir,
-    .readdir_r_p = &tarfs_readdir_r,
-    .seekdir_p   = &tarfs_seekdir,
-    .telldir_p   = &tarfs_telldir,
+    .mkdir_p     = &tard_mkdir,
+    .rmdir_p     = &tard_rmdir,
 
-    .mkdir_p     = &tarfs_mkdir,
-    .rmdir_p     = &tarfs_rmdir,
+    .truncate_p  = &tarf_truncate,
+    .ftruncate_p = &tarf_ftruncate,
 
-    .truncate_p  = &tarfs_truncate,
-    .ftruncate_p = &tarfs_ftruncate,
-
-    .utime_p     = &tarfs_utime,
+    .utime_p     = &tarf_utime,
 };
 
 static const esp_vfs_fs_ops_t s_tarfs_fs = {

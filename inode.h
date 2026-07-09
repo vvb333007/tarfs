@@ -99,6 +99,16 @@ tart_t inode_getinfo(struct tarfs_inode const * const *index,
                      size_t *size,
                      time_t *mtime);
 
+/* 
+ * variant of inode_type() which works with raw pointers to inodes 
+ */
+tart_t inode_rawtype(struct tarfs_inode const *ino);
+
+/* Check if inode (raw inode pointer) is one of two link-type inodes
+ *
+ */
+bool inode_islink(struct tarfs_inode const *ino);
+
 
 
 /**
