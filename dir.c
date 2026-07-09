@@ -151,8 +151,13 @@ struct tarfs_dir {
 
 
 /**
- * opendir() system call
+ * @brief Open a directory for reading.
+ *
+ * Opens an existing directory and returns a directory stream that can be
+ * used with tard_readdir(), tard_telldir(), tard_seekdir() and
+ * tard_closedir().
  */
+
 DIR* tard_opendir(void* ctx, const char* name) {
 
   struct tarfs_dir *dir;
@@ -176,7 +181,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
           dir->di_fd   = fd;          /* Underlying directory file descriptor */
           dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
           dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
-          // TODO: remove trailing slashes!
+
           dir->di_prefix = strdup(name);
 
           if (dir->di_prefix[nlen - 1] == '/')
@@ -199,7 +204,10 @@ DIR* tard_opendir(void* ctx, const char* name) {
 }
 
 /**
+ * @brief Close a directory stream.
  *
+ * Releases all resources associated with a directory stream previously
+ * returned by tard_opendir().
  */
 int tard_closedir(void* ctx, DIR* pdir) {
 
@@ -224,8 +232,12 @@ int tard_closedir(void* ctx, DIR* pdir) {
 }
 
 
-/*
+/**
+ * @brief Read the next directory entry.
  *
+ * Returns the next direct child of the opened directory. The returned
+ * pointer remains valid until the next call to tard_readdir() on the same
+ * directory stream.
  */
 struct dirent* tard_readdir(void* ctx, DIR* pdir) {
 
@@ -283,6 +295,12 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
 }
 
 
+/**
+ * @brief Return the current directory position.
+ *
+ * Obtains the current position within the directory stream. The returned
+ * value may later be passed to tard_seekdir() to restore the same position.
+ */
 long tard_telldir(void* ctx, DIR* pdir) {
 
   struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
@@ -290,6 +308,12 @@ long tard_telldir(void* ctx, DIR* pdir) {
 }
 
 
+/**
+ * @brief Reposition a directory stream.
+ *
+ * Sets the current position within the directory stream to a value
+ * previously obtained by tard_telldir().
+ */
 void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 
   struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
@@ -323,8 +347,9 @@ int tard_dirfd(void* ctx, DIR *pdir) {
 }
 
 
-
-
+/**
+ * @brief Create a directory.
+ */
 int tard_mkdir(void* ctx, const char* name, mode_t mode) {
 
   log("read-only file system\r\n");
@@ -333,6 +358,9 @@ int tard_mkdir(void* ctx, const char* name, mode_t mode) {
   return -1;
 }
 
+/**
+ * @brief Remove a directory.
+ */
 int tard_rmdir(void* ctx, const char* name) {
 
   log("read-only file system\r\n");
@@ -340,4 +368,5 @@ int tard_rmdir(void* ctx, const char* name) {
 
   return -1;
 }
+
 

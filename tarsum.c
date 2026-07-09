@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
     int processed = 0;
 
     if (argc < 2) {
-      printf("Usage: %s INPUT.TAR [OUTPUT.TAR]\r\n", argv[0]);
+      puts("Usage: tarsum INPUT.TAR [OUTPUT.TAR]");
+      puts("\r\nEmbed CRC64 integrity values into a TAR file");
       return 0;
     }
 
@@ -44,14 +45,15 @@ int main(int argc, char **argv) {
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
 
     if (buf == NULL) {
-      printf("tarfs: failed to mmap() '%s', err=%d\n", filename, errno);
+      printf("failed to load '%s', errno=%d\n", filename, errno);
       return -1;
     }
-    printf("tarfs: resource '%s' is mapped (%ld bytes), VADDR=%p\n", filename, size, buf);
+
+    printf("TAR file '%s' loaded (%ld bytes), processing..\n", filename, size);
 
     processed = tar_addsum(buf, size);
 
-    printf("%d entries were processed\r\n", processed);      
+    printf("Done: %d entries were processed\r\n", processed);      
 
     if (processed) {
       FILE *f = fopen(filename2, "wb");
@@ -64,10 +66,9 @@ int main(int argc, char **argv) {
         goto unmap_and_exit;
       }
     }
-    printf("no output produced\r\n");      
+    printf("No output produced: %s\r\n", processed ? "can not create output file" : "no updatable entries");
 unmap_and_exit:
-    printf("tarfs: unmap the filesystem blob\r\n");
+//    printf("tarfs: unmap the filesystem blob\r\n");
     tarfs_os_unmap_tarfile(os_handle, buf, size);
-
     return 0;
 }

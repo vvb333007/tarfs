@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 
     struct dirent *ent;
     while((ent = tard_readdir(0, dir)) != NULL) {
-      printf("READDIR: '%s'\r\n", ent->d_name);
+      printf("READDIR: type=%d, '%s'\r\n", ent->d_type, ent->d_name);
     }
 
     if (dir != NULL)

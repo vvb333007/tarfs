@@ -244,13 +244,13 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     }
 
 
-    /* Get node type and size */
+    /* Determine object type and size. */
     type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
 
-    /* If user has requested a directory but we found that it is a file */
-    if (type != TART_DIR && (flags & O_DIRECTORY)) {
-      log("target is file, but O_DIRECTORY is set. failing\r\n");
-      errno = ENOENT; //TODO: return proper code
+    /* O_DIRECTORY requires the target to be a directory. */
+    if ((flags & O_DIRECTORY) && type != TART_DIR) {
+      log("O_DIRECTORY specified for a non-directory object\r\n");
+      errno = ENOTDIR;
       goto unref_and_exit;
     }
 

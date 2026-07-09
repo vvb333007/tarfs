@@ -75,12 +75,8 @@ struct tarhdr {
         char zero;           /*!< Must be zero by the standart */  
 #if CONFIG_TARFS_INTEGRITY
         char md[3];          /*!< Message Digest algorithm. For TARFS v0 these values are defined:
-                                  "C64" - CRC64 algo
-                                  "S64" - 32 bit straight sum; For MCUs not capable of doing 64bit math
-                                  "S32" - 32 bit straight sum; For MCUs not capable of doing CRC64 */
-        char digest[8];      /*!< Integrity check value. For MD5 algo this field contains first
-                                  bytes [0..7] xored with bytes [8..15]
-                                  For "CRC" and for the "SUM", the resulting value is stored in little-endian byte order (LSB first), */
+                                  "C64" - CRC64 algo */
+        char digest[8];      /*!< Integrity check value in little-endian byte order (LSB first), */
 #else
   const char pad[11];        /*!< Must be zero by the standart */
 #endif                                  
