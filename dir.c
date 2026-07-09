@@ -257,9 +257,17 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
 
         memcpy(dir->di_ent.d_name, p, len);
         dir->di_ent.d_name[len] = '\0';
+        
+        switch(inode_rawtype(cur)) {
+          case TART_DIR:  dir->di_ent.d_type = DT_DIR; break;
+          case TART_FILE:
+          case TART_AFILE:
+          case TART_CONT: dir->di_ent.d_type = DT_REG; break;
+          default:        dir->di_ent.d_type = DT_UNKNOWN; break;
+        }
 
         dir->di_ent.d_ino = 0; //TODO: inode number.
-        dir->di_ent.d_type = inode_rawtype(cur);
+        
 
         dir->di_cino = cur;
         dir->di_off++; 
