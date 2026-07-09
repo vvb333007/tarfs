@@ -82,125 +82,13 @@ struct tarfs_dir {
     struct dirent di_ent;       /*!< dirent to return to the caller */
     size_t        di_off;       /*!< offset to the current dir; actually - the next inode to read */
     int           di_fd;
+    char         *di_prefix;    /*!< Directory name with trailing slash removed (populated by opendir()) */
     struct tarfs_inode const *di_ino;
     struct tarfs_inode const *di_cino;
+
 };
 
-
-
-
-static bool is_sanefd(struct tarfs_fs *fs, int fd) {
-
-    return  (fd >= 0) &&
-            (fd < TARFS_MAX_FDS) &&
-            ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
-}
-
-
-
-/**
- * Check if 'path' is direct child of 'prefix'; 
- * Prefix MUST NOT have '/' at the end.
- */
-static int is_direct_child(const char *path, const char *prefix) {
-
-    const char *tail;
-    const char *slash;
-    size_t plen;
-
-    plen = strlen(prefix);
-
-    if (strncmp(path, prefix, plen) != 0)
-        return -1;
-
-    tail = path + plen;
-
-    /* the dir itself */
-    if (*tail == '\0')
-        return 1;
-
-
-    /* the dir itself when prefix does not end with '/' */
-    if (*tail == '/') {
-      
-        tail++;
-        if (*tail == '\0')
-          return 1;
-    } else
-    /* we only tolerate / and NUL here. Any other character just mean that paths are different */
-      return -1;
-
-    slash = strchr(tail, '/');
-
-    /* файл */
-    if (slash == NULL)
-        return 1;
-
-    /* каталог первого уровня */
-    return slash[1] == '\0';
-}
-
-
-
-/**
- * opendir() system call
- */
-DIR* tard_opendir(void* ctx, const char* name) {
-
-  struct tarfs_dir *dir;
-
-  int fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0);
-  if (fd >= 0) {
-
-    dir = calloc(1, sizeof(struct tarfs_dir));
-
-    if (dir != NULL) {
-
-      struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
-
-      if (fs != NULL) {
-
-        dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
-        dir->di_fd   = fd;          /* Underlying directory file descriptor */
-        dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
-        dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
-
-        log("dir '%s' opened, fd=%d\r\n", name, fd);
-        return (DIR*)dir;
-      }
-      log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
-      free(dir);
-    } else
-      errno = ENOMEM;
-    tarf_close(ctx, fd);
-  }
-  log("failed for '%s'\r\n", name);
-  return NULL;
-}
-
-/**
- *
- */
-int tard_closedir(void* ctx, DIR* pdir) {
-
-  if (pdir) {
-
-    struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
-
-    log("closing dir, fd=%d\r\n", dir->di_fd);
-
-    tarf_close(ctx, dir->di_fd);
-    free(dir);
-
-    return 0;
-  }
-
-  errno = EINVAL;
-  return -1;
-}
-
-
-static const char *remove_subpath(const char *path, const char *subpath) {
+[[maybe_unused]] static const char *remove_subpath(const char *path, const char *subpath) {
 
   const char *text = path;
 
@@ -218,6 +106,124 @@ static const char *remove_subpath(const char *path, const char *subpath) {
 }
 
 
+/**
+ * Check if 'path' is direct child of 'prefix'; 
+ * Prefix MUST NOT have '/' at the end.
+ */
+[[maybe_unused]] static int is_direct_child(const char *path, const char *prefix) {
+
+    const char *tail;
+    const char *slash;
+    size_t plen;
+
+    plen = strlen(prefix);
+
+    if (tar_strncmp(path, prefix, plen) != 0)
+        return -1;
+
+    tail = path + plen;
+
+    /* the dir itself */
+    if (*tail == '\0' || *tail == '\r' || *tail == '\n')
+        return 1;
+
+
+    /* the dir itself when prefix does not end with '/' */
+    if (*tail == '/') {
+      
+        tail++;
+        if (*tail == '\0' || *tail == '\r' || *tail == '\n')
+          return 1;
+    } else
+    /* we only tolerate / and NUL here. Any other character just mean that paths are different */
+      return -1;
+
+    slash = strchr(tail, '/');
+
+    /* файл */
+    if (slash == NULL)
+        return 1;
+
+    /* каталог первого уровня */
+    return slash[1] == '\0' || slash[1] == '\r' || slash[1] == '\n';
+}
+
+
+
+/**
+ * opendir() system call
+ */
+DIR* tard_opendir(void* ctx, const char* name) {
+
+  struct tarfs_dir *dir;
+
+  if (name && *name) {
+
+    int nlen = strlen(name);
+
+    int fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0);
+    if (fd >= 0) {
+
+      dir = calloc(1, sizeof(struct tarfs_dir));
+
+      if (dir != NULL) {
+
+        struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
+
+        if (fs != NULL) {
+
+          dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
+          dir->di_fd   = fd;          /* Underlying directory file descriptor */
+          dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
+          dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
+          // TODO: remove trailing slashes!
+          dir->di_prefix = strdup(name);
+
+          if (dir->di_prefix[nlen - 1] == '/')
+            dir->di_prefix[nlen - 1] = '\0';
+
+          if (dir->di_prefix != NULL) {
+            log("dir '%s' opened, fd=%d\r\n", name, fd);
+            return (DIR*)dir;
+          }
+        }
+        log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
+        free(dir);
+      } else
+        errno = ENOMEM;
+      tarf_close(ctx, fd);
+    }
+  }
+  log("failed for '%s'\r\n", name);
+  return NULL;
+}
+
+/**
+ *
+ */
+int tard_closedir(void* ctx, DIR* pdir) {
+
+  if (pdir) {
+
+    struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
+
+    log("closing dir, fd=%d\r\n", dir->di_fd);
+
+    tarf_close(ctx, dir->di_fd);
+
+    if (dir->di_prefix != NULL)
+      free((void *)dir->di_prefix);
+
+    free(dir);
+
+    return 0;
+  }
+
+  errno = EINVAL;
+  return -1;
+}
+
+
 /*
  *
  */
@@ -232,8 +238,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
 
     cur = cur->in_next;
 
-  /*
-    int x = is_direct_child(cur->in_path, dir->di_prefix);
+    int x = is_direct_child((char const *)cur->in_path, dir->di_prefix);
 
     if (x < 0) {
       log("end of directory '%s' reached\r\n", dir->di_prefix);
@@ -241,8 +246,12 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
     }
 
     if (x > 0) {
-      log("next entry '%s' read\r\n", cur->in_path);
-      const char *p = remove_subpath(cur->in_path, dir->di_prefix);
+//      log("next entry '%s' read\r\n", (char const *)cur->in_path);
+      const char *p = remove_subpath((char const *)cur->in_path, dir->di_prefix);
+
+      if (*p == '/') /* normally yes */
+        p++;
+
       int len = tar_strlen(p, NULL);
       if (len < sizeof(dir->di_ent.d_name)) {
 
@@ -256,9 +265,9 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
         dir->di_off++; 
 
         return &dir->di_ent;
+      } 
     }
-  }
-*/
+
   }  
 
   log("end of alphalist is reached\r\n");
@@ -277,10 +286,10 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 
   struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
 
+  /* We cant setp backwards - we are using single-linked list
+   * so instead we perform full rewind() and then simply do 'offset' numbers of readdir() calls
+   */
   if (dir->di_off > offset) {
-
-    //struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
-
     dir->di_off = 0; 
     dir->di_cino = dir->di_ino;
   }

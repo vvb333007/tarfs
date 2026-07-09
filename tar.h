@@ -93,7 +93,7 @@ _Static_assert(sizeof(tarhdr_t) == 512, "sizeof(tarhdr_t) != 512, code review is
 
 
 /**
- * Compare a TAR string with a regular C string.
+ * Compare an UTS/CTS to a CTS
  *
  * TAR string fields are not required to be NUL-terminated. A string ends
  * at the first '\0', '\r' or '\n', or at s1_end if no terminator appears
@@ -110,6 +110,13 @@ _Static_assert(sizeof(tarhdr_t) == 512, "sizeof(tarhdr_t) != 512, code review is
  *          0 if both strings are equal.
  */
 int tar_strcmp(const char *s1, const char *s1_end, const char *s2);
+
+/*
+ * strncmp() for two CTS
+ *
+ */
+int tar_strncmp(const char *s1, const char *s2, size_t len);
+
 
 /**
  * Return the length of a TAR string.

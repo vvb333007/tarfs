@@ -33,10 +33,15 @@ int main(int argc, char **argv) {
 
 
 
-    DIR *dir = tard_opendir((0), "/Гарвульзепа/Зыка/");
+    DIR *dir = tard_opendir((0), "/Гарвульзепа/Чучундровна/");
 
 
     log("dir=%p\r\n", dir);
+
+    struct dirent *ent;
+    while((ent = tard_readdir(0, dir)) != NULL) {
+      printf("READDIR: '%s'\r\n", ent->d_name);
+    }
 
     if (dir != NULL)
       tard_closedir((0), dir);

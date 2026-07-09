@@ -187,7 +187,7 @@ uint64_t hash64(uint64_t prev_crc, void const *buffer0, size_t buf_len) {
  */
 uint64_t sum64(uint64_t prev_sum, void const *buffer0, size_t buf_len) {
 
-    uint32_t sum = prev_sum;
+    uint64_t sum = prev_sum;
     uint8_t const *buffer = buffer0;
 
     while (buf_len--)

@@ -13,11 +13,10 @@
 
 
 /**
- *
- *  This implementation is an optimized variation of the FNV-1a hash algorithm.
- *  This is NOT a strict reference implementation of FNV, but preserves
- *  byte-equivalence of FNV-1a while improving memory throughput.
+ *  1) CRC64/ECMA182 algorithm implementation (no tables version)
+ *  2) Optimized variation of the FNV-1a hash algorithm.
  */
+
 #pragma once
 
 #include <stdint.h>
