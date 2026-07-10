@@ -489,10 +489,12 @@ return_einval:
      *
      * After positioning at EOF, subsequent read() calls return 0.
      */
-    if (offset > 0 || offset < -fp->fp_size)
+    if (offset > 0 || -offset > fp->fp_size)
       goto return_einval;
 
     fp->fp_pos = (off_t)fp->fp_size + offset; /* offset is <= 0*/
+
+    log("file pos = %lu\r\n",fp->fp_pos);
 
   } else if (whence == SEEK_CUR) {
 
