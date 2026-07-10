@@ -45,7 +45,7 @@ bool tarfs_os_register_fs(const char *prefix, void *context) {
   return true;
 }
 
-void tarfs_os_create_recursive_mutex() { }
+void tarfs_os_init() { }
 void tarfs_os_acquire_mutex() { }
 void tarfs_os_release_mutex() { }
 

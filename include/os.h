@@ -39,7 +39,7 @@
  * On single-threaded systems, or systems without suitable synchronization
  * primitives, all three functions may be implemented as no-ops.
  */
-void  tarfs_os_create_recursive_mutex();
+void  tarfs_os_init();              
 void  tarfs_os_acquire_mutex();
 void  tarfs_os_release_mutex();
 

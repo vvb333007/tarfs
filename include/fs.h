@@ -137,6 +137,14 @@ static inline void tarfs_unlock() {
   tarfs_os_release_mutex();  
 }
 
+/**
+ * Initialize TARFS library
+ *  
+ */
+static inline void tarfs_init() {
+  tarfs_os_init();  
+}
+
 
 
 /**

@@ -25,6 +25,10 @@ int main(int argc, char **argv) {
 
     const char *filename    = argc > 1 ? argv[1] : "tarfs.tar";
     const char *rebase_link = "/\?\?/D:/Arduino/dev";
+
+
+    tarfs_init();
+
 #if 0
     void *os_handle         = NULL;
     size_t size             = 0;

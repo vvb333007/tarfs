@@ -58,7 +58,6 @@ static const esp_vfs_dir_ops_t s_tarfs_dir = {
     .opendir_p   = &tard_opendir,
     .closedir_p  = &tard_closedir,
     .readdir_p   = &tard_readdir,
-    .readdir_r_p = NULL,
     .seekdir_p   = &tard_seekdir,
     .telldir_p   = &tard_telldir,
 
@@ -92,16 +91,18 @@ static const esp_vfs_fs_ops_t s_tarfs_fs = {
 static SemaphoreHandle_t s_lock = NULL;
 
 
-
 /**
- * Lock access to s_tarfs[] table and to the s_numfs counter only. Affects only mount/unmount
+ * Create a recursive sync object
  */
-void tarfs_os_create_recursive_mutex() {
+void tarfs_os_init() {
 
   if (s_lock == NULL)
-    s_lock = xSemaphoreCreateMutex();
+    s_lock = xSemaphoreCreateRecursiveMutex();
 }
 
+/**
+ * Lock access to s_tarfs[] table and to the s_numfs counter only. 
+ */
 void tarfs_os_acquire_mutex() {
 
   if (s_lock != NULL) do { 
@@ -109,15 +110,38 @@ void tarfs_os_acquire_mutex() {
   } while (pdFALSE == xSemaphoreTake(s_lock, portMAX_DELAY));
 }
 
+/**
+ * Unlock access to s_tarfs[] table and to the s_numfs counter only. 
+ */
 void tarfs_os_release_mutex() {
 
   if (s_lock != NULL)
     xSemaphoreGive(s_lock);
 }
 
+/* Default allocator 
+ * TODO: use heap_caps_malloc(SPIRAM) where available
+ */
+void *tarfs_os_malloc(size_t size) {
+
+  return malloc(size);
+}
+
+/* Default free() 
+ * TODO: use heap_caps_free() where available
+ */
+void  tarfs_os_free(void *buffer) {
+ 
+  free(buffer);
+}
+
 
 /**
- *
+ * Map a ESP32 flash partition to a virtual address space
+ * @param label esp32 partition label
+ * @param os_handle_out a pointer to an opaque OS-specific mapping handle. MUST NOT be NULL
+ * @param size_out a pointer to a size_t var where total mapped region size will be stored. Can be NULL
+ * @return an address where resource named "label" is accessible
  */
 void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t *size_out) {
 
@@ -125,19 +149,20 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   esp_partition_mmap_handle_t handle;
   const esp_partition_t      *part;
   size_t len;
-  void *map;
+  void const *map;
 
   if (label == NULL || os_handle_out == NULL) {
+    log("ESP32: invalid arguments\r\n");
     errno = EINVAL;
     return false;
   }
   
   /* Fetch pointer to the FLASH partition descriptor by its label */
   i = esp_partition_find(ESP_PARTITION_TYPE_DATA,
-                         ESP_PARTITION_SUBTYPE_DATA_TARFS,
+                         ESP_PARTITION_SUBTYPE_ANY,
                          label);
   if (i == NULL) {
-    log("partition not found (%s)\r\n", label);
+    log("ESP32: partition not found '%s'\r\n", label);
     errno = ENOENT;
     return false;
   }
@@ -152,7 +177,8 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
     if (size_out)
       *size_out = part->size;
 
-    log("Partition %s, vaddr=%p, size=%u\r\n", label, map, part->size);
+    log("ESP32: partition '%s' -> vaddr=%p, size=%u\r\n", label, map, part->size);
+
     return map;
   }
 
@@ -162,16 +188,25 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
 }
 
 /**
+ * Opposite of tarfs_os_map_tarfile()
  *
+ * @param label esp32 partition label
+ * @param os_handle an opaque value as returned by tarfs_os_map_tarfile()
+ * @param size total mapped region size
+ *
+ * @return true if unmapped, false otherwise
  */
 bool tarfs_os_unmap_tarfile(const char *label, void *os_handle, size_t size) {
   label = label;
   size = size;
-  return ESP_OK == esp_partition_munmap((esp_partition_mmap_handle_t)os_handle)
+  return ESP_OK == esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);
 }
 
 
-
+/**
+ * Tell the VFS that path 'prefix' is not handled by tarfs anymore.
+ * Called by commit_unmoount()
+ */
 bool tarfs_os_unregister_fs(const char *prefix) {
 
   return ESP_OK == esp_vfs_unregister_fs(prefix);
@@ -179,7 +214,12 @@ bool tarfs_os_unregister_fs(const char *prefix) {
 
 
 
-
+/**
+ * Tell the VFS that TARFS is now handle all the paths starting from 'prefix'.
+ * VFS in turn promises that it will pass the 'context' in every handler function
+ * later (e.g. tarf_open(context,) etc)
+ *
+ */
 bool tarfs_os_register_fs(const char *prefix, void *context) {
 
   return ESP_OK == esp_vfs_register_fs(prefix,
@@ -189,12 +229,3 @@ bool tarfs_os_register_fs(const char *prefix, void *context) {
                                        ESP_VFS_FLAG_READONLY_FS,
                                        context);
 }
-
-void *tarfs_os_malloc(size_t size) {
-  return malloc(size);
-}
-
-void  tarfs_os_free(void *buffer) {
-  free(buffer);
-}
-
