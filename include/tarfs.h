@@ -29,5 +29,7 @@
 #include "os.h"
 #include "refc.h"
 #include "fs.h"
+#include "dir.h"
 #include "file.h"
 #include "inode.h"
+#include "posix.h"
