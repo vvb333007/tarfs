@@ -370,11 +370,7 @@ unmap_and_return_error:
   }
 
   log("Congrats! Mount is done. Filesystem slot is %d\r\n", slot);
-  errno = 0;
   return slot;
-
-  return -1;
-
 }
 
 

@@ -41,20 +41,31 @@
  * Thread-safety notes
  * ===================
  *
- * Simultaneious open() + unmount() is not thread-safe:
+ * Concurrent open() and unmount() are not thread-safe.
  *
  *   Subject to a TOCTTOU race inherited from the ESP-IDF VFS.
- *   unmount() and open() may execute concurrently because the VFS passes
- *   a cached filesystem context that can become invalid before
- *   tarfs_addref() is attempted. Not much we can do here unless ESP-IDF
- *   get improved VFS
+ *   tarfs_unmount() and tarfs_open() may execute concurrently because the VFS passes
+ *   a cached filesystem context that may become invalid before
+ *   tarfs_addref() is called.
  *
- * close() is not thread safe: 
- *   closing a file descriptor may create an UB
- *   closing a descriptor while performing active read on it AND opening another descriptor afterwards
- *   may create a race: newly opened FD could be treated by running read() as the sane old descriptor
- *   resulting in wrong data being read
- */ 
+ *   There is little TARFS can do about this unless the ESP-IDF VFS
+ *   implementation is changed.
+ *
+ * To avoid this race, either keep the filesystem permanently mounted or
+ * provide the required synchronization in your application.
+ *
+ *
+ * close() during an active read()
+ *
+ *   If Thread 1 is executing read(), it may be preempted while another thread
+ *   closes the file descriptor and immediately opens another file.
+ *   Since file descriptor numbers may be reused, Thread 1 will resume the
+ *   read() operation on the newly opened file instead of the original one.
+ *
+ * To avoid this race (if you really need to close() a file descriptor while
+ * another thread is reading from it), provide the required synchronization in
+ * your application or, preferably, redesign the application logic.
+ */
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -78,8 +89,6 @@
 #include "tar.h"
 #include "fs.h"
 #include "refc.h"
-
-#define $$( Errno_ ) ({ errno = (Errno_); (void *)NULL; })
 
 /* Compile-time sanity checks */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
@@ -284,10 +293,9 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
       fp->fp_pos   = 0;
       fp->fp_size  = size;
-      fp->fp_idx   = idx;
+      fp->fp_idx   = idx; /* inode index */
 
       log("success, ino=%d, type=%c, path=%s, fd=%d, size=%lu, vaddr=%p\r\n",idx, type, path, fd,fp->fp_size, (void *)fp->fp_vaddr);
-      errno = 0;
 
       /* free strduped path */
       if (path != path0) {
