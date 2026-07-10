@@ -24,6 +24,7 @@
 #include <sys/errno.h>
 #include <sys/fcntl.h>
 
+#include "config.h"
 #include "os.h"
 #include "refc.h"
 #include "fs.h"

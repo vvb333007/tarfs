@@ -1,23 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <sys/dirent.h>
-
-#include "fs.h"
-#include "tar.h"
-#include "dir.h"
-#include "hash.h"
-#include "inode.h"
-
-
-
-
-
+#include "tarfs.h"
 
 
 #if 1
