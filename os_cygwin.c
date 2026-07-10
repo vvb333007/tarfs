@@ -48,6 +48,8 @@ void tarfs_os_acquire_mutex() { }
 void tarfs_os_release_mutex() { }
 
 
+void *tarfs_os_malloc(size_t size) { return malloc(size); }
+void  tarfs_os_free(void *buffer) { free(buffer); }
 
 
 /* Map a TAR filesystem image into the process address space.
@@ -87,7 +89,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
       *size_out = size;
 
     // выделяем буфер
-    unsigned char *buf = (unsigned char *)malloc(size);
+    unsigned char *buf = (unsigned char *)tarfs_os_malloc(size);
     if (!buf) {
         printf("malloc failed (%ld bytes)\n", size);
         fclose(f);
@@ -103,7 +105,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     size_t read_bytes = fread(buf, 1, size, f);
     if (read_bytes != (size_t)size) {
         printf("fread failed: got %zu / %ld bytes\n", read_bytes, size);
-        free(buf);
+        tarfs_os_free(buf);
         fclose(f);
         return NULL;
     }
@@ -116,5 +118,5 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
 void tarfs_os_unmap_tarfile(void *handle, void *ptr, size_t size) {
   ptr = ptr;
   size = size;
-  free(handle);
+  tarfs_os_free(handle);
 }

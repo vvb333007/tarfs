@@ -46,6 +46,9 @@ void tarfs_os_acquire_mutex() {
 void tarfs_os_release_mutex() {
 }
 
+void *tarfs_os_malloc(size_t size) { return malloc(size); }
+void  tarfs_os_free(void *buffer) { free(buffer); }
+
 
 /* Map a TAR filesystem image into the process address space.
  *

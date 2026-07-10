@@ -27,10 +27,10 @@
 #include <errno.h>
 
 #include "inode.h"
-#include "fnv1a.h"
+#include "hash.h"
 #include "fs.h"
 #include "tar.h"
-#include "fnv1a.h"
+#include "hash.h"
 #include "inode.h"
 
 
@@ -106,8 +106,6 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
         // 2. check prefix "path="
         if (len >= templ_len && memcmp(line, templ, templ_len) == 0)
         {
-            //XXX: verify len
-
             // Check if found key value ends with \r \n or NUL within the buf
             bool good_line = false;
             for (int i=templ_len; i < (len - digi - 1); i++)
@@ -117,7 +115,7 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
               }
   
             if (!good_line)
-                printf("\r\n!!!!!!!!!!!!!!!!!!!\r\n");
+                log("BAD/MALFORMED archive\r\n");
   
             return good_line ? line + templ_len : NULL; // value starts here
         }
@@ -304,7 +302,7 @@ struct tarfs_inode **inode_alloc(size_t count) {
     index_size = count * sizeof(struct tarfs_inode *);
     nodes_size = count * sizeof(struct tarfs_inode);
 
-    if (NULL == (ptr = calloc(1, index_size + nodes_size)))
+    if (NULL == (ptr = tarfs_calloc(1, index_size + nodes_size)))
       return $$(ENOMEM); /* Return NULL, sets errno=ENOMEM */
 
     index = (struct tarfs_inode **)ptr;
@@ -316,7 +314,7 @@ struct tarfs_inode **inode_alloc(size_t count) {
     for (size_t i = 0; i < count; i++)
       index[i] = &nodes[i];
 
-    printf("tarfs: allocated %lu inodes, %lu bytes (%lu + %lu)\r\n",count,index_size + nodes_size,index_size, nodes_size);
+    log("Allocated %lu inodes, %lu bytes (%lu + %lu)\r\n",count,index_size + nodes_size,index_size, nodes_size);
     return index;
 }
 
@@ -333,11 +331,11 @@ void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, s
       if (index[i]->in_path != 0) {
         /* address is from the tar file range or beyond? */
         if (index[i]->in_path < tar_start || index[i]->in_path >= (tar_start + tar_length)) {
-          free((void *)(index[i]->in_path));
+          tarfs_os_free((void *)(index[i]->in_path));
         }
       }
     }
-    free(index);
+    tarfs_os_free(index);
   }
 }
 
@@ -418,16 +416,16 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
       for (int i = first;  i < num_inodes && index[i]->in_hash == hash; i++) {
         //struct tarhdr *hdr = (struct tarhdr *)index[i]->in_vaddr;
         if (inode_pathcmp(index[i], path)) {
-          printf("inode_lookup(): inode#%u, <e8bb5ed2> path=%s\r\n", i, path);
+          log("found inode#%u, hash=<e8bb5ed2> path='%s'\r\n", i, path);
           return i;
         }
       }
 
-      log("unresolved collision, path=%s\r\n", path);
+      log("unresolved collision, path='%s'\r\n", path);
       break;
     }
   } /* while left < right */
-  log("<%08x> path=\"%s\" not found\r\n",hash, path);
+  log("hash=<%08x> path='%s' not found\r\n",hash, path);
   return -ENOENT;
 }
 
@@ -463,7 +461,10 @@ tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *s
   return TART_BAD;
 }
 
-
+/* Return raw inode type: TART_DIR, TART_FILE or TART_BAD. Links are resolved to their
+ * final destination. To check if inode is a link, use inode_islink() function instead
+ *
+ */
 tart_t inode_rawtype(struct tarfs_inode const *ino) {
 
   if (ino != NULL) {
@@ -475,21 +476,16 @@ tart_t inode_rawtype(struct tarfs_inode const *ino) {
   return TART_BAD;
 }
 
-
+/* Check if inode ino is a link or not.
+ *
+ */
 bool inode_islink(struct tarfs_inode const *ino) {
 
-  if (ino != NULL) {
+  if (ino == NULL)
+    return false;
 
-    struct tarhdr const *hdr = (struct tarhdr const *)ino->in_vaddr;
-
-    /* bad inode: null data (damaged archive for example). return inode type. */
-    if (ino->in_dvaddr == 0)
-      return hdr->type == TART_SYMLINK || hdr->type == TART_HARDLINK;
-
-    /* good inode: good inodes only have vaddr != dvaddr is they are link-type inodes  */
-    return ino->in_vaddr != ino->in_dvaddr;
-  }  
-  return false;
+  struct tarhdr const *hdr = (struct tarhdr const *)ino->in_vaddr;
+  return hdr->type == TART_SYMLINK || hdr->type == TART_HARDLINK;
 }
 
 
@@ -542,7 +538,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
   }
   log("total %d links", links);
 
-  struct tarfs_link *ldesc = malloc(links * sizeof(struct tarfs_links));
+  struct tarfs_link *ldesc = tarfs_os_malloc(links * sizeof(struct tarfs_links));
   if (ldesc != NULL) {
     memset(ldesc,0, links * sizeof(struct tarfs_links));
   }
@@ -593,18 +589,18 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           dest = inode_lookup((struct tarfs_inode const * const *)index, count, link_name);
           if (dest < 0) {
             
-            printf("inode_resolve() failed to resolve %s in two attempts\r\n", link_name);
+            log("failed to resolve '%s' in two attempts\r\n", link_name);
             break;
           }
         }
         tart_t type = inode_getinfo((struct tarfs_inode const * const *)index, dest, NULL, NULL);
         if (type == TART_BAD) {
-          printf("inode_resolve() : can not get info on inode %d\r\n", dest);
+          log("can not get info on inode %d\r\n", dest);
           break;
         }
           
         if (type != TART_HARDLINK && type != TART_SYMLINK) {
-          printf("inode_resolve() : %d->%d, final destination ", i, dest);
+          log("inode_resolve() : %d->%d, final destination ", i, dest);
           tar_print((const char *)index[dest]->in_path, NULL);
           puts("");
           index[i]->in_dvaddr = index[dest]->in_dvaddr;
@@ -613,32 +609,30 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
         }
 
         link_name = (char *)index[dest]->in_next;
-        printf("link to a link, continuing  to resolve..\r\n");
+        log("link to a link, continuing  to resolve..\r\n");
 
       } while(--depth > 0);
 
       if (index[i]->in_dvaddr == 0) {
-        printf("tarfs: inode #%d is a floating link\r\n",i);
+        log("inode #%d is a floating link\r\n",i);
         floating++;
       }
 
     }
   }
 
-  printf("tarfs: memory cleanup, release unneded memory chunks\r\n");
+  log("memory cleanup, release unneded memory chunks\r\n");
 
   for (int i = 0; i < count; i++ ) {
     
     const char *link_name = (const char *)index[i]->in_next;
     if (link_name != NULL) {
       index[i]->in_next = NULL;
-      free((void *)link_name);
-
+      tarfs_os_free((void *)link_name);
     }
   }
 
-  printf("tarfs: %u of %u links were resolved, floating inodes: %u\r\n",resolved, attempted, floating);
-
+  log("%u of %u links were resolved, floating inodes: %u\r\n",resolved, attempted, floating);
   return 0;
 }
 
@@ -770,7 +764,7 @@ bad_header:
 
               const char *t = remove_subpath(tmp, tmp+sizeof(tmp), root_folder);
 
-              inodes[idx].in_path = (uintptr_t)strdup(t);
+              inodes[idx].in_path = (uintptr_t)tarfs_strdup(t);
               overhead += strlen(t);
 
           } else {

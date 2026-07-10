@@ -26,7 +26,7 @@
 #include <stddef.h>
 
 #include "config.h"
-#include "fnv1a.h"
+#include "hash.h"
 
 
 #define HASH32_PRIME  (uint32_t)(16777619u)     /* Special prime number */

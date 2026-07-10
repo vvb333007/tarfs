@@ -53,10 +53,7 @@ ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
 
 #if CONFIG_TARFS_HAVE_DIRFD
 /**
- * readlink() relies on a mount-time link table: when image is mounted, the inode_resolve() function,
- * which does all kind of link resolution, also builds a "link index": a sorted array of {hash, cchar *points_to} pairs
- * where points_to is the address if in_path, so each "link index" occupies 8 bytes on 32-bit machines
- *
+ * TODO: how we can convert local_fd to global_fd?
  */
 int dirfd(DIR *dir) {
   /*

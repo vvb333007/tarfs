@@ -21,7 +21,7 @@
 
 #include "fs.h"
 #include "tar.h"
-#include "fnv1a.h"
+#include "hash.h"
 #include "inode.h"
 
 

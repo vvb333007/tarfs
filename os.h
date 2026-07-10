@@ -105,3 +105,10 @@ bool tarfs_os_unregister_fs(const char *prefix);
  *   - ESP-IDF returns 16.
  */
 size_t tarfs_os_mp_maxlen();
+
+/**
+ * Memory backend
+ *
+ */
+void *tarfs_os_malloc(size_t size);
+void  tarfs_os_free(void *buffer);

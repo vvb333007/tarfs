@@ -22,7 +22,7 @@
 #include "os.h"
 #include "fs.h"
 #include "tar.h"
-#include "fnv1a.h"
+#include "hash.h"
 
 /* Checked Tar String == a byte sequence, within TAR image, which is terminated with \0, \r, or \n
  * Unchecked Tar String == a byte sequence, POSIIBLY unterminated
@@ -165,7 +165,7 @@ char *tar_strdup1(const char *s1, const char *s1_end) {
 
   size_t len = tar_strlen(s1, s1_end);
 
-  char *buf = malloc(len + 1 + 1);
+  char *buf = tarfs_os_malloc(len + 1 + 1);
 
   if (buf != NULL) {
     memcpy(buf,s1,len);

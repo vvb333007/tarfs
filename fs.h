@@ -258,3 +258,9 @@ int tarfs_fsindex(const char *path);
  *        specified path.
  */
 time_t tarfs_getmtime(int fs_idx);
+
+/* Implementation of a calloc() and a strdup() via memory backend
+ *
+ */
+void *tarfs_calloc(size_t count, size_t size);
+char *tarfs_strdup(char const *str);

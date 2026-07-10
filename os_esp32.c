@@ -125,6 +125,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   esp_partition_mmap_handle_t handle;
   const esp_partition_t      *part;
   size_t len;
+  void *map;
 
   if (label == NULL || os_handle_out == NULL) {
     errno = EINVAL;
@@ -188,3 +189,12 @@ bool tarfs_os_register_fs(const char *prefix, void *context) {
                                        ESP_VFS_FLAG_READONLY_FS,
                                        context);
 }
+
+void *tarfs_os_malloc(size_t size) {
+  return malloc(size);
+}
+
+void  tarfs_os_free(void *buffer) {
+  free(buffer);
+}
+

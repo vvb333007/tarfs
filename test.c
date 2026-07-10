@@ -11,7 +11,7 @@
 #include "fs.h"
 #include "tar.h"
 #include "dir.h"
-#include "fnv1a.h"
+#include "hash.h"
 #include "inode.h"
 #if 1
 int main(int argc, char **argv) {
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 
 
-
+#if 0
     DIR *dir = tard_opendir((0), "/Гарвульзепа/Чучундровна/");
 
 
@@ -45,7 +45,13 @@ int main(int argc, char **argv) {
 
     if (dir != NULL)
       tard_closedir((0), dir);
+#endif
+    int fd = tarf_open(0, "/list/example.c", O_RDONLY, 0);
+    char ch;
+    while(tarf_read(0, fd, &ch, 1) == 1)
+      putchar(ch);
 
+    tarf_close(0, fd);
     tarfs_unmount("/jopa");
     
     

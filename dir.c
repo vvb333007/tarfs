@@ -169,7 +169,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
     int fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0);
     if (fd >= 0) {
 
-      dir = calloc(1, sizeof(struct tarfs_dir));
+      dir = tarfs_calloc(1, sizeof(struct tarfs_dir));
 
       if (dir != NULL) {
 
@@ -182,7 +182,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
           dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
           dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
 
-          dir->di_prefix = strdup(name);
+          dir->di_prefix = tarfs_strdup(name);
 
           if (dir->di_prefix[nlen - 1] == '/')
             dir->di_prefix[nlen - 1] = '\0';
@@ -193,7 +193,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
           }
         }
         log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
-        free(dir);
+        tarfs_os_free(dir);
       } else
         errno = ENOMEM;
       tarf_close(ctx, fd);
@@ -220,9 +220,9 @@ int tard_closedir(void* ctx, DIR* pdir) {
     tarf_close(ctx, dir->di_fd);
 
     if (dir->di_prefix != NULL)
-      free((void *)dir->di_prefix);
+      tarfs_os_free((void *)dir->di_prefix);
 
-    free(dir);
+    tarfs_os_free(dir);
 
     return 0;
   }
@@ -285,9 +285,9 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
         dir->di_off++; 
 
         return &dir->di_ent;
-      } 
+      } else
+        errno = ENAMETOOLONG;
     }
-
   }  
 
   log("end of alphalist is reached\r\n");

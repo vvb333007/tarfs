@@ -213,7 +213,7 @@ static void commit_unmount(void *ctx) {
   }
 
   log("deleting FS descriptor %p\r\n", fs);
-  free(fs);
+  tarfs_os_free(fs);
 }
 
 int tarfs_unref(struct tarfs_fs *fs) {
@@ -309,7 +309,7 @@ unmap_and_return_error:
     }
 
     /* Allocate FS descriptor */
-    if ( NULL == (fs = calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
+    if ( NULL == (fs = tarfs_calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
       log("ERR: out of memory\r\n");
       errno = ENOMEM;
       goto unmap_and_return_error;
@@ -320,7 +320,7 @@ unmap_and_return_error:
     tarfs_lock();
     if (0 > (slot = findfs( NULL ))) {
       tarfs_unlock();
-      free(fs);
+      tarfs_os_free(fs);
       log("ERR: too many mounted filesystems (%u)\r\n",s_numfs);
       errno = EBUSY;
       goto unmap_and_return_error;
@@ -416,8 +416,39 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
   return -1;
 }
 
+/**
+ * calloc() based on a memory backend
+ */
+void *tarfs_calloc(size_t count, size_t size) {
 
+  void *buffer;
 
+  if ((buffer = tarfs_os_malloc(size)) != NULL)
+    memset(buffer, 0, size);
+
+  return buffer;
+}
+
+/*
+ * strdup() based on a memory backend
+ */
+char *tarfs_strdup(char const *str) {
+
+  if (str != NULL) {
+
+    size_t len = strlen(str);
+    char  *dst = tarfs_os_malloc(len + 1);
+
+    if (dst != NULL) {
+
+      memcpy(dst, str, len);
+      dst[len] = '\0';
+
+      return dst;
+    }
+  }
+  return NULL;
+}
 
 
 

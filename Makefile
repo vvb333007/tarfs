@@ -18,7 +18,7 @@ COMMON_SRC := \
     tar.c \
     inode.c \
     os_cygwin.c \
-    fnv1a.c \
+    hash.c \
     fs.c \
     refc.c \
     posix.c \

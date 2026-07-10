@@ -163,8 +163,10 @@ static bool is_sanefd(struct tarfs_fs *fs, int fd) {
             ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
 }
 
-/* File operation handlers. These are called by VFS
- *
+/* File operation handlers. These are called by VFS (on systems with VFS) or directly
+ * When called directly it is user resposibility to pass the FS context as the first
+ * argument. The FS context is a number (not a pointer, don't be confused by void *) 
+ * in the range [0..TARFS_MAX_FS). This number is returned by tarfs_mount()
  */
 
 
@@ -193,21 +195,33 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
 
     log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    errno = EIO;
     return -1; 
   } 
 
+  if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
+      log("file %s bad flags %08x, read-only filesystem!\r\n",path, flags);
+      errno = EROFS;
+      return -1;
+  }
+
+
+  /* add a reference to the filesystem. this will ensure that context remain alive until tarf_close() */
   if (path && tarfs_addref(fs)) {
 
     
-
+    /* If directory is opened - fix up the directory name
+     * Internally , 'directory' and 'directory/' are two different paths so we have
+     * to take this into account
+     */
     if (flags & O_DIRECTORY) {
       log("O_DIRECTORY, path='%s'\r\n", path);
       int i = strlen(path);
       if (i > 0) {
         if (path[i - 1] != '/') {
-          log("O_DIRECTORY, appending a slash (MALLOC)\r\n");
-          char *p = tar_strdup1(path, NULL);
+          log("O_DIRECTORY, appending a slash (strdup)\r\n");
+          char *p = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
           if (p != NULL) {
             p[i] = '/';
             path = (const char *)p;
@@ -217,6 +231,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       }
     }
 
+    /* Find corresponding inode */
     int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
     if (idx < 0) {
@@ -229,17 +244,11 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
     struct tarfs_inode const *inode = fs->fs_ino[idx];
 
+    /* bad inode */
     if (inode->in_dvaddr == 0) {
 
       log("inode '%s' was found but has NULL DVADDR\r\n", path);
       errno = EIO;
-      goto unref_and_exit;
-    }
-
-    if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
-
-      log("file %s bad flags %08x, read-only filesystem!\r\n",path, flags);
-      errno = EROFS;
       goto unref_and_exit;
     }
 
@@ -283,7 +292,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       /* free strduped path */
       if (path != path0) {
         log("free strduped path\r\n");
-        free((void *)path);
+        tarfs_os_free((void *)path);
       }
 
       return fd;
@@ -300,7 +309,7 @@ unref_and_exit:
   /* free strduped path */
   if (path != path0) {
     log("free strduped path\r\n");
-    free((void *)path);
+    tarfs_os_free((void *)path);
   }
 
   tarfs_unref(fs);
@@ -369,8 +378,7 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
   fp->fp_pos += size;
 
   /* Copy the requested data.
-   * TODO: Use an architecture-optimized memcpy() where available
-   * (e.g. ESP32-S3, P4, etc.).
+   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
    */
   if (size > 0)
     memcpy(dst, src, size);
