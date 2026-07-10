@@ -363,7 +363,7 @@ unmap_and_return_error:
 
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
-  if (tarfs_os_register_fs(mountpoint, (void *)fs) == false) {
+  if (tarfs_os_register_fs(mountpoint, (void *)(intptr_t)slot) == false) {
     log("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
   } else {
     log("registered. (prefix '%s' in VFS)\r\n", mountpoint);

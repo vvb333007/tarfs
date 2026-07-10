@@ -225,7 +225,6 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
      * to take this into account
      */
     if (flags & O_DIRECTORY) {
-      log("O_DIRECTORY, path='%s'\r\n", path);
       int i = strlen(path);
       if (i > 0) {
         if (path[i - 1] != '/') {
@@ -253,7 +252,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
     struct tarfs_inode const *inode = fs->fs_ino[idx];
 
-    /* bad inode */
+    /* bad inode? */
     if (inode->in_dvaddr == 0) {
 
       log("inode '%s' was found but has NULL DVADDR\r\n", path);
@@ -265,12 +264,23 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     /* Determine object type and size. */
     type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
 
-    /* O_DIRECTORY requires the target to be a directory. */
-    if ((flags & O_DIRECTORY) && type != TART_DIR) {
-      log("O_DIRECTORY specified for a non-directory object\r\n");
-      errno = ENOTDIR;
-      goto unref_and_exit;
+    /* O_DIRECTORY requires the target to be a directory. 
+     * Absence of O_DIRECTORY requires the target NOT to be a directory. 
+     */
+    if ((flags & O_DIRECTORY) != 0) {
+      if (type != TART_DIR) {
+        log("O_DIRECTORY specified for a non-directory object\r\n");
+        errno = ENOTDIR;
+        goto unref_and_exit;
+      }
+    } else {
+      if (type == TART_DIR) {
+        log("target is a directory, O_DIRECTORY flag is required\r\n");
+        errno = EISDIR;
+        goto unref_and_exit;
+      }
     }
+
 
     /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
      * Instead we rely on that fact that fd becomes available only upon open() return, so publishing is done by

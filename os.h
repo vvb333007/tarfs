@@ -32,7 +32,7 @@
 #define likely(_X)     __builtin_expect(!!(_X), 1)
 
 
-/* OS API */
+/* Platform API */
 
 /* TARFS uses a single recursive mutex to protect its internal state.
  *
@@ -60,6 +60,7 @@ void *tarfs_os_map_tarfile(const char *name, void **os_handle_out, size_t *size_
 void  tarfs_os_unmap_tarfile(void *os_handle, void *ptr, size_t size);
 
 /* Register or unregister TARFS with the platform VFS.
+ *
  * TARFS driver calls this as a final part of the nount() process. Registration function
  * is responsible for registering FS handlers in host VFS
  *
@@ -107,8 +108,11 @@ bool tarfs_os_unregister_fs(const char *prefix);
 size_t tarfs_os_mp_maxlen();
 
 /**
- * Memory backend
+ * Memory allocation backend.
  *
+ * By default, these functions map directly to malloc() and free().
+ * Platform-specific implementations may override them to use a custom
+ * allocator.
  */
 void *tarfs_os_malloc(size_t size);
 void  tarfs_os_free(void *buffer);

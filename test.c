@@ -13,6 +13,13 @@
 #include "dir.h"
 #include "hash.h"
 #include "inode.h"
+
+
+
+
+
+
+
 #if 1
 int main(int argc, char **argv) {
 
