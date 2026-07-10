@@ -381,7 +381,6 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
           if (hdr->type == TART_DIR) {
             if (hdr->name[0]) {
 
-              //printf("A candidate found at %p\r\n", hdr);
               /* Check if guessed root is a valid mountpoint name (latin1, <17 bytes)*/
               int l = tar_strlen(hdr->name, &hdr->name[0] + sizeof(hdr->name));
               if (l < sizeof(hdr->name) && l <= tarfs_os_mp_maxlen() && l < out_len) {

@@ -137,7 +137,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
                          ESP_PARTITION_SUBTYPE_DATA_TARFS,
                          label);
   if (i == NULL) {
-    printf("partition not found (%s)\r\n", label);
+    log("partition not found (%s)\r\n", label);
     errno = ENOENT;
     return false;
   }
@@ -152,11 +152,11 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
     if (size_out)
       *size_out = part->size;
 
-    printf("Partition %s, vaddr=%p, size=%u\r\n", label, map, part->size);
+    log("Partition %s, vaddr=%p, size=%u\r\n", label, map, part->size);
     return map;
   }
 
-  printf("esp_partition_mmap() failed\r\n");
+  log("esp_partition_mmap() failed\r\n");
   errno = ENOMEM;
   return false;
 }

@@ -63,7 +63,7 @@ struct tarfs_inode  {
 
   uintptr_t  in_path;    /*!< Pointer to the full pathname. If NULL, the pathname is reconstructed at runtime from the tar header prefix/name fields.
                               The pathname is not guaranteed to be NUL-terminated. It may end
-                              at '\0', '\r' or '\n', therefore strcmp() must not be used. */
+                              at '\0', '\r' or '\n', therefore tar_strcmp() must be used. */
 
   uintptr_t  in_vaddr;  /*!< Virtual address of the original tarhdr entry */
   uintptr_t  in_dvaddr; /*!< final resolved target after link resolution, i.e. a file or a directory */

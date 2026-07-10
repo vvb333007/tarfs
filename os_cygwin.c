@@ -25,7 +25,9 @@
 #include <sys/fcntl.h>
 #include <assert.h>
 
+#include "config.h"
 #include "os.h"
+#include "fs.h"
 
 
 size_t tarfs_os_mp_maxlen() {
@@ -34,12 +36,12 @@ size_t tarfs_os_mp_maxlen() {
 }
 
 bool tarfs_os_unregister_fs(const char *prefix) {
-  printf("Unregister FS '%s'\r\n", prefix);
+
   return true;
 }
 
 bool tarfs_os_register_fs(const char *prefix, void *context) {
-  printf("Register FS '%s'\r\n", prefix);
+
   return true;
 }
 
@@ -80,7 +82,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     fseek(f, 0, SEEK_SET);
 
     if (size <= 0) {
-        printf("Invalid file size\n");
+        log("Invalid file size\n");
         fclose(f);
         return NULL;
     }
@@ -91,7 +93,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     // выделяем буфер
     unsigned char *buf = (unsigned char *)tarfs_os_malloc(size);
     if (!buf) {
-        printf("malloc failed (%ld bytes)\n", size);
+        log("malloc failed (%ld bytes)\n", size);
         fclose(f);
         return NULL;
     }
@@ -104,7 +106,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     // читаем файл целиком
     size_t read_bytes = fread(buf, 1, size, f);
     if (read_bytes != (size_t)size) {
-        printf("fread failed: got %zu / %ld bytes\n", read_bytes, size);
+        log("fread failed: got %zu / %ld bytes\n", read_bytes, size);
         tarfs_os_free(buf);
         fclose(f);
         return NULL;

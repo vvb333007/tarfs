@@ -122,7 +122,7 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
 
         // 3. jump to next record
         i = line_start + len - digi - 1;
-  //      printf("[%s]\r\n",buf+i);
+
     }
 
     return NULL;
@@ -224,8 +224,7 @@ static struct tarfs_inode *merge(struct tarfs_inode *a, struct tarfs_inode *b) {
 
     while (a && b) {
 
-        // XXX: must use_tarstrcmp() which treats \r\n\0 in the same way: NUL
-        if (strcmp((char const *)a->in_path, (char const *)b->in_path) <= 0) {
+        if (tar_strcmp((char const *)a->in_path, NULL,(char const *)b->in_path) <= 0) {
             *tail = a;
             a = a->in_next;
         } else {
@@ -655,7 +654,7 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
     
     size_t off = 0, bad_start;
     size_t hdr_no = 0;
-    int bad = 0;
+    unsigned int bad = 0, total_bad = 0;
     const char *pax_entry_path = NULL, *pax_entry_link = NULL, *pax_entry_end;
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
 
@@ -673,9 +672,9 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
           pax_entry_link = NULL;
 
           if (!bad) {
-            printf("Header #%lu is invalid (or NUL-header)\r\n", hdr_no);
+            log("Header #%lu is invalid (or NUL-header)\r\n", hdr_no);
 bad_header:
-            printf("Skipping blocks starting from offset %lu..\r\n", off);
+            log("Skipping blocks starting from offset %lu..\r\n", off);
             bad++;
             bad_start = off;
           }
@@ -685,15 +684,17 @@ bad_header:
         }
 
         if (bad) {
-          printf("Resuming at offset %lu; (%lu blocks/ %lu bytes) were lost \n", off, (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
+          log("Resuming at offset %lu; (%lu blocks/ %lu bytes) were lost \n", off, (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
+          total_bad += bad;
           bad = 0;
+          
         }
 
         uint64_t size = tar_octal(hdr->size, sizeof(hdr->size));
 
         /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
         if (((uintptr_t)(hdr + 1)) + size >= tar_end) {
-          printf("Invalid entry size, sector marked as bad\r\n");
+          log("Invalid entry size, sector marked as bad\r\n");
           goto bad_header;
         }
 
@@ -734,7 +735,7 @@ bad_header:
         /*All checks are done, start populating inode.
          * inodes[idx].in_path = (uintptr_t)strdup("Hello Hello");
          */
-  //      printf("#%d (%lu): ", idx, size);
+
 
         /* NAME */
         if (pax_entry_path) {
@@ -834,13 +835,8 @@ bad_header:
         inodes[idx].in_vaddr = (uintptr_t)hdr;
         inodes[idx].in_dvaddr = (uintptr_t)hdr;
 
-//        printf("<%08x> path=\"%s\", size=%u\r\n", inodes[idx].in_hash, (char const *)inodes[idx].in_path, size);
-
-
         /* go to the next inode index */
-//        printf("Inode #%d has been created\r\n", idx);
         idx++;
-//        printf("\r\n");
 
 
         /**/
@@ -858,15 +854,14 @@ skip_header_and_data:
         hdr_no++;
     }
 
-    printf("tarfs: end of file reached\r\n");
-    if (bad)
-      printf("tarfs: %lu blocks (%lu bytes) were skipped\n", (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
+    log("end of file reached\r\n");
+    if (total_bad)
+      log("%lu blocks (%lu bytes) were skipped\n", total_bad, off - bad_start);
       
 
-  printf("tarfs: TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
-//  printf("tarfs: Bad path: %u inodes\r\n", bad_path);  
-  printf("tarfs: TAR data/headers ratio: %u data bytes, %u header bytes\r\n", total_data_size, total_headers_size);  
-  printf("tarfs: RAM overhead (total RAM used by the FS): %u bytes\r\n", overhead);
+  log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
+  log("TAR data/headers ratio: %u data bytes, %u header bytes\r\n", total_data_size, total_headers_size);  
+  log("RAM overhead (total RAM used by the FS): %u bytes\r\n", overhead);
 
   return total_data_size;
 }
@@ -878,7 +873,7 @@ skip_header_and_data:
 void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size) {
 
   if (fs != NULL && fs->fs_ino != NULL) {
-    printf("tarfs: free inodes\r\n");
+    log("free inodes\r\n");
     inode_free((struct tarfs_inode **)fs->fs_ino, fs->fs_nino, (uintptr_t )tar_start, tar_size);
   }
 }
@@ -900,19 +895,19 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
 
     // PASS1: count inodes, count all required memory
-    printf("tarfs: PASS1, analyzing..\n");
+    log("PASS1, analyzing..\n");
     nino = tar_getnino(buf, size);
 
-    printf("tarfs: %u inodes, expected RAM usage: %lu bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
+    log("%u inodes, expected RAM usage: %lu bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
     if (nino < 1)
       return -1;
 
     // PASS2: guess TARFS root (will be the mountpoint)
-    printf("tarfs: PASS2, analyzing..\n");
+    log("PASS2, analyzing..\n");
     if (false == tar_rootdir(buf, size, base_dir, sizeof(base_dir)))
       base_dir[0] = '\0';
 
-    printf("tarfs: filesystem prefix '%s' \n", base_dir);
+    log("filesystem prefix '%s' \n", base_dir);
 
     struct tarfs_inode **index = inode_alloc( nino );
     struct tarfs_inode *inodes = (struct tarfs_inode *)(index + nino);
@@ -920,14 +915,14 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
     if (index != NULL) {
 
       // PASS3: populate inodes
-      printf("tarfs: PASS3, populating inodes..\n");
+      log("PASS3, populating inodes..\n");
       size_t dsize = inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
 
 
       /* Sort inode index table (pointers to inodes are sorted by inode's hash value)
        * so inode_lookup() can be used
        */
-      printf("tarfs: building binary search index..\n");
+      log("building binary search index..\n");
       inode_sort(index, nino);
 
       /*Resolve symlinks and hardlinks; For inodes which can not be resolved to a valid type5 or type0
@@ -936,7 +931,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
       * by the code above and is freed by the inode_resolve().
       * 
       */
-      printf("tarfs: symlinks and hardlinks resolution..\n");
+      log("symlinks and hardlinks resolution..\n");
       inode_resolve(index, nino);
 
       /* 
@@ -944,7 +939,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
        * to build an alphasorted list of entries.
        * root
        */
-      printf("tarfs: lexigraphical sorting..\n");
+      log("lexigraphical sorting..\n");
       struct tarfs_inode *root = inode_alphasort(inodes, nino);
 
       /* PUBLISH */
@@ -956,12 +951,12 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
       if (root != NULL) {
       
-        printf("tarfs: root inode is exp=<2a0c975e>, real=<%08x> \"%s\"\r\n",root->in_hash, (const char *)root->in_path);
+        log("root inode is exp=<2a0c975e>, real=<%08x> \"%s\"\r\n",root->in_hash, (const char *)root->in_path);
         inode_dumppath_sorted(root);
         return 0;
       }
 
-      printf("tarfs: WARNING: no root inode after alphasort, opendir() is disabled\r\n");
+      log("WARNING: no root inode after alphasort, opendir() is disabled\r\n");
       inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino);
     }      
 
@@ -977,11 +972,11 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
  */
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count) {
 
-  printf("-- HASH SORTED INODES --\r\n");
+  log("-- HASH SORTED INODES --\r\n");
 
   for (size_t i = 0; i < count; i++) {
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
-    printf("<%08x> %c %s path=", inode->in_hash,
+    log("<%08x> %c %s path=", inode->in_hash,
       inode_getinfo(index, i, NULL, NULL) ,
       inode->in_vaddr != inode->in_dvaddr ? "*" : " ");
       tar_print((char const *)inode->in_path, NULL);
@@ -995,10 +990,10 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
  */
 void inode_dumppath_sorted(struct tarfs_inode const * root) {
 
-  printf("-- ALPHA SORTED INODES --\r\n");
+  log("-- ALPHA SORTED INODES --\r\n");
 
   for (size_t i = 0; root != NULL; i++) {
-    printf("<%08x> %s%s path=", 
+    log("<%08x> %s%s path=", 
             root->in_hash,
             root->in_vaddr != root->in_dvaddr ? "*" : " ",
             root->in_dvaddr == 0 ? "X" : " "

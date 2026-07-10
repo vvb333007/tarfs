@@ -45,15 +45,15 @@ int main(int argc, char **argv) {
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
 
     if (buf == NULL) {
-      printf("failed to load '%s', errno=%d\n", filename, errno);
+      log("failed to load '%s', errno=%d\n", filename, errno);
       return -1;
     }
 
-    printf("TAR file '%s' loaded (%ld bytes), processing..\n", filename, size);
+    log("TAR file '%s' loaded (%ld bytes), processing..\n", filename, size);
 
     processed = tar_addsum(buf, size);
 
-    printf("Done: %d entries were processed\r\n", processed);      
+    log("Done: %d entries were processed\r\n", processed);      
 
     if (processed) {
       FILE *f = fopen(filename2, "wb");
@@ -62,13 +62,12 @@ int main(int argc, char **argv) {
 
         fwrite(buf, size, 1, f);
         fclose(f);
-        printf("output file '%s' has been created\r\n", filename2);      
+        log("output file '%s' has been created\r\n", filename2);      
         goto unmap_and_exit;
       }
     }
-    printf("No output produced: %s\r\n", processed ? "can not create output file" : "no updatable entries");
+    log("No output produced: %s\r\n", processed ? "can not create output file" : "no updatable entries");
 unmap_and_exit:
-//    printf("tarfs: unmap the filesystem blob\r\n");
     tarfs_os_unmap_tarfile(os_handle, buf, size);
     return 0;
 }

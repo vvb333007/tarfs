@@ -39,7 +39,10 @@ static _Atomic int       s_numfs = 0;                    /*!< Number of mounted 
 static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesystem descriptors */
 
 
-
+/**
+ * Lockless, not thread safe, does not increase refcounters.
+ * Must be only used when FS's refcounter is guaranteed > 1
+ */
 struct tarfs_fs *tarfs_getfs(int i) {
   if (i>=0 && i < TARFS_MAX_FS)
     return s_tarfs[i];
@@ -47,8 +50,33 @@ struct tarfs_fs *tarfs_getfs(int i) {
   return NULL;
 }
 
+/**
+ * Thread safe, increases refcounter, uses mutex!
+ * Must be used when filesystem #i is in unknown state (e.g. is being unmounted)
+ * Right now tarf_open() uses it, as well as POSIXs mmap() and readlink()
+ *
+ */
+struct tarfs_fs *tarfs_getfs_addref(int i) {
 
-/** Find an empty slot or mounted slot
+  struct tarfs_fs *fs;
+
+  tarfs_lock(); /* concurrent commit_unmount() fired */
+
+  if (i>=0 && i < TARFS_MAX_FS) {
+    fs = s_tarfs[i];
+    if (!tarfs_addref(fs))
+      fs = NULL;
+  }
+  else
+    fs = NULL;
+
+  tarfs_unlock();
+  return fs;
+}
+
+
+
+/** Find an empty slot or mounted slot. Must be called under tarfs_lock()
  *
  * @param mountpoint If `mountpoint` is NULL, then this function returns index of first available unused slot
  *
@@ -61,7 +89,7 @@ static int findfs(const char *mountpoint) {
     /* We are interested in empty slots only if mountpoint is NULL */
     if (s_tarfs[i] == NULL) {
       if (mountpoint == NULL) {
-        printf("finds() : empty slot #%d found\r\n", i);
+        log("empty slot #%d found\r\n", i);
         return i;
       }
 
@@ -74,7 +102,7 @@ static int findfs(const char *mountpoint) {
 
     /* Exact name match? Return slot number */
     if (!strcmp(s_tarfs[i]->fs_mountpoint, mountpoint)) {
-      printf("finds() : mountpoint %s slot #%d found\r\n", mountpoint, i);
+      log("mountpoint %s slot #%d found\r\n", mountpoint, i);
       return i;
     }
   }
@@ -93,6 +121,7 @@ static int findfs(const char *mountpoint) {
 
 /**
  * Find the filesystem responsible for a given path. This function is NOT lockless
+ * and it is not fast: it does bruteforce strcmp over the list of mountpoints.
  *
  * @return
  *        Filesystem slot index, or -1 if no mounted filesystem matches the
@@ -137,11 +166,16 @@ int tarfs_fsindex(const char *path) {
  *        specified path.
  */
 time_t tarfs_getmtime(int fs_idx) {
+
   time_t t = 0;
+
   tarfs_lock();
+
   if (s_tarfs[fs_idx] != NULL)
     t = s_tarfs[fs_idx]->fs_mtime;
+
   tarfs_unlock();
+
   return t;
 }
 

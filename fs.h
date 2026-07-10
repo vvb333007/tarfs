@@ -229,6 +229,12 @@ int  tarfs_fsck(const char *label);
 struct tarfs_fs *tarfs_getfs(int i);
 
 /**
+ * Obtain raw pointer to the filesystem descriptor by filesystem slot
+ * Increment FS refcounter. 
+ */
+struct tarfs_fs *tarfs_getfs_addref(int i);
+
+/**
  * @brief Find the filesystem responsible for a given path.
  *
  * Searches all mounted filesystems and returns the filesystem whose mount

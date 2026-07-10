@@ -41,20 +41,6 @@
  * Thread-safety notes
  * ===================
  *
- * Concurrent open() and unmount() are not thread-safe.
- *
- *   Subject to a TOCTTOU race inherited from the ESP-IDF VFS.
- *   tarfs_unmount() and tarfs_open() may execute concurrently because the VFS passes
- *   a cached filesystem context that may become invalid before
- *   tarfs_addref() is called.
- *
- *   There is little TARFS can do about this unless the ESP-IDF VFS
- *   implementation is changed.
- *
- * To avoid this race, either keep the filesystem permanently mounted or
- * provide the required synchronization in your application.
- *
- *
  * close() during an active read()
  *
  *   If Thread 1 is executing read(), it may be preempted while another thread
@@ -65,6 +51,8 @@
  * To avoid this race (if you really need to close() a file descriptor while
  * another thread is reading from it), provide the required synchronization in
  * your application or, preferably, redesign the application logic.
+ *
+ * unmount() + close() during an active read() is undefined behavior (UB).
  */
 
 #include <stdint.h>
@@ -106,7 +94,7 @@ static const uint32_t    s_valid_mask   = (TARFS_MAX_FDS == 32) ? 0xffffffffUL :
 
 /**
  * This function must be called under addref() protocol:
- * if (addref(&fs->fs_ref)) {
+ * if (tarfs_addref(fs)) {
  *   allocfd(fs);
  * }
  * Returns free index in range [0..TARFS_MAX_FDS-1]
@@ -197,17 +185,9 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   
   struct tarfs_fs *fs = NULL; 
 
-  int fs_idx = (intptr_t )ctx; 
+  int const fs_idx = (int )(intptr_t )ctx; 
 
-  if (false == (fs_idx >= 0 && 
-                fs_idx < TARFS_MAX_FS && 
-                ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
-
-    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
-    errno = EIO;
-    return -1; 
-  } 
-
+  /* Quick reject */
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
       log("file %s bad flags %08x, read-only filesystem!\r\n",path, flags);
@@ -215,9 +195,18 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       return -1;
   }
 
+  /* Check fs_idx and grab the filesystem
+  * add a reference to the filesystem. this will ensure that context remain alive until tarf_close() 
+  */
+  if ( NULL == (fs = tarfs_getfs_addref(fs_idx))) { 
 
-  /* add a reference to the filesystem. this will ensure that context remain alive until tarf_close() */
-  if (path && tarfs_addref(fs)) {
+    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    errno = EIO;
+    return -1; 
+  } 
+
+  
+  if (path != NULL) {
 
     
     /* If directory is opened - fix up the directory name
@@ -227,6 +216,10 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     if (flags & O_DIRECTORY) {
       int i = strlen(path);
       if (i > 0) {
+        /* TODO: links to directories dont have slash at the end
+                so right now open("symlink",O_DIRECTORY) is broken: the logic below will add '/'
+                to the "symlink", resulting in non-existent name. This should be fixed somehow
+        */
         if (path[i - 1] != '/') {
           log("O_DIRECTORY, appending a slash (strdup)\r\n");
           char *p = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
@@ -273,6 +266,11 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
         errno = ENOTDIR;
         goto unref_and_exit;
       }
+      /* Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
+       * is that read() must fail when reading any fd associated with a directory
+       */
+      size = 0;
+
     } else {
       if (type == TART_DIR) {
         log("target is a directory, O_DIRECTORY flag is required\r\n");
@@ -291,19 +289,11 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       struct tarfs_fp *fp = &fs->fs_fd[fd];
       log("fd=%d allocated\r\n", fd);
 
-      /* Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
-       * is that read() must fail when reading any fd associated with a directory
-       */
-      if (type == TART_DIR) {
-
-        log("size forced to 0 (it is a directory)\r\n");
-        size = 0;
-      }
 
       fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
       fp->fp_pos   = 0;
       fp->fp_size  = size;
-      fp->fp_idx   = idx; /* inode index */
+      fp->fp_idx   = idx; /* inode index, used by opendir()/readdir() */
 
       log("success, ino=%d, type=%c, path=%s, fd=%d, size=%lu, vaddr=%p\r\n",idx, type, path, fd,fp->fp_size, (void *)fp->fp_vaddr);
 
@@ -315,11 +305,14 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
       return fd;
     }
+
     log("allocfd failed for path=%s\r\n",path);
     errno = EMFILE;
+
   } else {
-    log("%s://%s, bad path or dead object\r\n",fs->fs_mountpoint, path0);
-    errno = (path == NULL) ? EINVAL : ENODEV;
+
+    log("fs='%s' bad path\r\n",fs->fs_mountpoint);
+    errno = EINVAL;
   }
 
 unref_and_exit:
