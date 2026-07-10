@@ -856,7 +856,7 @@ skip_header_and_data:
 
     log("end of file reached\r\n");
     if (total_bad)
-      log("%lu blocks (%lu bytes) were skipped\n", total_bad, off - bad_start);
+      log("%u blocks (%lu bytes) were skipped\n", total_bad, off - bad_start);
       
 
   log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  

@@ -10,7 +10,7 @@ OBJDIR  := obj
 # Flags
 #CFLAGS  := -Wall -std=c11 -D_POSIX_C_SOURCE=200809L -g
 CFLAGS  := -Wall -Os
-CFLAGS += -MMD -MP
+CFLAGS += -MMD -MP -Iinclude
 
 # Общие исходники
 COMMON_SRC := \
