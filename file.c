@@ -382,7 +382,7 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
    * In case of EOF this address will point 1 byte past the buffer. This is allowed by the C standart
    * as long as we do not dereference that pointer
    */
-  void const *src = (void *)(fp->fp_vaddr + fp->fp_pos);
+  void const *src = (void const *)(fp->fp_vaddr + fp->fp_pos);
 
   /* Clamp the read size so we never read past the end of the file.
    * `size` can become zero after the clamp (happens for directories for example), it is normal
@@ -390,16 +390,12 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
   if (fp->fp_size - fp->fp_pos < size)
     size = fp->fp_size - fp->fp_pos;
 
-  /*
-   * Advance the file position.
-   */
-  fp->fp_pos += size;
-
-  /* Copy the requested data.
-   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
-   */
-  if (size > 0)
+  /* Advance the file position and copy the requested data.
+   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.). */
+  if (size > 0) {
+    fp->fp_pos += size;
     memcpy(dst, src, size);
+  }
 
   /* Return number of data copied */
   return size;
@@ -434,7 +430,7 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
    * dereferenced.
    */
 
-  void const *src = (void *)(fp->fp_vaddr + off);
+  void const *src = (void const *)(fp->fp_vaddr + off);
 
   /* Clamp the read size so we never read past the end of the file.
    * `size` can become zero after the clamp (happens for directories for example), it is normal
@@ -443,8 +439,7 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
     size = fp->fp_size - off;
 
   /* Copy the requested data.
-   * TODO: Use an architecture-optimized memcpy() where available
-   * (e.g. ESP32-S3, P4, etc.).
+   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
    */
   if (size > 0)
     memcpy(dst, src, size);
@@ -472,13 +467,10 @@ off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
 
   if (whence == SEEK_SET) {
 
-    if (offset < 0 || offset > fp->fp_size) {
-return_einval:
-      errno = EINVAL;
-      return (off_t)(-1);
+    if (offset >= 0 && offset <= fp->fp_size) {
+      fp->fp_pos = offset;
+      return (off_t)fp->fp_pos;
     }
-    fp->fp_pos = offset;
-    return offset;
 
   } else if (whence == SEEK_END) {
 
@@ -488,25 +480,26 @@ return_einval:
      *     lseek(fd, 0, SEEK_END)
      *
      * After positioning at EOF, subsequent read() calls return 0.
+     * NOTE: if offset is LONG_MIN then -offset is NaN
      */
-    if (offset > 0 || -offset > fp->fp_size)
-      goto return_einval;
-
-    fp->fp_pos = (off_t)fp->fp_size + offset; /* offset is <= 0*/
-
-    log("file pos = %lu\r\n",fp->fp_pos);
+    if (offset <= 0 && -offset <= fp->fp_size) {
+      fp->fp_pos = (off_t)fp->fp_size + offset;  /* TODO: check carefully edge cases around LONG_MIN */
+      return (off_t)fp->fp_pos;
+    }
 
   } else if (whence == SEEK_CUR) {
 
     off_t new_offset = offset + (off_t)fp->fp_pos;
-    if (new_offset < 0 || new_offset > fp->fp_size)
-      goto return_einval;
+    if (new_offset >= 0 && new_offset <= fp->fp_size) {
+      fp->fp_pos = new_offset;
+      return (off_t)fp->fp_pos;
+    }
+  }
+  
+  log("bad whence(%d) or/and offset(%ld)\r\n", whence, offset);
 
-    fp->fp_pos = new_offset;
-  } else
-    goto return_einval;
-
-  return fp->fp_pos;
+  errno = EINVAL;
+  return (off_t)(-1);
 }
 
 /**

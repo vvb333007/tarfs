@@ -55,18 +55,18 @@ int main(int argc, char **argv) {
 #endif
     int fd = tarf_open(0, "/list/example.c", O_RDONLY, 0);
     char ch;
-    puts("0, SEEK_END");
-    tarf_lseek(0, fd, 0, SEEK_END);
+    puts("1, SEEK_END");
+    tarf_lseek(0, fd, 1, SEEK_END);
     while(tarf_read(0, fd, &ch, 1) == 1)
       putchar(ch);
 
-    puts("0, SEEK_SET");
-    tarf_lseek(0, fd, 0, SEEK_SET);
+    puts("-1, SEEK_SET");
+    tarf_lseek(0, fd, -1, SEEK_SET);
     while(tarf_read(0, fd, &ch, 1) == 1)
       putchar(ch);
 
-    puts("-3522, SEEK_END");
-    tarf_lseek(0, fd, -3522, SEEK_CUR);
+    puts("-4000, SEEK_CUR");
+    tarf_lseek(0, fd, -4000, SEEK_CUR);
     while(tarf_read(0, fd, &ch, 1) == 1)
       putchar(ch);
 
