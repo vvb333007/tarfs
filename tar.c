@@ -24,19 +24,25 @@
 #include "tar.h"
 #include "hash.h"
 
-/* Checked Tar String == a byte sequence, within TAR image, which is terminated with \0, \r, or \n
- * Unchecked Tar String == a byte sequence, POSIIBLY unterminated
- * C String == a byte sequence, uterminated with \0
+/* TAR CONCEPTS:
+ * Checked TAR String   == "CTS", a byte sequence within a TAR archive terminated
+ *                         by '\0', '\r', or '\n'.
+ * Unchecked TAR String == "UTS", a byte sequence that may not be terminated.
+ * C string             == a byte sequence terminated by '\0'.
  *
- * Strings in TAR image may end with a terminator or may not. For this reason we have bunch of string helpers
- * which emulate string.h behaviour. In case of Unchecked Tar String (UTS) user must provide pointer to the
- * string's explicit end (e.g. tar_strcmp(),  tar_strlen()..).
+ * Strings stored in a TAR archive may or may not include a terminating
+ * character. For this reason, TARFS provides a set of string helper
+ * functions that mimic the behavior of the standard string.h functions.
+ *
+ * When operating on an Unchecked TAR String (UTS), the caller must provide
+ * a pointer to the end of the string (UTS limit).
  */
 
+
 /*
- * Compare an Unchecked TAR string with a Checked TAR string.
- * s1 -     UTS
- * s1_end - UTS limit
+ * Compare an CTS/UTS with a CTS.
+ * s1 -     UTS/CTS
+ * s1_end - UTS limit (or NULL for CTS)
  * s2     - CTS
  */
 int tar_strcmp(const char *s1, const char *s1_end, const char *s2) {
@@ -79,7 +85,7 @@ int tar_strcmp(const char *s1, const char *s1_end, const char *s2) {
 
 /*
  * strncmp() for two Checked TAR Strings
- *
+ * 
  */
 int tar_strncmp(const char *s1, const char *s2, size_t len) {
 
@@ -119,7 +125,8 @@ int tar_strncmp(const char *s1, const char *s2, size_t len) {
 
 /*
  * Return the length of an Unchecked TAR string.
- *
+ * s1 - UTS/CTS
+ * s1_en - UTS limit (or NULL for CTS)
  */
 int tar_strlen(const char *s1, const char *s1_end) {
 
@@ -140,7 +147,7 @@ int tar_strlen(const char *s1, const char *s1_end) {
 }
 
 /*
- * Copy CTS to a C string
+ * Copy CTS to a buffer, finalize it with NUL, creating a C string
  *
  */
 void tar_strcpy(char *dst, const char *src) {
@@ -337,6 +344,7 @@ bad_header:
           case TART_DIR: dirs++; break;
 
           default:
+            /* all-zero headers are filtered here */
         };
 
   
@@ -354,11 +362,8 @@ bad_header:
 }
 
 /**
- * Detect the archive root directory. This function will choose wrong directory name
+ * Detect the archive root directory. This function may choose wrong directory name
  * if filesystem is damaged
- *
- * The detected directory is used both as the filesystem mount point and
- * as the path prefix to strip from every inode. 
  */
 bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, size_t out_len) {
 
@@ -381,7 +386,7 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
           if (hdr->type == TART_DIR) {
             if (hdr->name[0]) {
 
-              /* Check if guessed root is a valid mountpoint name (latin1, <17 bytes)*/
+              /* Check if guessed root is a valid mountpoint name (latin1, proper length )*/
               int l = tar_strlen(hdr->name, &hdr->name[0] + sizeof(hdr->name));
               if (l < sizeof(hdr->name) && l <= tarfs_os_mp_maxlen() && l < out_len) {
                 memcpy(base_dir, hdr->name, l - 1 );
@@ -400,7 +405,7 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
   return false;
 }
 
-
+#if CONFIG_TARFS_LOG
 /* Displays string `buf`, which may or may not end with NUL: the line end
  * markers are \r, \n and \0.
  *
@@ -428,6 +433,7 @@ void tar_print(const char *buf, const char *end) {
 
   printf("%s",b);
 }
+#endif
 
 /**
  * Insert CRC64 file checksums into tar archive. This function is used by `tarsum.c` utility
@@ -509,8 +515,8 @@ bad_header:
 
 
 /**
- * Verify tarfile CRC64 sums if they are present.
- * @param has_crc true if we are sure that there are CRC64 hashes, or false if we are not sure about it
+ * Verify CRC64 checksums stored in a TAR archive, if present.
+ *
  */
 int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc) {
 
@@ -536,6 +542,12 @@ bad_header:
         total_bad += bad;
         bad = 0;
 
+        /* The size field is parsed as zero if hdr->size contains either an octal
+         * string of zeros ("00000000") or is filled with '\0' bytes. A header
+         * consisting entirely of zero bytes also has a valid checksum (zero), so
+         * such empty headers are skipped. They normally mark the end of a TAR
+         * archive.
+         */
         size = tar_octal(hdr->size, sizeof(hdr->size));
 
         /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
@@ -543,12 +555,11 @@ bad_header:
           goto bad_header;
         
 
-        /* For entries having data (including PAX headers) we calculate CRC64 and inject it
-         * into header->padding[] field.
-         *
+        /* CRC64 is verified only for entries containing data (including PAX
+         * headers). The computed CRC is compared against the value stored in
+         * hdr->padding[]. Empty headers (size == 0) are ignored.
          */
-        if (size > 0 && (has_crc || (hdr->md[0] == 'C' && hdr->md[1] == '6' && hdr->md[2] == '4'))) {
-          
+        if (size > 0 && (has_crc || (hdr->md[0] == 'C' && hdr->md[1] == '6' && hdr->md[2] == '4'))) {          
           if (!has_crc) {
             log("A CRC64/ECMA182 record detected, rescanning from the beginning..\n");
             return tar_verify_crc(tar_start, tar_length, true);
@@ -560,7 +571,11 @@ bad_header:
           /* calculate integrity check value */
           icv_calc = hash64(0, data, size);
           memcpy(&icv_hdr, hdr->digest, 8);
-          /* TODO: swap the value on big-endian archs */
+
+#if CONFIG_TARFS_BIG_ENDIAN
+          /* ICV is stored in little-endian byte order */
+          icv_hdr = __builtin_bswap64(icv_hdr);
+#endif          
           if (icv_hdr != icv_calc) {
             //log("CRC64 fail for %s, data is damaged\r\n", hdr->name);
             total_bad++;

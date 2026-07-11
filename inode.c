@@ -951,13 +951,16 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
       if (root != NULL) {
       
-        log("root inode is exp=<2a0c975e>, real=<%08x> \"%s\"\r\n",root->in_hash, (const char *)root->in_path);
-        inode_dumppath_sorted(root);
+        /* Check if root node is '/' by checking its hash */
+        if (root->in_hash != HASH32_SLASH) {
+        /* inode_dumppath_sorted(root); */
+          log("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
+        }
         return 0;
       }
 
       log("WARNING: no root inode after alphasort, opendir() is disabled\r\n");
-      inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino);
+      /* inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino); */
     }      
 
     return -1;

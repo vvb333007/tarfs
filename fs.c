@@ -581,3 +581,31 @@ void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...))
 
   tarfs_unref(fs);
 }
+
+
+/**
+ * Perform a deep filesystem integrity check.
+ *
+ * Verifies the integrity of file contents if CRC64 checksums are present
+ * in the archive.
+ *
+ * @param label Filesystem label.
+ * @return Number of entries that failed verification.
+ */
+int tarfs_fsck(const char *label) {
+
+  size_t size;
+  void const *map;
+  void *os_handle;
+
+  log("Checking filesystem '%s'..\r\n", label);
+
+  if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+    int num = tar_verify_crc(map, size, false);
+    tarfs_os_unmap_tarfile(os_handle, map, size);
+    return num;
+  }
+
+  return -1;
+}
+

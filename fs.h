@@ -66,10 +66,12 @@
  */
 struct ioctl_req {
   int fs_idx; /*!< filesystem index, [0..TARFS_MAX_FS) */
-  int fd; /*!< fd number */
+  int fd;     /*!< fd number */
 };
 
+
 #if CONFIG_HAVE_READLINK
+#  error "Not yet, sorry"
 struct tarfs_link {
   uint32_t    li_hash; /*!< hashed link name */
   const char *li_src;  /*!<        link name, for collision resolution */
@@ -111,40 +113,6 @@ struct tarfs_fs {
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * Add 1 to the FS' reference count
- */
-int tarfs_addref(struct tarfs_fs *fs);
-
-/**
- * Substract 1. If counter reaches zero then  the FS destructor is called
- */
-int tarfs_unref(struct tarfs_fs *fs);
-
-/**
- * Lock access to s_tarfs[] table and to the s_numfs counter
- */
-static inline void tarfs_lock() {
-  tarfs_os_acquire_mutex();  
-}
-
-/**
- * Unlock access to s_tarfs[] table and to the s_numfs counter
- *  
- */
-static inline void tarfs_unlock() {
-  tarfs_os_release_mutex();  
-}
-
-/**
- * Initialize TARFS library
- *  
- */
-static inline void tarfs_init() {
-  tarfs_os_init();  
-}
-
-
 
 /**
  * @brief Mount a TARFS filesystem from an OS-specific resource.
@@ -226,10 +194,38 @@ int tarfs_mount_memory(const void *addr, size_t length,
 int  tarfs_unmount(const char *mountpoint);
 
 /**
- * Deeper filesystem check: verifies content integrity (if enabled), 
+ * Perform a deep filesystem integrity check.
  *
+ * Verifies the integrity of file contents if CRC64 checksums are present
+ * in the archive.
+ *
+ * @param label Filesystem label.
+ * @return Number of entries that failed verification.
  */
-int  tarfs_fsck(const char *label);
+int tarfs_fsck(const char *label);
+
+/**
+ * Filesystem reference counting.
+ *
+ * tarfs_addref() acquires a reference to the filesystem, while
+ * tarfs_unref() releases it. When the reference count reaches zero,
+ * the filesystem will be destroyed/unmounted.
+ */
+int tarfs_addref(struct tarfs_fs *fs);
+int tarfs_unref(struct tarfs_fs *fs);
+
+/**
+ * Platform abstraction helpers.
+ *
+ * tarfs_lock() and tarfs_unlock() protect access to the s_tarfs[] table
+ * and the s_numfs counter. tarfs_init() initializes the platform layer.
+ */
+static inline void tarfs_lock()   { tarfs_os_acquire_mutex(); }
+static inline void tarfs_unlock() { tarfs_os_release_mutex(); }
+static inline void tarfs_init()   { tarfs_os_init(); }
+
+
+
 
 
 /**

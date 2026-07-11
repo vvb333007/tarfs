@@ -13,7 +13,7 @@
 
 
 /**
- *  1) CRC64/ECMA182 algorithm implementation (no tables version)
+ *  1) CRC64/ECMA182 algorithm implementation (no tables version, slow but memory-efficient
  *  2) Optimized variation of the FNV-1a hash algorithm.
  */
 
@@ -22,9 +22,9 @@
 #include <stdint.h>
 #include <stddef.h> /* size_t */
 
-
-#define HASH32_IV     (uint32_t)(2166136261u)   /* Init vector for 32bit hash */
-#define HASH64_IV     0ULL                      /* Init vector for 64bit hash */
+#define HASH32_IV     (uint32_t)(2166136261u)   /*!< Init vector for 32bit hash */
+#define HASH32_SLASH  (uint32_t)(0x2a0c975eu)   /*!< Hash32 value of a single-character C-string "/". NOTE: must be recomputed if hash32 algo is changed! */
+#define HASH64_IV     0ULL                      /*!< Init vector for 64bit hash */
 
 #ifdef __cplusplus
 extern "C" {

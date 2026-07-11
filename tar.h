@@ -67,12 +67,12 @@ struct tarhdr {
   const char link_name[100];  /*!< For records type#1 and #2 this field contains a name of the object */
   const char magic[6];        /*!< "ustar\0" signature */
   const char version[2];      /*!< "00" */
-  const char user[32];
-  const char group[32];
-  const char major[8];     
-  const char minor[8];
+  const char user[32];        /*!< Ignored: VFS has no user/group concept */
+  const char group[32];       /*!< Ignored: VFS has no user/group concept */
+  const char major[8];        /*!< Ignored: device files make no sence */
+  const char minor[8];        /*!< Ignored: device files make no sence */
   const char prefix[155];     /*!< First (if prefix[0] != 0) part of the entry name. A slash at the end does not exist but is assumed */
-        char zero;           /*!< Must be zero by the standart */  
+        char zero;            /*!< Must be zero by the standart */  
 #if CONFIG_TARFS_INTEGRITY
         char md[3];          /*!< Message Digest algorithm. For TARFS v0 these values are defined:
                                   "C64" - CRC64 algo */
@@ -90,6 +90,20 @@ _Static_assert(sizeof(tarhdr_t) == 512, "sizeof(tarhdr_t) != 512, code review is
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Checked TAR String   == "CTS", a byte sequence within a TAR archive terminated
+ *                         by '\0', '\r', or '\n'.
+ * Unchecked TAR String == "UTS", a byte sequence that may not be terminated.
+ * C string             == a byte sequence terminated by '\0'.
+ *
+ * Strings stored in a TAR archive may or may not include a terminating
+ * character. For this reason, TARFS provides a set of string helper
+ * functions that mimic the behavior of the standard string.h functions.
+ *
+ * When operating on an Unchecked TAR String (UTS), the caller must provide
+ * a pointer to the end of the string (e.g. tar_strcmp(), tar_strlen(), ...).
+ */
+
 
 /**
  * Compare an UTS/CTS to a CTS
@@ -172,6 +186,7 @@ uint32_t tar_octal(const char *p, size_t max_len);
  *   - reserved padding byte is zero;
  *   - checksum field contains only valid TAR characters;
  *   - header checksum matches the calculated value.
+ *   - entry size is within the mmaped memory range.
  *
  * @param hdr Pointer to a TAR header.
  * @return true if the header is invalid, corrupted, or unsupported.
@@ -183,6 +198,9 @@ bool tar_badhdr(tarhdr_t const * hdr);
  * Quick run through the tarfile to count number of inodes we have to create
  * Bad blocks are skipped; inodes_count = number_of_links + number_files + number_of_directoris
  *
+ * @param tar_start  Address where the TAR archive is mapped.
+ * @param tar_length Size of the mapped archive.
+ * @return Number of inodes required for this filesystem
  */
 int tar_getnino(const uint8_t *tar_start, size_t tar_length);
 
@@ -228,6 +246,48 @@ int tar_getnino(const uint8_t *tar_start, size_t tar_length);
 bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, size_t base_dir_len);
 
 
+
+/* Calculate the checksum of a TAR header.
+ *
+ * While the checksum is being calculated, the checksum field itself
+ * must be treated as eight ASCII space characters, as required by the
+ * TAR format specification.
+ *
+ * The checksum field occupies bytes [148..156).
+ *
+ * @param hdr Pointer to the TAR header.
+ * @return Header checksum.
+ */
+uint32_t tar_hdrsum(const tarhdr_t *hdr);
+
+
+/**
+ * Calculate and insert CRC64 checksums into a TAR archive.
+ *
+ * The checksum of each file entry is stored in the corresponding TAR
+ * header. Existing CRC64 values are overwritten.
+ *
+ * This function is intended for use by the `tarsum.c` utility.
+ *
+ * @param tar_start Pointer to the beginning of the TAR archive.
+ * @param tar_length Size of the TAR archive in bytes.
+ * @return Number of entries for which a CRC64 checksum was written,
+ *         or a negative value on error.
+ */
+int tar_addsum(uint8_t *tar_start, size_t tar_length);
+
+/**
+ * Verify CRC64 checksums stored in a TAR archive, if present.
+ *
+ * @param tar_start Pointer to the beginning of the TAR archive.
+ * @param tar_length Size of the TAR archive in bytes.
+ * @param has_crc True if the archive is known to contain CRC64 checksums;
+ *                false to auto-detect them.
+ * @return Number of entries that failed CRC64 verification. Returns 0 if all
+ *         verified entries are valid or if no CRC64 checksums are present.
+ */
+int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc);
+
 /* Devel:
  * Displays string `buf`, which may or may not end with NUL: the line end
  * markers are \r, \n and \0.
@@ -236,30 +296,7 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
  * terminator from the list above
  */
 void tar_print(const char *buf, const char *end);
-
-
-/* Calculate and verify the header checksum.
- *
- * TAR checksum rules require the checksum field itself to be treated
- * as eight ASCII spaces while the checksum is being calculated.
- *
- * The checksum field occupies bytes [148..156).
- */
-uint32_t tar_hdrsum(tarhdr_t const * hdr);
-
-
-/**
- * Insert CRC64 file checksums into tar archive. 
- * This function is used by `tarsum.c` utility
- *
- */
-int tar_addsum(uint8_t *tar_start, size_t tar_length);
-
-/**
- * Verify tarfile CRC64 sums if they are present.
- */
-int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc);
       
 #ifdef __cplusplus
 };
-#endif                         
+#endif
