@@ -1,7 +1,7 @@
 /*
  * TARFS - Immutable (read-only) filesystem for embedded systems.
  *
- * Copyright (c) 2024-2026 Viacheslav Logunov
+ * Copyright (c) 2026 Viacheslav Logunov
  * SPDX-License-Identifier: MIT
  *
  * Author:
@@ -521,19 +521,63 @@ char *tarfs_strdup(char const *str) {
 
 
 
-#if 0
 /**
- * Get information for TARFS
- * @param fs_slot the value returned by tarfs_mount(), a non-negative value
+ * Get size information for TARFS
+ * @param fs_idx the value returned by tarfs_mount(), a non-negative value
+ * @param[out] raw_size a pointer to a stored value. Can be NULL. TAR file size
+ * @param[out] data_size a pointer to a stored value. Can be NULL. Real data (files)
  * @return
+ *    true if filesystem is found, false otherwise
  */
-bool tarfs_info(int fs_slot, size_t *raw_size, size_t *data_size) {
-  if (fs_slot < 0 || fs_slot >= TARFS_MAX_FS) {
-    log("slot %d is invalid\r\n", fs_slot);
-    return false;
+bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size) {
+
+  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+
+  if (fs != NULL) {
+
+    if (raw_size)
+      *raw_size = fs->fs_size;
+
+    if (data_size)
+      *data_size = fs->fs_dsize;
+    tarfs_unref(fs);
+    return true;
   }
-  tarfs_lock();
-  tarfs_unlock();
+
   return false;
 }
-#endif
+
+/**
+ * Dump FS debug information.
+ * 
+ * @return
+ */
+void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...)) {
+
+  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+
+  if (fs == NULL) {
+    vtyout(vty,"filesystem %d is not mounted\r\n");
+    return ;
+  }
+
+  vtyout(vty," --- TARFS '%s' ---\r\n", fs->fs_mountpoint);
+  vtyout(vty,"ref   : %u\r\n"
+             "vaddr : %p\r\n"
+             "size  : %u\r\n"
+             "dsize : %u\r\n"
+             "nino  : %u\r\n"
+             "usedfd: %08x\r\n", fs->fs_ref - 1, fs->fs_vaddr, fs->fs_size, fs->fs_dsize, fs->fs_nino, fs->fs_usedfd);
+
+  for (int fd = 0; fd < TARFS_MAX_FDS; fd++) {
+    
+    if ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0) {
+      vtyout(vty, "fd#%d: allocated: ", fd);
+      struct tarfs_fp  *fp = &fs->fs_fd[fd];
+      vtyout(vty,"vaddr=%p, pos=%p, size=%u, inode=%d\r\n", fp->fp_vaddr, fp->fp_pos, fp->fp_size, fp->fp_idx);
+    } else
+      vtyout(vty, "fd#%d: free\r\n", fd);
+  }
+
+  tarfs_unref(fs);
+}

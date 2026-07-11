@@ -2,7 +2,7 @@
 /*
  * TARFS - Immutable (read-only) filesystem for embedded systems.
  *
- * Copyright (c) 2024-2026 Viacheslav Logunov
+ * Copyright (c) 2026 Viacheslav Logunov
  * SPDX-License-Identifier: MIT
  *
  * Author:

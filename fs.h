@@ -1,7 +1,7 @@
 /*
  * TARFS - Immutable (read-only) filesystem for embedded systems.
  *
- * Copyright (c) 2024-2026 Viacheslav Logunov
+ * Copyright (c) 2026 Viacheslav Logunov
  * SPDX-License-Identifier: MIT
  *
  * Author:
@@ -37,7 +37,6 @@
 #  define log( Format_, ... ) do {} while(0)
 #endif
 
-//#include "tar.h"
 #include "refc.h"
 #include "file.h"
 #include "inode.h"
@@ -283,6 +282,48 @@ time_t tarfs_getmtime(int fs_idx);
  */
 void *tarfs_calloc(size_t count, size_t size);
 char *tarfs_strdup(char const *str);
+
+/**
+ * Get filesystem size information.
+ *
+ * @param fs_idx
+ *        Filesystem index returned by tarfs_mount().
+ *
+ * @param[out] raw_size
+ *        Receives the total TAR archive size in bytes.
+ *        May be NULL.
+ *
+ * @param[out] data_size
+ *        Receives the total size of all file data in bytes.
+ *        May be NULL.
+ *
+ * @return
+ *        true if the filesystem exists, false otherwise.
+ */
+bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size);
+
+/**
+ * Dump internal filesystem information for debugging.
+ *
+ * The output is generated using the supplied printf-compatible callback.
+ *
+ * Example:
+ * @code
+ * tarfs_dump(0, stdout, fprintf);
+ * @endcode
+ *
+ * @param fs_idx
+ *        Filesystem index returned by tarfs_mount().
+ *
+ * @param vty
+ *        User-defined output context passed to @p vtyout.
+ *
+ * @param vtyout
+ *        printf-compatible output callback.
+ */
+void tarfs_dump(int fs_idx,
+                void *vty,
+                int (*vtyout)(void *, const char *, ...));
 
 #ifdef __cplusplus
 };

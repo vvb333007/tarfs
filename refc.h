@@ -1,7 +1,7 @@
 /*
  * TARFS - Immutable (read-only) filesystem for embedded systems.
  *
- * Copyright (c) 2024-2026 Viacheslav Logunov
+ * Copyright (c) 2026 Viacheslav Logunov
  * SPDX-License-Identifier: MIT
  *
  * Author:
@@ -27,6 +27,9 @@
 
 #pragma once
 
+/* Compilation issues (C / C++): these two languages use different atomic libraries, with different
+ * syntax. This is completely safe, as C++ code does not touch tarfs atomics
+ */
 #ifdef __cplusplus
 #  undef _Atomic
 #  define _Atomic(X) X

@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     while(tarf_read(0, fd, &ch, 1) == 1)
       putchar(ch);
 
-
+  tarfs_dump(0,stdout,fprintf);
 
     tarf_close(0, fd);
     tarfs_unmount("/jopa");
