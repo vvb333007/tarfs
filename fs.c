@@ -40,6 +40,7 @@ static _Atomic int       s_numfs = 0;                    /*!< Number of mounted 
 static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesystem descriptors */
 
 
+
 /**
  * Lockless, not thread safe, does not increase refcounters.
  * Must be only used when FS's refcounter is guaranteed > 1
@@ -112,11 +113,13 @@ static int findfs(const char *mountpoint) {
 
   if (mountpoint == NULL) {
     log("can not find empty slot\r\n");
-    return  $(EBUSY);
+    errno = EBUSY;
+    return -1;
   }
 
   log("can not find slot (%s)\r\n", mountpoint);
-  return $(ENOENT);
+  errno = ENOENT;
+  return -1;
 }
 
 
@@ -279,8 +282,10 @@ int tarfs_unmount(const char *mountpoint) {
 
   refc_type_t prev_refc;
 
-  if (mountpoint == NULL)
-    return $(EINVAL);
+  if (mountpoint == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
   
@@ -299,13 +304,19 @@ int tarfs_unmount(const char *mountpoint) {
     err = ENOENT;
 
   tarfs_unlock();
-  return $(err);
+
+  if (err != 0) {
+    errno = err;
+    return -1;
+  }
+
+  return 0;
 }
 
 /* Mount TARfile which is already mmaped/loaded into RAM
  *
  */
-int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, const char *link_rebase) {
+int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, const char *link_rebase, const char *path_rebase) {
   
   int len;
   
@@ -315,11 +326,22 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 
   char base_dir[128] = { '/' };
 
+  log("Running filesystem check, wait..\r\n");
+  int bad = tar_verify_crc(map,size, false);
+  if (bad)
+    log("FS checked: %d bad entries\r\n", bad);
+  else
+    log("Filesystem has no errors\r\n");
+
   if (link_rebase == NULL)
     link_rebase = "";
 
-  if (false == tar_rootdir(map, size, &base_dir[1], sizeof(base_dir) - 1))
-    base_dir[0] = '\0';
+  if (path_rebase) {
+    strncpy(&base_dir[1], path_rebase, sizeof(base_dir)-1);
+  } else {
+    if (false == tar_rootdir(map, size, &base_dir[1], sizeof(base_dir) - 1))
+      base_dir[0] = '\0';
+  }
 
   if (mountpoint == NULL)
     mountpoint = base_dir;
@@ -341,7 +363,7 @@ unmap_and_return_error:
 
     log("mountpoint: '%s'\r\n", mountpoint);
 
-    if (base_dir[0] == '\0') {
+    if (base_dir[1] == '\0') {
       log("WARN: tarfile has no root directory\r\n");
     } else {
       log("common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
@@ -391,7 +413,7 @@ unmap_and_return_error:
     memcpy(fs->fs_mountpoint, mountpoint, len);
 
     log("mounting..\r\n");
-    if (inode_mount(fs, map, size, link_rebase) < 0) {
+    if (inode_mount(fs, map, size, link_rebase, &base_dir[1]) < 0) {
       if (fs->fs_ino == NULL) {
         log("ERR: filesystem is unusable, no valid inodes were found\r\n");
         tarfs_lock();
@@ -424,7 +446,7 @@ unmap_and_return_error:
  * We expect sane label pointer (ASCIIZ) and a sane mountpoint (i.e. len>1, 
  * fisrt sym is `/`, last sym != `/`)
  */
-int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase) {
+int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase, const char *path_rebase) {
 
   int slot;
   size_t size;
@@ -434,14 +456,20 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 
   /* Actual memory mapping */
   log("loading OS-specific resource '%s'..\r\n", label);
+
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+
     log("resource is available at %p, %lu bytes. mounting from memory..\r\n", map, size);
-    slot = tarfs_mount_memory(map, size, mountpoint, link_rebase);
+
+    slot = tarfs_mount_memory(map, size, mountpoint, link_rebase, path_rebase);
     if (slot >= 0) {
+
       log("success, filesystem slot %d was assigned\r\n", slot);
 
       struct tarfs_fs *fs = tarfs_getfs(slot);
+
       log("resource handle is %p, commit_unmount() will do tarfs_os_unmap_tarfile()\r\n", (void *)os_handle);
+
       fs->fs_handle = (uintptr_t)os_handle;
 
       return slot;
@@ -506,30 +534,6 @@ bool tarfs_info(int fs_slot, size_t *raw_size, size_t *data_size) {
   }
   tarfs_lock();
   tarfs_unlock();
+  return false;
 }
-
-/**
- * Check if a filesystem at mountpoint is a mounted TARFS
- *
- * @param Base path (i.e. a mountpoint)
- *        
- *
- * @return
- *          - true    if mounted
- *          - false   if not mounted
- */
-bool esp_tarfs_is_registered(const char *mountpoint) {
-  return ESP_OK == esp_tarfs_info(mountpoint, NULL, NULL);
-}
-
-
-/**
- * Dump runtime stats and open file descriptors. 
- *
- * @param vty           Opaque pointer, required by the vtyout
- * @param vtyout        Pointer to the fprintf-like function, which is called as vtyout(vty, format, ...)
- *
- * Usage: esp_tarfs_dump(stdout, fprintf)
- */
-void esp_tarfs_dump(void *vty, int (*vtyout)(void *, const char *, ...));
 #endif

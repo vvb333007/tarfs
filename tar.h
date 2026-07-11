@@ -254,6 +254,11 @@ uint32_t tar_hdrsum(tarhdr_t const * hdr);
  *
  */
 int tar_addsum(uint8_t *tar_start, size_t tar_length);
+
+/**
+ * Verify tarfile CRC64 sums if they are present.
+ */
+int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc);
       
 #ifdef __cplusplus
 };

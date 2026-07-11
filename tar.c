@@ -354,11 +354,11 @@ bad_header:
 }
 
 /**
- * Detect the archive root directory.
+ * Detect the archive root directory. This function will choose wrong directory name
+ * if filesystem is damaged
  *
  * The detected directory is used both as the filesystem mount point and
- * as the path prefix to strip from every inode. For example, if the archive
- * contains:
+ * as the path prefix to strip from every inode. 
  */
 bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, size_t out_len) {
 
@@ -431,7 +431,7 @@ void tar_print(const char *buf, const char *end) {
 
 /**
  * Insert CRC64 file checksums into tar archive. This function is used by `tarsum.c` utility
- *
+ * only
  */
 int tar_addsum(uint8_t *tar_start, size_t tar_length) {
 
@@ -506,3 +506,71 @@ bad_header:
 
     return inserted;
 }
+
+
+/**
+ * Verify tarfile CRC64 sums if they are present.
+ * @param has_crc true if we are sure that there are CRC64 hashes, or false if we are not sure about it
+ */
+int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc) {
+
+    uint32_t size;
+    size_t off = 0;
+    int bad = 0, total_bad = 0;
+    uintptr_t tar_end = (uintptr_t )(tar_start + tar_length);
+
+    while (off + sizeof(tarhdr_t) <= tar_length) {
+
+        tarhdr_t const *hdr = (tarhdr_t const *)(tar_start + off);
+
+        if (tar_badhdr(hdr)) {
+
+bad_header:
+          //log("CRC64 fail for <offset=%08x>, header and data are damaged\r\n",(uint32_t)off);
+          bad++;
+
+          off += sizeof(tarhdr_t);
+          continue;
+        }
+
+        total_bad += bad;
+        bad = 0;
+
+        size = tar_octal(hdr->size, sizeof(hdr->size));
+
+        /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
+        if (((uintptr_t)(hdr + 1)) + size >= tar_end)
+          goto bad_header;
+        
+
+        /* For entries having data (including PAX headers) we calculate CRC64 and inject it
+         * into header->padding[] field.
+         *
+         */
+        if (size > 0 && (has_crc || (hdr->md[0] == 'C' && hdr->md[1] == '6' && hdr->md[2] == '4'))) {
+          
+          if (!has_crc) {
+            log("A CRC64/ECMA182 record detected, rescanning from the beginning..\n");
+            return tar_verify_crc(tar_start, tar_length, true);
+          }
+
+          void const *data   = (void *)(hdr + 1);
+          uint64_t icv_calc, icv_hdr;
+
+          /* calculate integrity check value */
+          icv_calc = hash64(0, data, size);
+          memcpy(&icv_hdr, hdr->digest, 8);
+          /* TODO: swap the value on big-endian archs */
+          if (icv_hdr != icv_calc) {
+            //log("CRC64 fail for %s, data is damaged\r\n", hdr->name);
+            total_bad++;
+          }
+        }
+  
+        /* Real size is 512 bytes aligned */
+        off += sizeof(tarhdr_t) + (((size_t)size + 511) & ~511u);
+    }
+
+    return total_bad;
+}
+

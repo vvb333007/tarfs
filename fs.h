@@ -31,12 +31,11 @@
 #include "refc.h"
 
 
-/* Set errno and return 0 or -1, depending on the errno */
-static inline int $(int err) {
-  return (errno = err) == 0 ? 0 : -1;
-}
-
-#define log( Format_, ... ) printf( "%s(): " Format_, __FUNCTION__,  ##__VA_ARGS__ )
+#if CONFIG_TARFS_LOG
+#  define log( Format_, ... ) printf( "%s(): " Format_, __FUNCTION__,  ##__VA_ARGS__ )
+#else
+#  define log( Format_, ... ) do {} while(0)
+#endif
 
 //#include "tar.h"
 #include "refc.h"
@@ -179,7 +178,7 @@ static inline void tarfs_init() {
  *        On platforms without a native VFS layer, the returned filesystem
  *        index can be used for direct TARFS access.
  */
-int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase);
+int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase, const char *path_rebase);
 
 
 /**
@@ -208,13 +207,18 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
  * @param link_rebase
  *        Optional path prefix used to rebase symbolic links.
  *
+ * @param path_rebase
+ *        Optional override for a root dir. Will be stripped off every name. 
+ *        Normally autodetected, but autodetection MAY fail on damaged filesystem
+ *
  * @return
  *        Filesystem slot index. The returned value can be passed to
  *        tarfs_getfs() to obtain the raw filesystem pointer.
  */
 int tarfs_mount_memory(const void *addr, size_t length,
                        const char *mountpoint,
-                       const char *link_rebase);
+                       const char *link_rebase,
+                       const char *path_rebase);
 /**
  * Unmount tar file system
  * @return 0  on success

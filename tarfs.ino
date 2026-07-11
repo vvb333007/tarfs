@@ -8,64 +8,49 @@ void setup() {
   delay(500);
 
   
+ 
+  const char *filename    = "ffat";  // название раздела на флешке. у меня тарфайл был зашит в раздел, в котором раньше была FAT
 
-  const char *filename    = "ffat";
-  const char *rebase_link = "/\?\?/D:/Arduino/dev";
+  // Если тар утилита напихала (такое бывает) абсолютных путей в архив, то можно 
+  // задать эту переменную, чтобы обрезать лишнее. У меня, например, иногда приклеивается "/??/D:/Arduino/dev"
+  const char *rebase_link = "/\?\?/D:/Arduino/dev";  
 
+  // Вызываем однажды
   tarfs_init();
 
-  int err = tarfs_mount(filename, "/jopa", rebase_link);
+  // Можно монтировать несколько файловых систем, но мы смонтируем одну
+  // точку монтирования можно не указывать, в таком случае точка монтирования будет вычислена из содержимого тар-архива
+  int err = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
 
   printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 
-#if 0
-    int fd = tarf_open(0, "/list/example.c", O_RDONLY, 0);
+    // Откроем файлик и будем с ним играться
+    int fd = open("/My_FS/list/example.c", O_RDONLY);
+    FILE *fp = fopen("/My_FS/list/example.c", "rb");
+
     char ch;
     puts("1, SEEK_END");
-    tarf_lseek(0, fd, 1, SEEK_END);
-    while(tarf_read(0, fd, &ch, 1) == 1)
+    lseek(fd, 1, SEEK_END);
+
+    while(read(fd, &ch, 1) == 1)
       putchar(ch);
 
     puts("-1, SEEK_SET");
-    tarf_lseek(0, fd, -1, SEEK_SET);
-    while(tarf_read(0, fd, &ch, 1) == 1)
+    lseek(fd, -1, SEEK_SET);
+
+    while(read(fd, &ch, 1) == 1)
       putchar(ch);
 
     puts("-4000, SEEK_CUR");
-    tarf_lseek(0, fd, -4000, SEEK_CUR);
-    while(tarf_read(0, fd, &ch, 1) == 1)
+    lseek(fd, -4000, SEEK_CUR);
+
+    while(read(fd, &ch, 1) == 1)
       putchar(ch);
 
+    close(fd);
 
-
-    tarf_close(0, fd);
-#endif
-    tarfs_unmount("/jopa");
-    
-    
-    
-#if 0
-    printf("tarfs: mounting resource '%s':\n", filename);
-    buf = tarfs_os_map_tarfile(filename, &os_handle, &size);
-
-    if (buf == NULL) {
-      printf("tarfs: failed to mmap() '%s', err=%d\n", filename, errno);
-      return -1;
-    }
-
-    printf("tarfs: resource '%s' is mapped (%ld bytes), VADDR=%p\n", filename, size, buf);
-
-
-    struct tarfs_fs fs = {0};
-
-    int err = inode_mount(&fs,buf,size,rebase_link);
-    printf("inode_mount() : err = %d\r\n",err);
-
-    inode_unmount(&fs, buf, size);
-
-    printf("tarfs: unmap the filesystem blob\r\n");
-    tarfs_os_unmap_tarfile(os_handle, buf, size);
-#endif
+    tarfs_unmount("/My_FS"); // мы забыли закрыть fp, unmount будет отложен
+    fclose(fp); // а вот тут произойдет unmount
 }
 
 

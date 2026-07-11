@@ -54,7 +54,14 @@ int main(int argc, char **argv) {
     processed = tar_addsum(buf, size);
 
     log("Done: %d entries were processed\r\n", processed);      
-
+#if 0
+/* for CRC64 integrity test, DO NOT UNCOMMENT! */
+    memset(buf + 0, 0x5a, 200);
+    memset(buf + 1000, 0x5a, 200);
+    memset(buf + 7000, 0x5a, 2000);
+    memset(buf + 10000, 0x5a, 2000);
+    memset(buf + size - 10000, 0x5a, 2000);
+#endif
     if (processed) {
       FILE *f = fopen(filename2, "wb");
 

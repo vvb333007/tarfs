@@ -128,10 +128,6 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
     return NULL;
 }
 
-
-/* Used as a return statement to return NULL and set errno */
-#define $$( Errno_ ) ({ errno = (Errno_); (void *)NULL; })
-
 /**
  * Inode is represented by struct tarfs_inode; Every inode contains a pointer to a corresponding tarfile entry
  * and a hashed filename (32bit FNV1a hash). Sorted inodes reside in the fs->fs_ino array and are the primary
@@ -295,14 +291,19 @@ struct tarfs_inode **inode_alloc(size_t count) {
     size_t index_size, nodes_size;
 
 
-    if (count < 1)
-      return $$(EINVAL);
+    if (count < 1) {
+      errno = EINVAL;
+      return NULL;
+    }
 
     index_size = count * sizeof(struct tarfs_inode *);
     nodes_size = count * sizeof(struct tarfs_inode);
 
-    if (NULL == (ptr = tarfs_calloc(1, index_size + nodes_size)))
-      return $$(ENOMEM); /* Return NULL, sets errno=ENOMEM */
+    if (NULL == (ptr = tarfs_calloc(1, index_size + nodes_size))) {
+      errno = ENOMEM;
+      return NULL;
+
+    }
 
     index = (struct tarfs_inode **)ptr;
     nodes = (struct tarfs_inode *)(ptr + index_size);
@@ -599,9 +600,11 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
         }
           
         if (type != TART_HARDLINK && type != TART_SYMLINK) {
+#if CONFIG_TARFS_LOG
           log("inode_resolve() : %d->%d, final destination ", i, dest);
           tar_print((const char *)index[dest]->in_path, NULL);
           puts("");
+#endif
           index[i]->in_dvaddr = index[dest]->in_dvaddr;
           resolved++;
           break;
@@ -856,7 +859,7 @@ skip_header_and_data:
 
     log("end of file reached\r\n");
     if (total_bad)
-      log("%u blocks (%lu bytes) were skipped\n", total_bad, off - bad_start);
+      log("%u blocks (%u bytes) were skipped\n", total_bad, total_bad * 512);
       
 
   log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
@@ -881,9 +884,9 @@ void inode_unmount(struct tarfs_fs *fs, const void * tar_start, size_t tar_size)
 /* Create inodes (filesystem index), perform all sortings, link resolution and etc
  * to make things faster later
  */
-int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link) {
+int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link, const char *base_dir) {
 
-    char base_dir[100]; /* FIXME: no magic numbers! */
+
     int nino;
 
     fs->fs_vaddr= buf;
@@ -904,9 +907,6 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
     // PASS2: guess TARFS root (will be the mountpoint)
     log("PASS2, analyzing..\n");
-    if (false == tar_rootdir(buf, size, base_dir, sizeof(base_dir)))
-      base_dir[0] = '\0';
-
     log("filesystem prefix '%s' \n", base_dir);
 
     struct tarfs_inode **index = inode_alloc( nino );
@@ -964,8 +964,6 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 }
 
 
-
-
 /**
  *
  *
@@ -973,15 +971,20 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count) {
 
   log("-- HASH SORTED INODES --\r\n");
+#if CONFIG_TARFS_LOG
 
   for (size_t i = 0; i < count; i++) {
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
-    log("<%08x> %c %s path=", inode->in_hash,
+
+    printf("<%08x> %c %s path=", inode->in_hash,
       inode_getinfo(index, i, NULL, NULL) ,
       inode->in_vaddr != inode->in_dvaddr ? "*" : " ");
-      tar_print((char const *)inode->in_path, NULL);
-      puts("");
+
+    tar_print((char const *)inode->in_path, NULL);
+
+    puts("");
   }
+#endif
 }
 
 /**
@@ -992,14 +995,20 @@ void inode_dumppath_sorted(struct tarfs_inode const * root) {
 
   log("-- ALPHA SORTED INODES --\r\n");
 
+#if CONFIG_TARFS_LOG
+
   for (size_t i = 0; root != NULL; i++) {
-    log("<%08x> %s%s path=", 
+
+    printf("<%08x> %s%s path=", 
             root->in_hash,
             root->in_vaddr != root->in_dvaddr ? "*" : " ",
-            root->in_dvaddr == 0 ? "X" : " "
-);
+            root->in_dvaddr == 0 ? "X" : " ");
+
     tar_print((char const *)root->in_path, NULL);
+
     puts("");
+
     root = root->in_next;
   }
+#endif
 }

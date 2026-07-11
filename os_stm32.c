@@ -21,26 +21,16 @@
 #include "os.h"
 
 
-size_t tarfs_os_mp_maxlen() {
+size_t tarfs_os_mp_maxlen() { return 8; }
 
-  return 16;
-}
-
-bool tarfs_os_unregister_fs(const char *prefix) {
-
-  return true;
-}
-
-bool tarfs_os_register_fs(const char *prefix, void *context) {
-
-  return true;
-}
-
+/* No-ops */
 void tarfs_os_init() { }
+
 void tarfs_os_acquire_mutex() { }
 void tarfs_os_release_mutex() { }
 
-
+bool tarfs_os_unregister_fs(const char *prefix) { return true; }
+bool tarfs_os_register_fs(const char *prefix, void *context) { return true; }
 
 
 /* FLASH is already mapped to our address space
@@ -51,15 +41,18 @@ void tarfs_os_release_mutex() { }
  *    via extern const uint8_t __tarfs_start[]; extern const size_t __tarfs_end;
  *    address and size are defined by linker, binary blob is attached to the firmware directly
  */
-#define TARFILE_ADDR (uintptr_t)0x40000000
-#define TARFILE_SIZE (size_t)0x100000
+#define TARFILE_ADDR 0x40000000
+#define TARFILE_SIZE 0x100000
 
 void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *size_out) {
 
-  if (size_out)
-    *size_out = TARFILE_SIZE;
+  void const *tarfile = (void *)(uintptr_t)(TARFILE_ADDR);
 
-    return (void *)(TARFILE_ADDR);
+  if (size_out)
+    *size_out = (size_t)TARFILE_SIZE;
+
+  *os_handle_out = (void *)tarfile;
+  return tarfile;
 }
 
 void tarfs_os_unmap_tarfile(void *handle, void const *ptr, size_t size) {

@@ -196,7 +196,7 @@ void inode_unmount(struct tarfs_fs *fs,
 int inode_mount(struct tarfs_fs *fs,
                 const unsigned char *buf,
                 size_t size,
-                const char *rebase_link);
+                const char *rebase_link, const char *path_rebase);
 
 
 /**
