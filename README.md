@@ -1,6 +1,9 @@
-# TARFS — Read-only mmap-oriented filesystem over TAR images for firmware assets and runtime resources
+# UNDER DEVELOPMENT! NOT FULLY WORKING! PLANNED RELEASE IS IN AUGUST 2026
 
-## 1. Introduction
+
+## TARFS — Read-only mmap-oriented filesystem over TAR images for firmware assets and runtime resources
+
+### 1. Introduction
 
 TARFS is a lightweight read-only filesystem designed specifically for embedded systems.
 
@@ -12,7 +15,7 @@ Most files included in firmware never change after the image has been built. HTM
 
 ---
 
-## 2. Why another filesystem?
+### 2. Why another filesystem?
 
 1. **Efficient storage of immutable assets on memory-constrained systems with a large number of files.**
 
@@ -36,9 +39,9 @@ Most files included in firmware never change after the image has been built. HTM
 
 ---
 
-## 3. Features
+### 3. Features
 
-### 3.1 Nothing revolutionary
+#### 3.1 Nothing revolutionary
 
 TARFS does not introduce a new filesystem format. It simply provides a reasonably POSIX-compatible filesystem interface (POSIX in terms of the API) over a standard TAR archive.
 
@@ -59,7 +62,7 @@ The TAR archive may reside in external Flash, an internal Flash partition, or be
 
 ---
 
-### 3.2 Memory requirements
+#### 3.2 Memory requirements
 
 TARFS is designed for memory-constrained microcontrollers.
 
@@ -75,7 +78,7 @@ Because only two heap allocations are performed during mounting, heap fragmentat
 
 ---
 
-### 3.3 Better POSIX compatibility than existing ESP-IDF filesystems
+#### 3.3 Better POSIX compatibility than existing ESP-IDF filesystems
 
 TARFS supports true zero-copy `mmap()`. Files become directly accessible through memory without copying them into RAM.
 
@@ -91,7 +94,7 @@ Additional supported features include:
 
 ---
 
-### 3.4 Per-file integrity verification (CRC64/ECMA-182)
+#### 3.4 Per-file integrity verification (CRC64/ECMA-182)
 
 Each TAR record may contain a CRC64/ECMA-182 checksum without affecting TAR compatibility.
 
@@ -101,7 +104,7 @@ The accompanying utility `tarsum.c` computes CRC64 checksums for every archive e
 
 ---
 
-### 3.5 Corruption tolerance
+#### 3.5 Corruption tolerance
 
 Unlike conventional filesystems, TARFS has no central superblock.
 
@@ -113,7 +116,7 @@ TARFS is also tolerant of forgotten `munmap()` calls. Since `mmap()` does not al
 
 ---
 
-### 3.6 Performance and predictability
+#### 3.6 Performance and predictability
 
 With the exception of `mount()` and `unmount()`, TARFS does not use synchronization primitives.
 
