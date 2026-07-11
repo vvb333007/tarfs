@@ -91,29 +91,28 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
    * allowing us to retrieve the local file descriptor from the returned data.
    *
    * Yes, the filesystem is asking the VFS to translate its own file descriptor.
-   *
-   * ioctl() also returns a pointer to the corresponding filesystem instance and
-   * increments its reference count.
    */
   if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
 
-    fs = tarfs_getfs(io.fs_idx);
+    fs = tarfs_getfs_addref(io.fs_idx);
+    if (fs == NULL) {
+      log("filesystem gone\r\n");
+      return MAP_FAILED;
+    }
+
     fp = &fs->fs_fd[io.fd];
 
-    if (fs == NULL ||
-        fp->fp_vaddr == 0 ||
+    if (fp->fp_vaddr == 0 ||
         offset < 0 || 
         offset > fp->fp_size || 
         length > (fp->fp_size - offset)) {
 
-      /* addref'ed in the ioctl() */
-      if (fs != NULL)
-        tarfs_unref(fs);
+      tarfs_unref(fs);
 
       log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
       
       if (errno == 0)
-        errno = EBADF;
+        errno = EINVAL;
 
       return MAP_FAILED;
     }
@@ -123,9 +122,10 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     /* Partition is mmaped already by mount, here we just calculate the right 
      * memory offset
      */
-    log("fd=%d, mapped %lu bytes vaddr=%px, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
+    log("fd=%d, mapped %lu bytes vaddr=%p, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
     return (void *)(fp->fp_vaddr + offset);
   }
+
   if (errno == 0)
     errno = EBADF;
 
