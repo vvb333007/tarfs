@@ -592,24 +592,18 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
     case FIONBIO:
       return 0;
 
-    /* Return local FD number and the FS descriptor  pointer
-     * caller must unrefx() this descriptor after he/she finishes with FS pointer
+    /* Return local FD number and the FS index
      */
     case FIOGETFD:
 
       struct ioctl_req *out = va_arg(args, struct ioctl_req *);
 
       if (out) {
-        /* We are exporting a live pointer - must addref to keep it alive.
-         * The caller is responsible for unrefx()!
-         */
-        if (tarfs_addref(fs)) {
+
           out->fd = fd;
           out->fs_idx = fs_idx;
+
           return 0;
-        }
-        errno = ENODEV;
-        return -1;
       }
       errno = EINVAL;
       return -1;

@@ -89,6 +89,27 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
  * @return 0 on success, or -1 on error.
  */
 int munmap(void *addr, size_t length);
+
+#if CONFIG_TARFS_HAVE_FDOPENDIR
+/**
+ * @brief Associate an open directory file descriptor with a directory stream.
+ *
+ * Creates a directory stream from an existing directory file descriptor.
+ * After a successful call, the file descriptor is owned by the returned
+ * directory stream and must not be closed directly. It will be closed
+ * automatically by tard_closedir().
+ *
+ * @param ctx TARFS context.
+ * @param fd Directory file descriptor obtained by tarf_open() with
+ *           O_DIRECTORY.
+ *
+ * @return
+ *   A pointer to a directory stream on success, or NULL on failure with
+ *   errno set appropriately.
+ */
+DIR *fdopendir(int fd);
+#endif /* CONFIG_TARFS_HAVE_FDOPENDIR */
+
 #ifdef __cplusplus
 };
 #endif

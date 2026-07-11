@@ -13,6 +13,18 @@
 
 #pragma once
 
+/**
+ * Note on dirent structure:
+ *
+ *  Unlike POSIX, where d_off is an opaque implementation-defined
+ *  value, TARFS stores the logical directory position in this field.
+ *
+ *  Specifically, d_off is the zero-based index of the next directory
+ *  entry. The value can be saved and later passed to tard_seekdir() to
+ *  resume directory traversal.
+ */
+
+
 #ifdef __CYGWIN__
 /* Glibc-based systems dont expose DIR so we use a placeholder */
   typedef struct { int a; int b; } fake_DIR;
@@ -25,16 +37,25 @@
 extern "C" {
 #endif
 
+
 /**
- * Note on dirent structure:
+ * @brief Associate an open directory file descriptor with a directory stream.
  *
- *  Unlike POSIX, where d_off is an opaque implementation-defined
- *  value, TARFS stores the logical directory position in this field.
+ * Creates a directory stream from an existing directory file descriptor.
+ * After a successful call, the file descriptor is owned by the returned
+ * directory stream and must not be closed directly. It will be closed
+ * automatically by tard_closedir().
  *
- *  Specifically, d_off is the zero-based index of the next directory
- *  entry. The value can be saved and later passed to tard_seekdir() to
- *  resume directory traversal.
+ * @param ctx TARFS context.
+ * @param fd Directory file descriptor obtained by tarf_open() with
+ *           O_DIRECTORY.
+ *
+ * @return
+ *   A pointer to a directory stream on success, or NULL on failure with
+ *   errno set appropriately.
  */
+DIR* tard_fdopendir(void* ctx, int fd);
+
 
 
 /**

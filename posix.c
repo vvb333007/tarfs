@@ -35,34 +35,9 @@
 #include "file.h"
 #include "inode.h"
 #include "tar.h"
+#include "dir.h"
 #include "posix.h"
 
-
-#if CONFIG_TARFS_HAVE_READLINK
-/**
- * readlink() relies on a mount-time link table: when image is mounted, the inode_resolve() function,
- * which does all kind of link resolution, also builds a "link index": a sorted array of {hash, cchar *points_to} pairs
- * where points_to is the address if in_path, so each "link index" occupies 8 bytes on 32-bit machines
- *
- */
-ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
-
-  return (ssize_t)(-1);
-}
-#endif
-
-#if CONFIG_TARFS_HAVE_DIRFD
-/**
- * TODO: how we can convert local_fd to global_fd?
- */
-int dirfd(DIR *dir) {
-  /*
-    const char *prefix = tard_prefix(dir);
-    int fs_idx = tarfs_fsindex(prefix);
-*/
-  return -1;
-}
-#endif
 
 
 /**
@@ -167,3 +142,55 @@ int munmap(void *addr, size_t length) {
   errno = EINVAL;
   return -1;
 }
+
+#if CONFIG_TARFS_HAVE_FDOPENDIR
+
+/**
+ * @brief Associate an open directory file descriptor with a directory stream.
+ *
+ * Creates a directory stream from an existing directory file descriptor.
+ * After a successful call, the file descriptor is owned by the returned
+ * directory stream and must not be closed directly. It will be closed
+ * automatically by tard_closedir().
+ */
+DIR *fdopendir(int fd) {
+
+  
+  struct ioctl_req io;
+
+  /* Convert our global fd to local fd number so tarf_ and tard_ functions can be used 
+   * FIOGETFD returns the FS index and local fd 
+   */
+  if ((ioctl(fd, FIOGETFD, &io) >= 0))
+    return tard_fdopendir((void *)(uintptr_t)io.fs_idx, io.fd);
+
+  errno = ENOSYS;
+  return NULL;
+}
+#endif
+
+
+
+#if CONFIG_TARFS_HAVE_READLINK
+/**
+ * TODO: Implement
+ * readlink() relies on a mount-time link table: when image is mounted, the inode_resolve() function,
+ * which does all kind of link resolution, also builds a "link index"
+ *
+ */
+ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
+
+  errno = ENOTSUP;
+  return (ssize_t)(-1);
+}
+#endif
+
+#if CONFIG_TARFS_HAVE_DIRFD
+/**
+ * TODO: how we can convert local_fd to global_fd?!
+ */
+int dirfd(DIR *dir) {
+  errno = ENOTSUP;
+  return -1;
+}
+#endif

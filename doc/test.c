@@ -24,8 +24,8 @@ int main(int argc, char **argv) {
     printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 
 
-#if 0
-    DIR *dir = tard_opendir((0), "/Гарвульзепа/Чучундровна/");
+#if 1
+    DIR *dir = tard_opendir((0), "/Гарвульзепа/Чучундровна");
 
 
     log("dir=%p\r\n", dir);
@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
     if (dir != NULL)
       tard_closedir((0), dir);
 #endif
+#if 0
     int fd = tarf_open(0, "/list/example.c", O_RDONLY, 0);
     char ch;
     puts("1, SEEK_END");
@@ -58,6 +59,7 @@ int main(int argc, char **argv) {
   tarfs_dump(0,stdout,fprintf);
 
     tarf_close(0, fd);
+#endif
     tarfs_unmount("/jopa");
     
     

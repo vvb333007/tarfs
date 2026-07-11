@@ -140,8 +140,89 @@ struct tarfs_dir {
     return slash[1] == '\0' || slash[1] == '\r' || slash[1] == '\n';
 }
 
+/**
+ * @brief Associate an open directory file descriptor with a directory stream.
+ *
+ * Creates a directory stream from an existing directory file descriptor.
+ * After a successful call, the file descriptor is owned by the returned
+ * directory stream and must not be closed directly. It will be closed
+ * automatically by tard_closedir().
+ */
+
+DIR* tard_fdopendir(void* ctx, int fd) {
+
+  struct tarfs_dir *dir;
+  dir = tarfs_calloc(1, sizeof(struct tarfs_dir));
+
+  if (dir != NULL) {
+
+    struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
+
+    if (fs != NULL) {
+
+      struct tarfs_fp *fp = &fs->fs_fd[fd];
+
+      dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
+      dir->di_fd   = fd;          /* Underlying directory file descriptor */
+      dir->di_ino  = fs->fs_ino[fp->fp_idx]; /* Directory inode */
+      dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
+
+      dir->di_prefix = tar_strdup1((const char *)dir->di_ino->in_path, NULL);
+      if (dir->di_prefix != NULL) {
+
+        int nlen = strlen(dir->di_prefix);
+
+        if (dir->di_prefix[nlen - 1] == '/')
+           dir->di_prefix[nlen - 1] = '\0';
+
+        log("prefix: '%s' opened, fd=%d\r\n", dir->di_prefix, fd);
+        return (DIR*)dir;
+      }
+      errno = ENOMEM;
+      return NULL;
+    }
+
+    log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
+    tarfs_os_free(dir);
+
+  } else
+    errno = ENOMEM;
+
+  log("failed for fd=%d\r\n", fd);
+  return NULL;
+}
 
 
+/**
+ * @brief Open a directory for reading.
+ *
+ * Opens an existing directory and returns a directory stream that can be
+ * used with tard_readdir(), tard_telldir(), tard_seekdir() and
+ * tard_closedir().
+ */
+
+DIR* tard_opendir(void* ctx, const char* name) {
+
+  if (name && *name) {
+
+    int fd;
+    DIR *d;
+
+    if ((fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0)) >= 0) {
+      if ((d = tard_fdopendir(ctx, fd)) != NULL)
+        return d;
+      tarf_close(ctx, fd);
+    }
+    /* tarf_open() sets errno */
+    log("failed to open()/fdopendir() '%s'\r\n", name);
+  } else
+    errno = EINVAL;
+
+  return NULL;
+}
+
+
+#if 0
 /**
  * @brief Open a directory for reading.
  *
@@ -194,6 +275,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
   log("failed for '%s'\r\n", name);
   return NULL;
 }
+#endif
 
 /**
  * @brief Close a directory stream.
