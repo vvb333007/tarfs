@@ -1,4 +1,5 @@
-# сраные пробелы вместо табов
+# This Makefile is used for TARFS development: copy doc/os_cygwin.c to this dir and 'make'
+# 
 .RECIPEPREFIX := >
 
 # Compiler
@@ -8,9 +9,9 @@ CC      := gcc
 OBJDIR  := obj
 
 # Flags
-#CFLAGS  := -Wall -std=c11 -D_POSIX_C_SOURCE=200809L -g
-CFLAGS  := -Wall -Os
-CFLAGS += -MMD -MP -Iinclude
+CFLAGS  := -Wall -std=c11 -D_POSIX_C_SOURCE=200809L -g
+#CFLAGS  := -Wall -Os
+CFLAGS += -MMD -MP 
 
 # Общие исходники
 COMMON_SRC := \
