@@ -227,6 +227,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
             path = (const char *)p;
             log("path has been changed to '%s'\r\n", path);
           }
+          /* TODO: ENOMEM on failed strdup? */
         }
       }
     }
@@ -556,7 +557,7 @@ int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
   switch (cmd) {
 
     case F_GETFL:
-      return O_NONBLOCK;
+      return O_NONBLOCK | O_RDONLY; /* O_RDONLY is usually 0, but who knows */
 
     case F_SETFL:
       return 0;

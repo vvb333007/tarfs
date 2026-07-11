@@ -139,6 +139,7 @@ int tarfs_fsindex(const char *path) {
     tarfs_lock();
     for (int i = 0; i < TARFS_MAX_FS; i++) {
 
+      if (s_tarfs[i] != NULL) {
         const char *mp = s_tarfs[i]->fs_mountpoint; /* can't be NULL, it is an inplace array */
         size_t len = strlen(mp);
 
@@ -156,6 +157,7 @@ int tarfs_fsindex(const char *path) {
 
         best = i;
         best_len = len;
+      }
     }
     tarfs_unlock();
 
@@ -492,7 +494,7 @@ void *tarfs_calloc(size_t count, size_t size) {
 
   void *buffer;
 
-  if ((buffer = tarfs_os_malloc(size)) != NULL)
+  if ((buffer = tarfs_os_malloc(size * count)) != NULL)
     memset(buffer, 0, size);
 
   return buffer;
