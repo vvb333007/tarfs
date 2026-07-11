@@ -35,7 +35,9 @@
 
 #define MAP_FAILED   ((void *)(-1))
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * Map a file into the process address space.
  *
@@ -87,3 +89,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
  * @return 0 on success, or -1 on error.
  */
 int munmap(void *addr, size_t length);
+#ifdef __cplusplus
+};
+#endif

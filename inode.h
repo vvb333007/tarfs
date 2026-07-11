@@ -80,6 +80,9 @@ typedef struct tarfs_inode tarfs_inode_t;
 struct tarfs_fs;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * @brief Get information about an inode.
  *
@@ -215,3 +218,6 @@ void inode_dumphash_sorted(struct tarfs_inode const * const *index,
  * @param root Root inode.
  */
 void inode_dumppath_sorted(struct tarfs_inode const *root);
+#ifdef __cplusplus
+};
+#endif

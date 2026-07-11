@@ -28,7 +28,6 @@
 #include "os.h"
 #include "fs.h"
 #include "inode.h"
-#include "refc.h"
 #include "tar.h"
 #include "dir.h"
 

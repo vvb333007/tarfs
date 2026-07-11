@@ -32,6 +32,9 @@
 #define likely(_X)     __builtin_expect(!!(_X), 1)
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Platform API */
 
 /* TARFS uses a single recursive mutex to protect its internal state.
@@ -56,8 +59,8 @@ void  tarfs_os_release_mutex();
  * The returned pointer must remain valid until tarfs_os_unmap_tarfile()
  * is called.
  */
-void *tarfs_os_map_tarfile(const char *name, void **os_handle_out, size_t *size_out);
-void  tarfs_os_unmap_tarfile(void *os_handle, void *ptr, size_t size);
+void const *tarfs_os_map_tarfile(const char *name, void **os_handle_out, size_t *size_out);
+void  tarfs_os_unmap_tarfile(void *os_handle, const void *ptr, size_t size);
 
 /* Register or unregister TARFS with the platform VFS.
  *
@@ -116,3 +119,6 @@ size_t tarfs_os_mp_maxlen();
  */
 void *tarfs_os_malloc(size_t size);
 void  tarfs_os_free(void *buffer);
+#ifdef __cplusplus
+};
+#endif

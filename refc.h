@@ -27,10 +27,11 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <stdatomic.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#ifdef __cplusplus
+#  undef _Atomic
+#  define _Atomic(X) X
+#endif
+
 
 /**
  * @brief Reference counter type.
@@ -43,6 +44,15 @@ typedef unsigned int refc_type_t;
  * @brief Atomic reference counter type.
  */
 typedef _Atomic(refc_type_t) refc_t;
+
+
+#ifndef __cplusplus
+
+#include <stdint.h>
+#include <stdatomic.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
 
 /**
  * @brief Initialize reference counter.
@@ -227,3 +237,6 @@ static inline refc_type_t readref(refc_t *r) {
 
     return r ? atomic_load_explicit(r, memory_order_relaxed) : 0;
 }
+
+#endif /* not __cplusplus */
+

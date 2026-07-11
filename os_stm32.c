@@ -54,7 +54,7 @@ void tarfs_os_release_mutex() { }
 #define TARFILE_ADDR (uintptr_t)0x40000000
 #define TARFILE_SIZE (size_t)0x100000
 
-void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *size_out) {
+void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *size_out) {
 
   if (size_out)
     *size_out = TARFILE_SIZE;
@@ -62,6 +62,6 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     return (void *)(TARFILE_ADDR);
 }
 
-void tarfs_os_unmap_tarfile(void *handle, void *ptr, size_t size) {
+void tarfs_os_unmap_tarfile(void *handle, void const *ptr, size_t size) {
 
 }

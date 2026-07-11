@@ -32,11 +32,11 @@
 #include "esp_partition.h"
 #include "esp_rom_spiflash.h"
 
-
+#include "config.h"
 #include "os.h"
-#include "refc.h"
 #include "fs.h"
 #include "file.h"
+#include "dir.h"
 #include "inode.h"
 
 enum {
@@ -66,8 +66,6 @@ static const esp_vfs_dir_ops_t s_tarfs_dir = {
 
     .truncate_p  = &tarf_truncate,
     .ftruncate_p = &tarf_ftruncate,
-
-    .utime_p     = &tarf_utime,
 };
 
 static const esp_vfs_fs_ops_t s_tarfs_fs = {
@@ -75,8 +73,8 @@ static const esp_vfs_fs_ops_t s_tarfs_fs = {
     .write_p = &tarf_write,
     .lseek_p = &tarf_lseek,
     .read_p  = &tarf_read,
-    .pread_p = &tarf_read,
-    .pwrite_p= &tarf_pwrite,
+    .pread_p = &tarf_pread,
+  
     .open_p  = &tarf_open,
     .close_p = &tarf_close,
     .fstat_p = &tarf_fstat,
@@ -85,7 +83,7 @@ static const esp_vfs_fs_ops_t s_tarfs_fs = {
     .fsync_p = &tarf_fsync,
 
     .dir     = &s_tarfs_dir,
-}
+};
 
 
 static SemaphoreHandle_t s_lock = NULL;
@@ -117,6 +115,11 @@ void tarfs_os_release_mutex() {
 
   if (s_lock != NULL)
     xSemaphoreGive(s_lock);
+}
+
+
+size_t tarfs_os_mp_maxlen() {
+  return 16;
 }
 
 /* Default allocator 
@@ -194,12 +197,11 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
  * @param os_handle an opaque value as returned by tarfs_os_map_tarfile()
  * @param size total mapped region size
  *
- * @return true if unmapped, false otherwise
  */
-bool tarfs_os_unmap_tarfile(const char *label, void *os_handle, size_t size) {
-  label = label;
+void tarfs_os_unmap_tarfile(void *os_handle, const void *map, size_t size) {
+  map = map;
   size = size;
-  return ESP_OK == esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);
+  esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);
 }
 
 

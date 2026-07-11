@@ -67,7 +67,7 @@ void  tarfs_os_free(void *buffer) { free(buffer); }
  * The returned pointer must remain valid until tarfs_os_unmap_tarfile()
  * is called.
  */
-void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *size_out) {
+void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *size_out) {
 
     FILE *f = fopen(filename, "rb");
 
@@ -117,7 +117,7 @@ void *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, size_t *s
     return buf;
 }
 
-void tarfs_os_unmap_tarfile(void *handle, void *ptr, size_t size) {
+void tarfs_os_unmap_tarfile(void *handle, void const *ptr, size_t size) {
   ptr = ptr;
   size = size;
   tarfs_os_free(handle);

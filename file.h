@@ -24,8 +24,11 @@
 //#include "fs.h"
 
 /* Compile-time sanity checks. */
-_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
+_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "Code review is required");
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * This internal file descriptor maps to a local fd number 
@@ -243,26 +246,6 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args);
  */
 int tarf_stat(void* ctx, const char * path, struct stat * st);
 
-/**
- * Query or update file timestamps.
- *
- * TARFS is a read-only filesystem and does not support changing file
- * timestamps. If @p times is non-NULL, the structure is filled with the
- * current access time and the file modification time stored in the TAR
- * archive. No filesystem metadata is modified.
- *
- * @param ctx    Filesystem context.
- * @param path   Path to the file (currently unused).
- * @param times  Pointer to a structure to receive timestamps.
- *
- * @return 0 on success, or -1 if @p times is NULL.
- *
- * @retval EINVAL  @p times is NULL.
- *
- * @note TARFS does not store file access times. Therefore the returned
- *       access time is set to the current system time.
- */
-int tarf_utime(void *ctx, const char *path, struct utimbuf *times);
 
 
 
@@ -346,3 +329,6 @@ int tarf_unlink(void* ctx, const char *path);
  */
 int tarf_rename(void* ctx, const char *src, const char *dst);
 
+#ifdef __cplusplus
+};
+#endif

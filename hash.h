@@ -26,6 +26,9 @@
 #define HASH32_IV     (uint32_t)(2166136261u)   /* Init vector for 32bit hash */
 #define HASH64_IV     0ULL                      /* Init vector for 64bit hash */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * @brief Compute FNV-1a hash over a byte buffer
  *
@@ -79,3 +82,6 @@ uint64_t hash64(uint64_t prev_hash, void const *data, size_t len);
  */
 uint64_t sum64(uint64_t prev_sum, void const *buffer0, size_t buf_len);
 uint32_t sum32(uint32_t prev_sum, void const *buffer0, size_t buf_len);
+#ifdef __cplusplus
+};
+#endif

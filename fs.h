@@ -110,12 +110,13 @@ struct tarfs_fs {
   char                          fs_mountpoint[0];     /*!< Mount point */
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * Add 1 to the FS' reference count
  */
-static inline int tarfs_addref(struct tarfs_fs *fs) {
-  return fs == NULL ? 0 : addref(&fs->fs_ref);
-}
+int tarfs_addref(struct tarfs_fs *fs);
 
 /**
  * Substract 1. If counter reaches zero then  the FS destructor is called
@@ -278,3 +279,7 @@ time_t tarfs_getmtime(int fs_idx);
  */
 void *tarfs_calloc(size_t count, size_t size);
 char *tarfs_strdup(char const *str);
+
+#ifdef __cplusplus
+};
+#endif

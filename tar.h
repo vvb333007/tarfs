@@ -87,6 +87,9 @@ typedef struct tarhdr tarhdr_t;
 
 _Static_assert(sizeof(tarhdr_t) == 512, "sizeof(tarhdr_t) != 512, code review is required");
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Compare an UTS/CTS to a CTS
@@ -251,4 +254,7 @@ uint32_t tar_hdrsum(tarhdr_t const * hdr);
  *
  */
 int tar_addsum(uint8_t *tar_start, size_t tar_length);
-                               
+      
+#ifdef __cplusplus
+};
+#endif                         

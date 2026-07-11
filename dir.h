@@ -13,6 +13,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Note on dirent structure:
  *
@@ -133,3 +137,7 @@ int tard_mkdir(void* ctx, const char* name, mode_t mode);
  * @return Always returns -1 and sets errno to EROFS.
  */
 int tard_rmdir(void* ctx, const char* name);
+
+#ifdef __cplusplus
+};
+#endif

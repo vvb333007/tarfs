@@ -251,6 +251,16 @@ static void commit_unmount(void *ctx) {
   tarfs_os_free(fs);
 }
 
+/*
+ *
+ */
+int tarfs_addref(struct tarfs_fs *fs) {
+  return fs == NULL ? 0 : addref(&fs->fs_ref);
+}
+
+/*
+ *
+ */
 int tarfs_unref(struct tarfs_fs *fs) {
   return fs == NULL ? 0 : unrefx(&fs->fs_ref, fs, commit_unmount);
 }
@@ -418,7 +428,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 
   int slot;
   size_t size;
-  void *map;
+  void const *map;
   void *os_handle;
 
 

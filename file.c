@@ -76,7 +76,6 @@
 #include "os.h"
 #include "tar.h"
 #include "fs.h"
-#include "refc.h"
 
 /* Compile-time sanity checks */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
@@ -646,37 +645,6 @@ int tarf_stat(void* ctx, const char * path, struct stat * st) {
 }
 
 
-/**
- * Query or update file timestamps.
- *
- * TARFS is a read-only filesystem and does not support changing file
- * timestamps. If @p times is non-NULL, the structure is filled with the
- * current access time and the file modification time stored in the TAR
- * archive. No filesystem metadata is modified.
- *
- * @param ctx    Filesystem context.
- * @param path   Path to the file (currently unused).
- * @param times  Pointer to a structure to receive timestamps.
- *
- * @return 0 on success, or -1 if @p times is NULL.
- *
- * @retval EINVAL  @p times is NULL.
- *
- * @note TARFS does not store file access times. Therefore the returned
- *       access time is set to the current system time.
- */
-int tarf_utime(void *ctx, const char *path, struct utimbuf *times) {
-
-  if (times != NULL) {
-
-    times->actime = time(NULL);  /* Access time; We do not keep atime in inodes, so what else we can do? */
-    times->modtime = tarfs_getmtime((int)(uintptr_t)ctx);
-
-    return 0;
-  }
-  errno = EINVAL;
-  return -1;
-}
 
 
 /**
