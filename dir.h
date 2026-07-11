@@ -13,6 +13,14 @@
 
 #pragma once
 
+#ifdef __CYGWIN__
+/* Glibc-based systems dont expose DIR so we use a placeholder */
+  typedef struct { int a; int b; } fake_DIR;
+# undef DIR
+# define DIR fake_DIR
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

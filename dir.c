@@ -65,19 +65,12 @@
 
 
 
-typedef struct {
-  int a;
-  int b;
-} xDIR;
-
-
-
 /**
  * @brief TARFS DIR structure
  */
 struct tarfs_dir {
 
-    xDIR          di_dir;       /*!< Opaque VFS DIR struct */
+    DIR           di_dir;       /*!< Opaque VFS DIR struct */
     struct dirent di_ent;       /*!< dirent to return to the caller */
     size_t        di_off;       /*!< offset to the current dir; actually - the next inode to read */
     int           di_fd;
