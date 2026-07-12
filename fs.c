@@ -271,9 +271,7 @@ int tarfs_unref(struct tarfs_fs *fs) {
 }
 
 /** 
- * Unmounting a filesystem with a zero open files AND opening a file at the same time
- * MAY result in racecond which eventually lead to crash. This must be fixed at ESP-IDF VFS level.
- * To prevent this type of race completely do not unmount filesystems once mounted
+ *
  */
 int tarfs_unmount(const char *mountpoint) {
   
