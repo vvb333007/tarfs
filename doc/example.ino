@@ -25,10 +25,10 @@ void setup() {
   // Multiple filesystems can be mounted at the same time.
   // The mount point can be omitted; in this case it will be automatically
   // calculated from the TAR archive contents.
-  int err = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
-  //int err = tarfs_mount(filename, NULL, NULL, NULL);
+  int fs_index = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
+  //int fs_index = tarfs_mount(filename, NULL, NULL, NULL);
 
-  printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
+  printf("tarfs: mounting resource '%s', fs_index = %d\r\n", filename, fs_index);
 
     
   // int fd = open("/My_FS/list", O_RDONLY|O_DIRECTORY);
