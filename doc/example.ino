@@ -15,7 +15,9 @@ void setup() {
   // If this happens, you can specify a prefix to remove.
   // For example, sometimes my archives contain paths like:
   // "/??/D:/Arduino/dev/..."
+
   const char *rebase_link = "/\?\?/D:/Arduino/dev";  
+  //const char *rebase_link = NULL;  
 
   // Initialize TARFS (call once)
   tarfs_init();
@@ -24,6 +26,7 @@ void setup() {
   // The mount point can be omitted; in this case it will be automatically
   // calculated from the TAR archive contents.
   int err = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
+  //int err = tarfs_mount(filename, NULL, NULL, NULL);
 
   printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 

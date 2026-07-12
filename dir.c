@@ -45,8 +45,8 @@
  *      /dir3/dir33/file33.txt    <-- direct child readdir()
  *      /dir3/dir33/file44.txt    <-- direct child readdir()
  *      /dir3/dir33/file55/       <-- direct child readdir()
- *      /dir3/dir33/file55/jopa   <-- indirect child skip
- *      /dir3/dir33/file55/ssaka  <-- indirect child skip
+ *      /dir3/dir33/file55/jjjj   <-- indirect child skip
+ *      /dir3/dir33/file55/ssss  <-- indirect child skip
  *      /dir3/dir33/file66/       <-- direct child readdir()
  *      /dir3/dir33/file55.txt    <-- direct child readdir()
  *      /dir3/dir33/file77.txt    <-- direct child readdir()
@@ -58,7 +58,7 @@
  *
  * opendir() returns the index of the directory inode. readdir() then starts
  * scanning from the next entry (idx + 1), returning only direct children while
- * skipping descendants located in subdirectories (e.g. file55/jopa). Scanning
+ * skipping descendants located in subdirectories (e.g. file55/jjjj). Scanning
  * stops as soon as the pathname no longer belongs to the opened directory
  * (e.g. "/dir3/dir44/").
  */

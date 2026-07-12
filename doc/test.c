@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     
 
 
-    int err = tarfs_mount(filename, "/jopa", rebase_link, NULL);
+    int err = tarfs_mount(filename, "/jjjj", rebase_link, NULL);
 
     printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
 
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
     tarf_close(0, fd);
 #endif
-    tarfs_unmount("/jopa");
+    tarfs_unmount("/jjjj");
     
     
     return 0;
