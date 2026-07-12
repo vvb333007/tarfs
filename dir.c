@@ -352,7 +352,8 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
           default:        dir->di_ent.d_type = DT_UNKNOWN; break;
         }
 
-        dir->di_ent.d_ino = 0; //TODO: inode number.
+        /* TODO: inode number. */
+        dir->di_ent.d_ino = 0; 
         
 
         dir->di_cino = cur;

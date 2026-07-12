@@ -39,7 +39,7 @@
 #include "posix.h"
 
 
-
+#if CONFIG_TARFS_HAVE_MMAP
 /**
  * Mimic POSIX mmap().
  *
@@ -142,9 +142,9 @@ int munmap(void *addr, size_t length) {
   errno = EINVAL;
   return -1;
 }
+#endif /* CONFIG_TARFS_HAVE_MMAP */
 
 #if CONFIG_TARFS_HAVE_FDOPENDIR
-
 /**
  * @brief Associate an open directory file descriptor with a directory stream.
  *
@@ -167,7 +167,7 @@ DIR *fdopendir(int fd) {
   errno = ENOSYS;
   return NULL;
 }
-#endif
+#endif /* CONFIG_TARFS_HAVE_FDOPENDIR */
 
 
 
@@ -183,7 +183,7 @@ ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
   errno = ENOTSUP;
   return (ssize_t)(-1);
 }
-#endif
+#endif /* CONFIG_TARFS_HAVE_READLINK */
 
 #if CONFIG_TARFS_HAVE_DIRFD
 /**

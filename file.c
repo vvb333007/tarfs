@@ -379,6 +379,7 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
 
   /* Clamp the read size so we never read past the end of the file.
    * `size` can become zero after the clamp (happens for directories for example), it is normal
+   * We also expect fp_pos to be within the range [0..file_size] inclusive
    */
   if (fp->fp_size - fp->fp_pos < size)
     size = fp->fp_size - fp->fp_pos;
@@ -473,13 +474,15 @@ off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
      *     lseek(fd, 0, SEEK_END)
      *
      * After positioning at EOF, subsequent read() calls return 0.
-     * NOTE: if offset is LONG_MIN then -offset is NaN
      */
-    if (offset <= 0 && -offset <= fp->fp_size) {
-      fp->fp_pos = (off_t)fp->fp_size + offset;  /* TODO: check carefully edge cases around LONG_MIN */
-      return (off_t)fp->fp_pos;
-    }
+    if (offset <= 0) {
+      uint64_t back = (uint64_t)(-(offset + 1)) + 1; /* 64bit arith here is for reason */
 
+      if (back <= fp->fp_size) {
+        fp->fp_pos = fp->fp_size - back;
+        return (off_t)fp->fp_pos;
+      }
+    }
   } else if (whence == SEEK_CUR) {
 
     off_t new_offset = offset + (off_t)fp->fp_pos;

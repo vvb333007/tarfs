@@ -99,7 +99,6 @@ int munmap(void *addr, size_t length);
  * directory stream and must not be closed directly. It will be closed
  * automatically by tard_closedir().
  *
- * @param ctx TARFS context.
  * @param fd Directory file descriptor obtained by tarf_open() with
  *           O_DIRECTORY.
  *
