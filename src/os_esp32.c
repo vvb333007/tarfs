@@ -155,7 +155,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   void const *map;
 
   if (label == NULL || os_handle_out == NULL) {
-    log("ESP32: invalid arguments\r\n");
+    logerr("ESP32: invalid arguments\r\n");
     errno = EINVAL;
     return false;
   }
@@ -165,7 +165,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
                          ESP_PARTITION_SUBTYPE_ANY,
                          label);
   if (i == NULL) {
-    log("ESP32: partition not found '%s'\r\n", label);
+    logerr("ESP32: partition not found '%s'\r\n", label);
     errno = ENOENT;
     return false;
   }
@@ -185,7 +185,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
     return map;
   }
 
-  log("esp_partition_mmap() failed\r\n");
+  logerr("esp_partition_mmap() failed\r\n");
   errno = ENOMEM;
   return false;
 }

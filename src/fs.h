@@ -36,6 +36,7 @@
 #else
 #  define log( Format_, ... ) do {} while(0)
 #endif
+#define logerr( Format_, ... ) printf( "%s(): " Format_, __FUNCTION__,  ##__VA_ARGS__ )
 
 #include "refc.h"
 #include "file.h"

@@ -33,7 +33,6 @@
 #include "hash.h"
 #include "inode.h"
 
-
 static const char *remove_subpath(const char *path, const char *path_end, const char *subpath) {
 
   const char *text = path;
@@ -115,7 +114,7 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
               }
   
             if (!good_line)
-                log("BAD/MALFORMED archive\r\n");
+                logerr("BAD/MALFORMED archive\r\n");
   
             return good_line ? line + templ_len : NULL; // value starts here
         }
@@ -421,7 +420,7 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
         }
       }
 
-      log("unresolved collision, path='%s'\r\n", path);
+      logerr("unresolved collision, hash=%08x\r\n", (unsigned int)hash);
       break;
     }
   } /* while left < right */
@@ -589,19 +588,19 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           dest = inode_lookup((struct tarfs_inode const * const *)index, count, link_name);
           if (dest < 0) {
             
-            log("failed to resolve '%s' in two attempts\r\n", link_name);
+            logerr("failed to resolve '%s' in two attempts\r\n", link_name);
             break;
           }
         }
         tart_t type = inode_getinfo((struct tarfs_inode const * const *)index, dest, NULL, NULL);
         if (type == TART_BAD) {
-          log("can not get info on inode %d\r\n", dest);
+          logerr("can not get info on inode %d\r\n", dest);
           break;
         }
           
         if (type != TART_HARDLINK && type != TART_SYMLINK) {
 #if CONFIG_TARFS_LOG
-          log("inode_resolve() : %d->%d, final destination ", i, dest);
+          log("%d->%d, final destination ", i, dest);
           tar_print((const char *)index[dest]->in_path, NULL);
           puts("");
 #endif
@@ -616,7 +615,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
       } while(--depth > 0);
 
       if (index[i]->in_dvaddr == 0) {
-        log("inode #%d is a floating link\r\n",i);
+        logerr("inode #%d is a floating link\r\n",i);
         floating++;
       }
 
@@ -676,9 +675,9 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
           pax_entry_link = NULL;
 
           if (!bad) {
-            log("Header #%lu is invalid (or NUL-header)\r\n", hdr_no);
+            logerr("Header #%lu is invalid (or NUL-header)\r\n", hdr_no);
 bad_header:
-            log("Skipping blocks starting from offset %lu..\r\n", off);
+            logerr("Skipping blocks starting from offset %lu..\r\n", off);
             bad++;
             bad_start = off;
           }
@@ -688,7 +687,7 @@ bad_header:
         }
 
         if (bad) {
-          log("Resuming at offset %lu; (%lu blocks/ %lu bytes) were lost \n", off, (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
+          logerr("Resuming at offset %lu; (%lu blocks/ %lu bytes) were lost \n", off, (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
           total_bad += bad;
           bad = 0;
           
@@ -698,7 +697,7 @@ bad_header:
 
         /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
         if (((uintptr_t)(hdr + 1)) + size >= tar_end) {
-          log("Invalid entry size, sector marked as bad\r\n");
+          logerr("Invalid entry size, sector marked as bad\r\n");
           goto bad_header;
         }
 
@@ -860,7 +859,7 @@ skip_header_and_data:
 
     log("end of file reached\r\n");
     if (total_bad)
-      log("%u blocks (%u bytes) were skipped\n", total_bad, total_bad * 512);
+      logerr("%u blocks (%u bytes) were skipped\n", total_bad, total_bad * 512);
       
 
   log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
@@ -955,12 +954,12 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
         /* Check if root node is '/' by checking its hash */
         if (root->in_hash != HASH32_SLASH) {
         /* inode_dumppath_sorted(root); */
-          log("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
+          logerr("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
         }
         return 0;
       }
 
-      log("WARNING: no root inode after alphasort, opendir() is disabled\r\n");
+      logerr("WARN: no root inode after alphasort, opendir() is disabled\r\n");
       /* inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino); */
     }      
 

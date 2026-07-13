@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "espshell.h"
 #include "tarfs.h"
 
 void setup() {
@@ -6,75 +7,96 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
-  
- 
-  const char *filename = "ffat";  // Flash partition name. My TAR file was stored in a partition
-                                  // that previously contained a FAT filesystem.
+  // Name of the flash partition containing the TAR archive.
+  // In this example, the archive was written into a partition
+  // previously used as a FAT filesystem.
+  const char *partition_name = "ffat";
 
-  // Sometimes the tar utility puts absolute paths into the archive.
-  // If this happens, you can specify a prefix to remove.
-  // For example, sometimes my archives contain paths like:
-  // "/??/D:/Arduino/dev/..."
+  // Some versions of tar may store absolute paths in the archive.
+  // If this happens, specify the path prefix to strip during mount.
+  //
+  // Example:
+  // const char *rebase_link = "/\?\?/D:/Arduino/dev";
+  const char *rebase_link = NULL;
 
-  const char *rebase_link = "/\?\?/D:/Arduino/dev";  
-  //const char *rebase_link = NULL;  
-
-  // Initialize TARFS (call once)
+  // Initialize TARFS (call once).
   tarfs_init();
 
-  // Multiple filesystems can be mounted at the same time.
-  // The mount point can be omitted; in this case it will be automatically
-  // calculated from the TAR archive contents.
-  int fs_index = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
-  //int fs_index = tarfs_mount(filename, NULL, NULL, NULL);
+  // Mount the filesystem.
+  //
+  // The mount point may be NULL, in which case TARFS will determine
+  // it automatically from the archive contents.
+  int err = tarfs_mount(partition_name, "/My_FS", rebase_link, NULL);
 
-  printf("tarfs: mounting resource '%s', fs_index = %d\r\n", filename, fs_index);
+  printf("tarfs: mounting resource '%s', err = %d\r\n", partition_name, err);
 
-    
-  // int fd = open("/My_FS/list", O_RDONLY|O_DIRECTORY);
-  // DIR *dir = fdopendir(fd);
-  // DIR *dir2 = opendir("/My_FS/list");
+  //
+  // Read a file using the POSIX API.
+  //
+  puts("\n--- Reading file ---");
 
-  // Open a file and play with it
   int fd = open("/My_FS/list/example.c", O_RDONLY);
+  if (fd < 0) {
+    puts("open() failed");
+    return;
+  }
 
-  // Open the same file again using fopen()
-  FILE *fp = fopen("/My_FS/list/example.c", "rb");
+  char buf[128];
+  ssize_t n;
 
-  char ch;
-  puts("1, SEEK_END");
-
-  /* Move position to EOF */
-  lseek(fd, 1, SEEK_END);
-
-  while(read(fd, &ch, 1) == 1)
-    putchar(ch);
-
-  /* Move position before the beginning of the file */
-  puts("-1, SEEK_SET");
-  lseek(fd, -1, SEEK_SET);
-
-  while(read(fd, &ch, 1) == 1)
-    putchar(ch);
-
-  /* Move position far before the beginning of the file */
-  puts("-4000, SEEK_CUR");
-  lseek(fd, -4000, SEEK_CUR);
-
-  while(read(fd, &ch, 1) == 1)
-    putchar(ch);
+  while ((n = read(fd, buf, sizeof(buf))) > 0)
+    fwrite(buf, 1, n, stdout);
 
   close(fd);
 
-  /* We forgot to close fp, so unmount will be deferred */
-  tarfs_unmount("/My_FS"); 
+  //
+  // List directory contents.
+  //
+  puts("\n\n--- Directory listing ---");
 
-  /* The actual unmount happens here */
-  fclose(fp); 
+  DIR *dir = opendir("/My_FS/list");
+  if (dir) {
+
+    struct dirent *de;
+
+    while ((de = readdir(dir)) != NULL)
+      printf("%s\n", de->d_name);
+
+    closedir(dir);
+  }
+
+  //
+  // Access a file using mmap().
+  //
+  puts("\n--- mmap() example ---");
+
+  fd = open("/My_FS/list/example.c", O_RDONLY);
+
+  if (fd >= 0) {
+
+    struct stat st;
+
+    if (fstat(fd, &st) == 0) {
+
+      void *ptr = mmap(NULL,
+                       st.st_size,
+                       PROT_READ,
+                       MAP_SHARED,
+                       fd,
+                       0);
+
+      if (ptr != MAP_FAILED) {
+
+        printf("mmap() succeeded\r\n");
+
+        munmap(ptr, st.st_size);
+      }
+    }
+
+    close(fd);
+  }
 }
 
-
 void loop() {
-
   delay(1000);
 }

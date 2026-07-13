@@ -26,7 +26,7 @@
                 fs_idx < TARFS_MAX_FS && \
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
 \
-    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); \
+    logerr("bad filesystem context: %d, %p\r\n",fs_idx, fs); \
     errno = EIO; \
     return (TYPE)(-1); \
   } \
@@ -249,7 +249,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     /* bad inode? */
     if (inode->in_dvaddr == 0) {
 
-      log("inode '%s' was found but has NULL DVADDR\r\n", path);
+      logerr("inode '%s' was found but has NULL DVADDR\r\n", path);
       errno = EIO;
       goto unref_and_exit;
     }
@@ -802,7 +802,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       ((flags & MAP_ANONYMOUS) && fd < 0) ||
       ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
 
-    log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
+    logerr("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
     errno = EINVAL; 
     return MAP_FAILED;
   }
@@ -844,7 +844,7 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
                 fs_idx < TARFS_MAX_FS && 
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
 
-    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    logerr("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
     errno = EIO; 
     return -1; 
   }

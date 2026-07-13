@@ -48,7 +48,7 @@ static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesy
 struct tarfs_fs *tarfs_getfs(int i) {
   if (i>=0 && i < TARFS_MAX_FS)
     return s_tarfs[i];
-  log("filesystem #%d does not exist!\r\n",i);
+  logerr("filesystem #%d does not exist!\r\n",i);
   return NULL;
 }
 
@@ -204,7 +204,7 @@ static void commit_unmount(void *ctx) {
   if (fs == NULL)
     return ;
 
-  log(">>> unmounting FS '%s' started\r\n", fs->fs_mountpoint);
+  log("unmounting FS '%s' started\r\n", fs->fs_mountpoint);
 
 
   log("unregistering VFS\r\n");
@@ -214,7 +214,7 @@ static void commit_unmount(void *ctx) {
    */  
   if (!tarfs_os_unregister_fs(fs->fs_mountpoint)) {
 
-    log(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
+    logerr(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
     /* This will create a memory leak, but prevents crashes */
     return ;
   }
@@ -296,7 +296,7 @@ int tarfs_unmount(const char *mountpoint) {
     prev_refc = tarfs_unref(fs);
 
     if (prev_refc > 1) {
-      log("Filesystem %s is in use (%u open fds), umount delayed\r\n", mountpoint, prev_refc - 1);
+      logerr("Filesystem %s is in use (%u open fds), unmount delayed\r\n", mountpoint, prev_refc - 1);
       err = EAGAIN;
     }
 
@@ -329,7 +329,7 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
   log("Running filesystem check, wait..\r\n");
   int bad = tar_verify_crc(map,size, false);
   if (bad)
-    log("FS checked: %d bad entries\r\n", bad);
+    logerr("FS checked: %d bad entries\r\n", bad);
   else
     log("Filesystem has no errors\r\n");
 
@@ -354,7 +354,7 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
-      log("ERR: mountpoint is too short or invalid '%s'\r\n", mountpoint);
+      logerr("mountpoint is too short or invalid '%s'\r\n", mountpoint);
       errno = EINVAL;
 unmap_and_return_error:
       
@@ -364,7 +364,7 @@ unmap_and_return_error:
     log("mountpoint: '%s'\r\n", mountpoint);
 
     if (base_dir[1] == '\0') {
-      log("WARN: tarfile has no root directory\r\n");
+      logerr("WARN: tarfile has no root directory\r\n");
     } else {
       log("common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
     }
@@ -377,7 +377,7 @@ unmap_and_return_error:
 
     /* Allocate FS descriptor */
     if ( NULL == (fs = tarfs_calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
-      log("ERR: out of memory\r\n");
+      logerr("ERR: out of memory\r\n");
       errno = ENOMEM;
       goto unmap_and_return_error;
     }
@@ -388,7 +388,7 @@ unmap_and_return_error:
     if (0 > (slot = findfs( NULL ))) {
       tarfs_unlock();
       tarfs_os_free(fs);
-      log("ERR: too many mounted filesystems (%u)\r\n",s_numfs);
+      logerr("too many mounted filesystems (%u)\r\n",s_numfs);
       errno = EBUSY;
       goto unmap_and_return_error;
     }
@@ -415,7 +415,7 @@ unmap_and_return_error:
     log("mounting..\r\n");
     if (inode_mount(fs, map, size, link_rebase, &base_dir[1]) < 0) {
       if (fs->fs_ino == NULL) {
-        log("ERR: filesystem is unusable, no valid inodes were found\r\n");
+        logerr("filesystem is unusable, no valid inodes were found\r\n");
         tarfs_lock();
         s_tarfs[slot] = NULL;
         s_numfs--;
@@ -423,7 +423,7 @@ unmap_and_return_error:
         /* errno must be set in inode_mount() */
         goto unmap_and_return_error;
       } 
-      log("WARN: running in degraded mode\r\n");
+      logerr("WARN: running in degraded mode\r\n");
     }
 
   log("addr %p:%lu --> %u inodes successfully mounted\r\n", map, size, fs->fs_nino);
@@ -431,7 +431,7 @@ unmap_and_return_error:
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
   if (tarfs_os_register_fs(mountpoint, (void *)(intptr_t)slot) == false) {
-    log("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
+    logerr("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
   } else {
     log("registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
@@ -480,7 +480,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
   if (errno == 0)
     errno = EIO;
 
-  log("tarfile map failed: errno=%d, label=%s\r\n", errno, label);
+  logerr("tarfile map failed: errno=%d, label=%s\r\n", errno, label);
 
   return -1;
 }

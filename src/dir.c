@@ -181,8 +181,8 @@ DIR* tard_fdopendir(void* ctx, int fd) {
       errno = ENOMEM;
       return NULL;
     }
-
-    log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
+    /* Abnormal - print it*/
+    logerr("NULL fs index %d\r\n", (int)(uintptr_t)ctx);
     tarfs_os_free(dir);
 
   } else
@@ -221,61 +221,6 @@ DIR* tard_opendir(void* ctx, const char* name) {
   return NULL;
 }
 
-
-#if 0
-/**
- * @brief Open a directory for reading.
- *
- * Opens an existing directory and returns a directory stream that can be
- * used with tard_readdir(), tard_telldir(), tard_seekdir() and
- * tard_closedir().
- */
-
-DIR* tard_opendir(void* ctx, const char* name) {
-
-  struct tarfs_dir *dir;
-
-  if (name && *name) {
-
-    int nlen = strlen(name);
-
-    int fd = tarf_open(ctx, name, O_DIRECTORY|O_RDONLY, 0);
-    if (fd >= 0) {
-
-      dir = tarfs_calloc(1, sizeof(struct tarfs_dir));
-
-      if (dir != NULL) {
-
-        struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
-
-        if (fs != NULL) {
-
-          dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
-          dir->di_fd   = fd;          /* Underlying directory file descriptor */
-          dir->di_ino  = fs->fs_ino[fs->fs_fd[fd].fp_idx]; /* Directory inode */
-          dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
-
-          dir->di_prefix = tarfs_strdup(name);
-
-          if (dir->di_prefix[nlen - 1] == '/')
-            dir->di_prefix[nlen - 1] = '\0';
-
-          if (dir->di_prefix != NULL) {
-            log("dir '%s' opened, fd=%d\r\n", name, fd);
-            return (DIR*)dir;
-          }
-        }
-        log("ERR: NULL fs index %d\r\n", (int)(uintptr_t)ctx);
-        tarfs_os_free(dir);
-      } else
-        errno = ENOMEM;
-      tarf_close(ctx, fd);
-    }
-  }
-  log("failed for '%s'\r\n", name);
-  return NULL;
-}
-#endif
 
 /**
  * @brief Close a directory stream.

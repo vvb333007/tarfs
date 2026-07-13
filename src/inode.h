@@ -60,7 +60,7 @@ struct tarfs_inode  {
 
   uint32_t   in_hash;    /*!< Hash of full path of the entry */
 
-  uintptr_t  in_path;    /*!< Pointer to the full pathname. If NULL, the pathname is reconstructed at runtime from the tar header prefix/name fields.
+  uintptr_t  in_path;    /*!< Pointer to the full pathname.
                               The pathname is not guaranteed to be NUL-terminated. It may end
                               at '\0', '\r' or '\n', therefore tar_strcmp() must be used. */
 
@@ -72,9 +72,17 @@ struct tarfs_inode  {
 };
 
 
-
-
-typedef struct tarfs_inode tarfs_inode_t;
+#if CONFIG_TARFS_HAVE_READLINK
+/**
+ * Helper structure for posix readlink(). There is an array of these structures
+ * holding information about symlinks and hardlinks. 
+ */
+struct tarfs_link {
+  uint32_t   li_hash; /*!< Hash of li_path */
+  uintptr_t  li_path; /*!< Full path of link */
+  uintptr_t  li_dest; /*!< Full path of the destination */
+};
+#endif
 
 struct tarfs_fs;
 
@@ -103,10 +111,12 @@ tart_t inode_getinfo(struct tarfs_inode const * const *index,
 
 /* 
  * variant of inode_type() which works with raw pointers to inodes 
+ * Not MT-Safe. Must be called under addref protocol only
  */
 tart_t inode_rawtype(struct tarfs_inode const *ino);
 
 /* Check if inode (raw inode pointer) is one of two link-type inodes
+ * Not MT-Safe. Must be called under addref protocol only
  *
  */
 bool inode_islink(struct tarfs_inode const *ino);

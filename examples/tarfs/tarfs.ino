@@ -16,7 +16,7 @@ void setup() {
   // If this happens, specify the path prefix to strip during mount.
   //
   // Example:
-  // const char *rebase_link = "/\\?\\?/D:/Arduino/dev";
+  // const char *rebase_link = "/\?\?/D:/Arduino/dev";
   const char *rebase_link = NULL;
 
   // Initialize TARFS (call once).
