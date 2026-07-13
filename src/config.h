@@ -18,7 +18,7 @@
 //#define CONFIG_TARFS_HAVE_READLINK  1   /*!< Support for readlink() */
 
 #define CONFIG_TARFS_BIG_ENDIAN 0 /*!< Set to 1 on bige-endian architectures */
-#define CONFIG_TARFS_LOG        1 /*!< Enable verbose logging, lots of text! for development or bug hunting */
+//#define CONFIG_TARFS_LOG        1 /*!< Enable verbose logging, lots of text! for development or bug hunting */
 #define CONFIG_TARFS_INTEGRITY  1 /*!< Support for file data integrity records */
 
 #define CONFIG_TARFS_MAX_FS  4     /*!< Max number of mounted TARFS filesystems */

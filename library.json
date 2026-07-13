@@ -1,0 +1,20 @@
+{
+  "name": "tarfs",
+  "keywords": "tarfs, read-only, mmap, esp32",
+  "description": "TARFS: immutable filesystem for microcontrollers",
+  "homepage": "https://github.com/vvb333007/tarfs/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vvb333007/tarfs.git"
+  },
+  "version": "0.1.0",
+  "license": "MMIT",
+  "authors": {
+    "name": "Viacheslav Logunov",
+    "email": "vvb333007@gmail.com",
+    "maintainer": true
+  },
+  "frameworks": "*",
+  "platforms": "esp32",
+  "headers": "tarfs.h"
+}
