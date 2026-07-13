@@ -28,6 +28,7 @@ void setup() {
     // int fd = open("/My_FS/list", O_RDONLY|O_DIRECTORY);
     // DIR *dir = fdopendir(fd);
     // DIR *dir2 = opendir("/My_FS/list");
+    // void *t = mmap(NULL, 2000, PROT_READ, MAP_SHARED, fd, 0);
 
     // Откроем файлик и будем с ним играться
     int fd = open("/My_FS/list/example.c", O_RDONLY);
