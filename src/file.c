@@ -824,6 +824,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
   /* Partition is mmaped already by mount, here we just calculate the right 
    * memory offset
    */
+  tarfs_addref(fs);
   log("fd=%d, mapped %lu bytes vaddr=%p, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
   return (void *)(fp->fp_vaddr + offset);
 }
