@@ -47,66 +47,17 @@
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
 
   struct ioctl_req io;
-  struct tarfs_fp *fp;
-  struct tarfs_fs *fs;
 
-  if (((flags & MAP_FIXED) && addr != NULL) ||
-      ((flags & MAP_ANONYMOUS) && fd < 0) ||
-      ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
+  /* FIOGETFD returns the FS index and local fd, suitable for tarf_ , tard_ functions */
+  if ((ioctl(fd, FIOGETFD, &io) >= 0))
+    return tarf_mmap((void *)(uintptr_t)io.fs_idx, addr, length, prot, flags, io.fd, offset);
 
-    log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
-    errno = EINVAL; 
-    return MAP_FAILED;
-  }
-
-
-  /* The 'fd' argument is a global VFS file descriptor and must be translated
-   * into the local file descriptor used by this filesystem. This is done via
-   * ioctl(): the VFS resolves the global descriptor to its local counterpart,
-   * allowing us to retrieve the local file descriptor from the returned data.
-   *
-   * Yes, the filesystem is asking the VFS to translate its own file descriptor.
-   */
-  if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
-
-    fs = tarfs_getfs_addref(io.fs_idx);
-    if (fs == NULL) {
-      log("filesystem gone\r\n");
-      return MAP_FAILED;
-    }
-
-    fp = &fs->fs_fd[io.fd];
-
-    if (fp->fp_vaddr == 0 ||
-        offset < 0 || 
-        offset > fp->fp_size || 
-        length > (fp->fp_size - offset)) {
-
-      tarfs_unref(fs);
-
-      log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
-      
-      if (errno == 0)
-        errno = EINVAL;
-
-      return MAP_FAILED;
-    }
-    
-
-
-    /* Partition is mmaped already by mount, here we just calculate the right 
-     * memory offset
-     */
-    log("fd=%d, mapped %lu bytes vaddr=%p, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
-    return (void *)(fp->fp_vaddr + offset);
-  }
-
+  /*errno should be set by the ioctl() */
   if (errno == 0)
-    errno = EBADF;
+    errno = ENOSYS;
 
-  log("fd=%d, ioctl(FIOGETFD) failed or is not supported\r\n",fd);
-  
   return MAP_FAILED;
+
 }
 
 
@@ -128,21 +79,43 @@ int munmap(void *addr, size_t length) {
       if (fs != NULL && 
           vaddr >= (uintptr_t)fs->fs_vaddr &&
           vaddr < ((uintptr_t)fs->fs_vaddr + fs->fs_size)) {
-
         tarfs_unlock();
-        tarfs_unref(fs);
-        log(" success\r\n");
-        return 0;
+        return tarf_munmap((void *)(uintptr_t )i, addr, length);
       }
     }
-
-    tarfs_unlock();
   }
-  log(" address %p is not virtual mmap() address\r\n", addr);
+  log("address %p does not belong to mmap()\r\n", addr);
   errno = EINVAL;
   return -1;
 }
 #endif /* CONFIG_TARFS_HAVE_MMAP */
+
+
+
+#if CONFIG_TARFS_HAVE_DUPFD
+/**
+ * Create an independent duplicate of a file descriptor.
+ *
+ * This function is similar to POSIX dup(), but the file position is
+ * not shared. The new descriptor has its own independent file offset,
+ * initialized to the current position of the original descriptor.
+ */
+int dupfd(int fd) {
+
+  struct ioctl_req io;
+
+  /* FIOGETFD returns the FS index and local fd, suitable for tarf_ , tard_ functions */
+  if ((ioctl(fd, FIOGETFD, &io) >= 0))
+    return tarf_dupfd((void *)(uintptr_t)io.fs_idx, io.fd);
+
+  /*errno should be set by the ioctl() */
+  if (errno == 0)
+    errno = ENOSYS;
+
+  return -1;
+}
+#endif /* CONFIG_TARFS_HAVE_DUPFD */
+
 
 #if CONFIG_TARFS_HAVE_FDOPENDIR
 /**
@@ -185,12 +158,3 @@ ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
 }
 #endif /* CONFIG_TARFS_HAVE_READLINK */
 
-#if CONFIG_TARFS_HAVE_DIRFD
-/**
- * TODO: how we can convert local_fd to global_fd?!
- */
-int dirfd(DIR *dir) {
-  errno = ENOTSUP;
-  return -1;
-}
-#endif

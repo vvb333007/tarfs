@@ -76,6 +76,7 @@
 #include "os.h"
 #include "tar.h"
 #include "fs.h"
+#include "posix.h"
 
 /* Compile-time sanity checks */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
@@ -754,3 +755,101 @@ int tarf_rename(void* ctx, const char *src, const char *dst) {
   return -1;
 }
 
+
+/**
+ * Create an independent duplicate of a file descriptor.
+ *
+ * This function is similar to POSIX dup(), but the file position is
+ * not shared. The new descriptor has its own independent file offset,
+ * initialized to the current position of the original descriptor.
+ */
+int tarf_dupfd(void *ctx, int fd) {
+
+  PROLOGUE(int);
+
+  /* allocfd() is called under addref() : open() adds areference */
+  int dup = allocfd(fs);
+
+  if (dup >= 0) {
+
+    fs->fs_fd[dup] = fs->fs_fd[fd];
+    tarfs_addref(fs);
+    log("fd=%d was duplicated as fd=%d\r\n", fd, dup);
+
+  } else {
+
+    errno = EMFILE;
+    log("fd=%d NOT duplicated, EMFILE!\r\n", fd);
+
+  }
+  return dup;
+}
+
+
+/**
+ * Mimic POSIX mmap().
+ *
+ */
+void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+
+
+  PROLOGUE(void *);
+
+  struct tarfs_fp *fp;
+
+  /* Check incompatible flags */
+  if (((flags & MAP_FIXED) && addr != NULL) ||
+      ((flags & MAP_ANONYMOUS) && fd < 0) ||
+      ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
+
+    log("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
+    errno = EINVAL; 
+    return MAP_FAILED;
+  }
+
+  fp = &fs->fs_fd[fd];
+
+  /* Check if args are compatible with the fp */
+  if (fp->fp_vaddr == 0 ||
+      offset < 0 || 
+      offset > fp->fp_size || 
+      length > (fp->fp_size - offset)) {
+
+      log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
+      errno = EINVAL;
+
+      return MAP_FAILED;
+  }
+    
+  /* Partition is mmaped already by mount, here we just calculate the right 
+   * memory offset
+   */
+  log("fd=%d, mapped %lu bytes vaddr=%p, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
+  return (void *)(fp->fp_vaddr + offset);
+}
+
+
+/**
+ * munmap(). We do not check the address/length here. Unmapping only affects filesystem refcounter
+ * so it is important that the same ctx is used as with tarfs_mmap()
+ * 
+ */
+int tarf_munmap(void *ctx, void *addr, size_t length) {
+
+  struct tarfs_fs *fs = NULL;
+
+  int fs_idx = (intptr_t )ctx; 
+
+  if (false == (fs_idx >= 0 && 
+                fs_idx < TARFS_MAX_FS && 
+                ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
+
+    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    errno = EIO; 
+    return -1; 
+  }
+
+  log("unmapping %p (%u) from fs_idx=%d\r\n",addr, length, fs_idx); 
+  tarfs_unref(fs);
+  return 0;
+}

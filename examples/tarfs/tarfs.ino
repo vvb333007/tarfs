@@ -1,5 +1,5 @@
-
 #include <Arduino.h>
+#include "espshell.h"
 #include "tarfs.h"
 
 void setup() {
@@ -7,72 +7,96 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
-  
- 
-  const char *filename    = "ffat";  // название раздела на флешке. у меня тарфайл был зашит в раздел, в котором раньше была FAT
+  // Name of the flash partition containing the TAR archive.
+  // In this example, the archive was written into a partition
+  // previously used as a FAT filesystem.
+  const char *partition_name = "ffat";
 
-  // Если тар утилита напихала (такое бывает) абсолютных путей в архив, то можно 
-  // задать эту переменную, чтобы обрезать лишнее. У меня, например, иногда приклеивается "/??/D:/Arduino/dev"
-  const char *rebase_link = "/\?\?/D:/Arduino/dev";  
+  // Some versions of tar may store absolute paths in the archive.
+  // If this happens, specify the path prefix to strip during mount.
+  //
+  // Example:
+  // const char *rebase_link = "/\\?\\?/D:/Arduino/dev";
+  const char *rebase_link = NULL;
 
-  // Вызываем однажды
+  // Initialize TARFS (call once).
   tarfs_init();
 
-  // Можно монтировать несколько файловых систем, но мы смонтируем одну
-  // точку монтирования можно не указывать, в таком случае точка монтирования будет вычислена из содержимого тар-архива
-  int err = tarfs_mount(filename, "/My_FS", rebase_link, NULL);
+  // Mount the filesystem.
+  //
+  // The mount point may be NULL, in which case TARFS will determine
+  // it automatically from the archive contents.
+  int err = tarfs_mount(partition_name, "/My_FS", rebase_link, NULL);
 
-  printf("tarfs: mounting resource '%s', err = %d\r\n", filename, err);
+  printf("tarfs: mounting resource '%s', err = %d\r\n", partition_name, err);
 
-    
-    // int fd = open("/My_FS/list", O_RDONLY|O_DIRECTORY);
-    // DIR *dir = fdopendir(fd);
-    // DIR *dir2 = opendir("/My_FS/list");
-    // void *t = mmap(NULL, 2000, PROT_READ, MAP_SHARED, fd, 0);
+  //
+  // Read a file using the POSIX API.
+  //
+  puts("\n--- Reading file ---");
 
-    // Откроем файлик и будем с ним играться
-    int fd = open("/My_FS/list/example.c", O_RDONLY);
+  int fd = open("/My_FS/list/example.c", O_RDONLY);
+  if (fd < 0) {
+    puts("open() failed");
+    return;
+  }
 
-    // И еще разок, но через fopen()
-    FILE *fp = fopen("/My_FS/list/example.c", "rb");
+  char buf[128];
+  ssize_t n;
 
-    char ch;
-    puts("1, SEEK_END");
+  while ((n = read(fd, buf, sizeof(buf))) > 0)
+    fwrite(buf, 1, n, stdout);
 
-    /* Позиционируемся на EOF*/
-    lseek(fd, 1, SEEK_END);
+  close(fd);
 
-    while(read(fd, &ch, 1) == 1)
-      putchar(ch);
+  //
+  // List directory contents.
+  //
+  puts("\n\n--- Directory listing ---");
 
-    /* Позиционируемся за пределы файла*/
-    puts("-1, SEEK_SET");
-    lseek(fd, -1, SEEK_SET);
+  DIR *dir = opendir("/My_FS/list");
+  if (dir) {
 
-    while(read(fd, &ch, 1) == 1)
-      putchar(ch);
+    struct dirent *de;
 
-    /* Позиционируемся за пределы файла*/
-    puts("-4000, SEEK_CUR");
-    lseek(fd, -4000, SEEK_CUR);
+    while ((de = readdir(dir)) != NULL)
+      printf("%s\n", de->d_name);
 
-    while(read(fd, &ch, 1) == 1)
-      putchar(ch);
+    closedir(dir);
+  }
+
+  //
+  // Access a file using mmap().
+  //
+  puts("\n--- mmap() example ---");
+
+  fd = open("/My_FS/list/example.c", O_RDONLY);
+
+  if (fd >= 0) {
+
+    struct stat st;
+
+    if (fstat(fd, &st) == 0) {
+
+      void *ptr = mmap(NULL,
+                       st.st_size,
+                       PROT_READ,
+                       MAP_SHARED,
+                       fd,
+                       0);
+
+      if (ptr != MAP_FAILED) {
+
+        printf("mmap() succeeded\r\n");
+
+        munmap(ptr, st.st_size);
+      }
+    }
 
     close(fd);
-
-    /* мы забыли закрыть fp, unmount будет отложен */
-    tarfs_unmount("/My_FS"); 
-
-    /* а вот тут произойдет unmount */
-    fclose(fp); 
+  }
 }
-
 
 void loop() {
-
-
-
   delay(1000);
 }
-

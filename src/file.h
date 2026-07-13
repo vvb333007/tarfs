@@ -329,6 +329,84 @@ int tarf_unlink(void* ctx, const char *path);
  */
 int tarf_rename(void* ctx, const char *src, const char *dst);
 
+
+/**
+ * Create an independent duplicate of a file descriptor.
+ *
+ * This function is similar to POSIX dup(), but the file position is
+ * not shared. The new descriptor has its own independent file offset,
+ * initialized to the current position of the original descriptor.
+ *
+ * Both descriptors refer to the same file, but subsequent seek/read
+ * operations affect their positions independently.
+ *
+ * Unlike POSIX dup(), this function does not use shared open file
+ * description semantics. It is provided as a lightweight alternative
+ * suitable for read-only TARFS files.
+ *
+ * @param ctx  Filesystem context.
+ * @param fd
+ *     File descriptor to duplicate.
+ *
+ * @return
+ *     New file descriptor on success, or -1 on error.
+ */
+int tarf_dupfd(void *ctx, int fd);
+
+/**
+ * Map a file into the process address space.
+ *
+ * Typical usage:
+ *
+ * @code
+ * int fd = open(...);
+ * void *ptr = mmap(NULL, length, PROT_READ, flags, fd, offset);
+ * close(fd);
+ *
+ * // use ptr
+ * @endcode
+ *
+ * The mapping remains valid after the file descriptor has been closed.
+ *
+ * Since TARFS is a read-only filesystem, this implementation does not support
+ * the PROT_WRITE protection flag. MAP_ANONYMOUS is also not supported:
+ * mmap() is intended exclusively for mapping files.
+ *
+ * There is no limit on the number of active mappings. Every file in TARFS may
+ * be mapped simultaneously, provided the underlying flash memory can hold it.
+ * Mappings do not consume any runtime resources. In contrast, each open file
+ * occupies one file descriptor until it is closed.
+ *
+ * @param ctx  Filesystem context.
+ * @param addr Must be NULL. Fixed-address mappings are not supported.
+ * @param length Number of bytes to map.
+ * @param prot Memory protection flags. Only PROT_READ is supported.
+ * @param flags Mapping flags. Use MAP_SHARED or MAP_PRIVATE. On a read-only
+ *              filesystem both behave identically.
+ * @param fd Open file descriptor to map.
+ * @param offset File offset where the mapping begins.
+ *
+ * @return Pointer to the mapped file data, or MAP_FAILED on error.
+ */
+void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+
+
+/**
+ * Remove a previously created memory mapping.
+ *
+ * Since mappings themselves do not allocate runtime resources, failing to call
+ * munmap() does not lead to resource leaks. However, an active mapping keeps
+ * the filesystem mounted, preventing it from being unmounted until the mapping
+ * is removed.
+ *
+ * @param ctx  Filesystem context.
+ * @param addr Address previously returned by mmap().
+ * @param length Length of the mapped region.
+ *
+ * @return 0 on success, or -1 on error.
+ */
+int tarf_munmap(void *ctx, void *addr, size_t length);
+
 #ifdef __cplusplus
 };
 #endif

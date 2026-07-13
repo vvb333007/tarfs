@@ -15,6 +15,7 @@
 
 #define CONFIG_TARFS_HAVE_FDOPENDIR  1  /*!< Support for fdopendir() */
 #define CONFIG_TARFS_HAVE_MMAP  1       /*!< Support for mmap()/munmap() */
+#define CONFIG_TARFS_HAVE_DUPFD  1       /*!< Support for dupfd() */
 //#define CONFIG_TARFS_HAVE_READLINK  1   /*!< Support for readlink() */
 
 #define CONFIG_TARFS_BIG_ENDIAN 0 /*!< Set to 1 on bige-endian architectures */

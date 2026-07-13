@@ -38,8 +38,15 @@ int main(int argc, char **argv) {
     if (dir != NULL)
       tard_closedir((0), dir);
 #endif
-#if 0
+#if 1
     int fd = tarf_open(0, "/list/example.c", O_RDONLY, 0);
+    int dd = tarf_dupfd(0, fd);
+
+    printf("Duplicated: %d\r\n", dd);
+    void *t = tarf_mmap(0,NULL, 2000, PROT_READ, MAP_SHARED, fd, 0);
+    tarf_munmap(0,t,2000);
+#endif
+#if 0
     char ch;
     puts("1, SEEK_END");
     tarf_lseek(0, fd, 1, SEEK_END);

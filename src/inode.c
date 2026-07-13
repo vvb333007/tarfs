@@ -648,14 +648,15 @@ static char const * s_bad_path = "<bad path>";
  */
 size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder) {
 
+
+    size_t bad_start;
     uint32_t total_data_size = 0;
     uint32_t total_headers_size = 0;
     uint32_t overhead = 0;
 
     int files = 0, dirs = 0, links = 0, pax_headers = 0, idx = 0, bad_path = 0;
     
-    
-    size_t off = 0, bad_start;
+    size_t off = 0;
     size_t hdr_no = 0;
     unsigned int bad = 0, total_bad = 0;
     const char *pax_entry_path = NULL, *pax_entry_link = NULL, *pax_entry_end;

@@ -109,6 +109,30 @@ int munmap(void *addr, size_t length);
 DIR *fdopendir(int fd);
 #endif /* CONFIG_TARFS_HAVE_FDOPENDIR */
 
+#if CONFIG_TARFS_HAVE_DUPFD
+/**
+ * Create an independent duplicate of a file descriptor.
+ *
+ * This function is similar to POSIX dup(), but the file position is
+ * not shared. The new descriptor has its own independent file offset,
+ * initialized to the current position of the original descriptor.
+ *
+ * Both descriptors refer to the same file, but subsequent seek/read
+ * operations affect their positions independently.
+ *
+ * Unlike POSIX dup(), this function does not use shared open file
+ * description semantics. It is provided as a lightweight alternative
+ * suitable for read-only TARFS files.
+ *
+ * @param fd
+ *     File descriptor to duplicate.
+ *
+ * @return
+ *     New file descriptor on success, or -1 on error.
+ */
+int dupfd(int fd);
+#endif /* CONFIG_TARFS_HAVE_DUPFD */
+
 #ifdef __cplusplus
 };
 #endif
