@@ -13,7 +13,7 @@
 
 #pragma once
 
-//#define CONFIG_TARFS_HAVE_FDOPENDIR  1  /*!< Support for fdopendir() */
+#define CONFIG_TARFS_HAVE_FDOPENDIR  1  /*!< Support for fdopendir() */
 #define CONFIG_TARFS_HAVE_MMAP  1       /*!< Support for mmap()/munmap() */
 //#define CONFIG_TARFS_HAVE_READLINK  1   /*!< Support for readlink() */
 
