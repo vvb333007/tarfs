@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include "espshell.h"
 #include "tarfs.h"
 
 void setup() {
