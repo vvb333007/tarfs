@@ -25,12 +25,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <string.h>
 
-#undef likely
-#undef unlikely
-#define unlikely(_X)   __builtin_expect(!!(_X), 0)
-#define likely(_X)     __builtin_expect(!!(_X), 1)
-
+#include "config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,6 +116,20 @@ size_t tarfs_os_mp_maxlen();
  */
 void *tarfs_os_malloc(size_t size);
 void  tarfs_os_free(void *buffer);
+
+/**
+ * read() uses memcpy(), which can be optimized on many architectures
+ */
+#if CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY
+/* rely on the .S file; see os_esp32s3.S for sample implementation */
+void *tarfs_os_memcpy(void *dst, const void *src, size_t len);
+#else
+static inline void *tarfs_os_memcpy(void *dst, const void *src, size_t len) { 
+  return memcpy(dst, src, len);
+}
+#endif
+
+
 #ifdef __cplusplus
 };
 #endif

@@ -364,6 +364,7 @@ ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
 
 /**
  * Read data from an open TARFS file.
+ * TODO: refactor this function to use pread(). Now it is two identical functions
  */
 ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
 
@@ -386,10 +387,10 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
     size = fp->fp_size - fp->fp_pos;
 
   /* Advance the file position and copy the requested data.
-   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.). */
+   * Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.). */
   if (size > 0) {
     fp->fp_pos += size;
-    memcpy(dst, src, size);
+    tarfs_os_memcpy(dst, src, size);
   }
 
   /* Return number of data copied */
@@ -434,10 +435,10 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
     size = fp->fp_size - off;
 
   /* Copy the requested data.
-   * TODO: Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
+   * Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
    */
   if (size > 0)
-    memcpy(dst, src, size);
+    tarfs_os_memcpy(dst, src, size);
 
   /* Return number of data copied */
   return size;
