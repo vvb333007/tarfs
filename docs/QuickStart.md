@@ -55,9 +55,18 @@ This creates the archive `tarfile.tar` from the `tarfs` directory.
 
 Write `tarfile.tar` to the appropriate ESP Flash partition using `esptool`.
 
-On ESP32, TARFS is stored in a dedicated Flash partition.
+On ESP32, the TARFS filesystem is stored in a dedicated Flash memory partition.
 
-First, add a partition entry to `partitions.csv`, then write the TAR archive into that partition using `esptool.py`.
+To use it, add a corresponding partition to your `partitions.csv` file, then write the TAR archive to that partition using `esptool.py`.
+
+If you are using the Arduino IDE, place the `partitions.csv` file in your project directory, alongside your source code:
+
+![Main window](Sketch_Folder.jpg)
+
+In the Arduino IDE settings, select the **`custom`** partition scheme:
+
+![Arduino IDE Settings](Arduino_IDE_Settings.jpg)
+
 
 ### 4.1 Create a TARFS partition
 
@@ -84,6 +93,8 @@ The fields have the following meaning:
 | **Size**    | Maximum TAR archive size.                                             |
 
 The partition size must be at least as large as the TAR archive.
+
+Put your `partitions.csv` to your source code directory
 
 ### 4.2 Write the image to Flash
 
@@ -199,13 +210,16 @@ For stronger protection, the `tarsum` utility may be used:
 ./tarsum input.tar [output.tar]
 ```
 
+Instructions for building the `tarsum` utility can be found in [Compiling the Tarsum Utility](Compiling_Tarsum_Utility.md).
+
 It stores an additional 8-byte hash in the unused padding area of every TAR header.
 
 The hash is based on CRC64/ECMA-182 and remains completely transparent to standard TAR utilities, since these bytes are ignored by the TAR format.
 
 When mounting an archive processed by `tarsum`, TARFS automatically detects the embedded hashes and verifies filesystem integrity.
 
-This verification may be disabled if minimum mount time is more important.
+Integrity verification can be disabled if minimizing mount time is more important. A typical workflow is to run tarsum on each newly created TAR archive immediately before flashing it to the device with `esptool.py`.
+
 
 Integrity verification can also be started manually using the `tarfs_fsck()` API:
 
@@ -215,15 +229,26 @@ tarfs_fsck(const char *partition_label);
 
 ---
 
-# Recovery from Corruption
+# Common Mistakes & Security Notes
 
-Unlike traditional filesystems that depend on a central superblock, TARFS treats the archive as a sequential magnetic tape rather than as a single monolithic filesystem image—exactly as the original Tape ARchive format was intended.
+Do not make the partition significantly larger than the actual TAR archive. TARFS attempts to mount everything within the specified flash range. This behavior is intentional: it improves reliability when the filesystem is damaged (for example, due to a bad flash sector), but it also causes TARFS to spend additional time scanning unrelated data.
 
-If a corrupted region ("a broken tape") is encountered during mounting, the mount operation does not fail. Instead, TARFS continues scanning forward until the next valid TAR header is found, then resumes processing the archive.
+If you overwrite a smaller TAR archive over a previously flashed larger one, make sure the partition size matches the new archive exactly. Otherwise, TARFS may interpret leftover data from the previous archive as valid TAR headers and mount files that should no longer exist.
 
-As a result, even heavily damaged archives remain partially usable. Files located inside the corrupted region become inaccessible, while all intact files located after the damaged region remain available.
+Always check function return values. If an operation fails, inspect `errno` to determine the cause.
 
-Attempts to access corrupted data return:
+If TARFS does not work correctly or behaves unexpectedly, consider enabling verbose logging by setting `CONFIG_TARFS_LOG` in `config.h`. This produces extensive debug output, including API calls, return values, and detailed information about the mounting process.
 
-* `ENOENT` if the TAR header is corrupted;
-* `EIO` if the file data itself is corrupted.
+For example, verbose logs may contain messages about failed symbolic link normalization, such as a *"floating link"* warning with a path like:
+
+```
+/??/D:/Users/John/tarfs/file.txt
+```
+
+This usually indicates that the `link_rebase` parameter passed to `tarfs_mount()` needs to be adjusted. For example, setting it to:
+
+```
+/??/D:/Users/John/
+```
+
+removes the absolute path prefix, leaving only valid relative paths inside the archive.

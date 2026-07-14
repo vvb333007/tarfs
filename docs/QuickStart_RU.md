@@ -61,6 +61,13 @@ tar -cf tarfile.tar tarfs
 В ESP32 файловая система TARFS хранится в отдельном разделе Flash-памяти.
 
 Для этого необходимо добавить соответствующий раздел в файл `partitions.csv`, после чего записать TAR-архив в этот раздел с помощью `esptool.py`.
+Если вы пользуетесь средой Arduino IDE, то файл `partitions.csv` должен находиться в каталоге вашего проекта, вместе с исходным кодом:
+
+![Main window](Sketch_Folder.jpg)
+
+В настройках же IDE следует указать раскладку флеша - `custom`
+
+![Main window](Arduino_IDE_Settings.jpg)
 
   1. Создайте раздел TARFS
 
