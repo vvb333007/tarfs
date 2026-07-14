@@ -38,7 +38,7 @@ OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
 
 # Target executable
 
-TARGETS := test tarsum
+TARGETS := tarsum
 
 .PHONY: all clean
 
