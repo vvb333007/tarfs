@@ -125,6 +125,10 @@ TARFS is also tolerant of forgotten `munmap()` calls. Since `mmap()` does not al
 
 #### 3.6 Performance and predictability
 
+Raw `read()`, `pread()` and `fread()` speeds are around 26MiB/sec (tight loop, 1KiB reads to the buffer 
+from a 4MiB file on ESP32-S3 240MHz, Flash: 80MHz quad).
+
+
 With the exception of `mount()` and `unmount()`, TARFS does not use synchronization primitives.
 
 The entire runtime data path is lock-free. Some race conditions are possible, but they are limited to well-defined situations and are documented.
