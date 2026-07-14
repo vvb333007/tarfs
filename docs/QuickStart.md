@@ -10,7 +10,7 @@ No special image creation tools are required. A regular GNU `tar` utility is suf
 
 Create a directory that will become the filesystem root. Its name will also become the mount point.
 
-For example:
+For example: `mkdir tarfs`
 
 ```text
 tarfs/
@@ -51,9 +51,7 @@ tar -cf tarfile.tar tarfs
 
 This creates the archive `tarfile.tar` from the `tarfs` directory.
 
-### 4. Write the archive to Flash
-
-Write `tarfile.tar` to the appropriate ESP Flash partition using `esptool`.
+### 4. Write `tarfile.tar` to the appropriate ESP Flash partition using `esptool`.
 
 On ESP32, the TARFS filesystem is stored in a dedicated Flash memory partition.
 
@@ -130,7 +128,68 @@ Replace:
 
 ---
 
-# Path and Link Rebasing
+### 5. What's Next?
+
+Now it's time to write your own sketch.
+
+Don't forget to add:
+
+```cpp
+#include "tarfs.h"
+```
+
+to your `.ino` file, and call `tarfs_init()` and `tarfs_mount()` from your `setup()` function, just as shown in the example sketch `examples/tarfs/tarfs.ino`.
+
+If you have made it this far, your chances of success are pretty good.
+
+
+# Additional features:
+
+## Selecting the Mount Point
+
+The mount point is normally determined automatically from the archive contents, but it may also be specified explicitly.
+
+**IMPORTANT:** if the filesystem is corrupted, automatic mount point detection may fail. Therefore, production systems should always specify the mount point explicitly.
+
+For reliable automatic detection, always create a root directory as described in Step 1 and place all filesystem contents inside it. The name of this directory becomes the mount point.
+
+If this behavior is not desired, the mount point can be overridden when calling `tarfs_mount()`.
+
+---
+
+## Filesystem Integrity Checking
+
+TARFS supports optional filesystem integrity verification while remaining fully compatible with standard TAR archives.
+
+By default, only TAR headers (inode metadata) are protected. Each TAR header already contains the standard TAR checksum, allowing TARFS to detect corrupted metadata during mounting without introducing any format extensions.
+
+For stronger protection, the `tarsum` utility may be used:
+
+```sh
+./tarsum input.tar [output.tar]
+```
+
+Instructions for building the `tarsum` utility can be found in [Compiling the Tarsum Utility](Compiling_Tarsum_Utility.md).
+
+It stores an additional 8-byte hash in the unused padding area of every TAR header.
+
+The hash is based on CRC64/ECMA-182 and remains completely transparent to standard TAR utilities, since these bytes are ignored by the TAR format.
+
+When mounting an archive processed by `tarsum`, TARFS automatically detects the embedded hashes and verifies filesystem integrity.
+
+Integrity verification can be disabled if minimizing mount time is more important. A typical workflow is to run tarsum on each newly created TAR archive immediately before flashing it to the device with `esptool.py`.
+
+
+Integrity verification can also be started manually using the `tarfs_fsck()` API:
+
+```c
+tarfs_fsck(const char *partition_label);
+```
+
+
+---
+
+## Path and Link Rebasing
 
 Depending on the platform and the version of `tar`, the archive may contain absolute paths or absolute symbolic link targets.
 
@@ -184,48 +243,6 @@ into
 /tarfs/link
 ```
 
----
-
-# Selecting the Mount Point
-
-The mount point is normally determined automatically from the archive contents, but it may also be specified explicitly.
-
-**IMPORTANT:** if the filesystem is corrupted, automatic mount point detection may fail. Therefore, production systems should always specify the mount point explicitly.
-
-For reliable automatic detection, always create a root directory as described in Step 1 and place all filesystem contents inside it. The name of this directory becomes the mount point.
-
-If this behavior is not desired, the mount point can be overridden when calling `tarfs_mount()`.
-
----
-
-# Filesystem Integrity Checking
-
-TARFS supports optional filesystem integrity verification while remaining fully compatible with standard TAR archives.
-
-By default, only TAR headers (inode metadata) are protected. Each TAR header already contains the standard TAR checksum, allowing TARFS to detect corrupted metadata during mounting without introducing any format extensions.
-
-For stronger protection, the `tarsum` utility may be used:
-
-```sh
-./tarsum input.tar [output.tar]
-```
-
-Instructions for building the `tarsum` utility can be found in [Compiling the Tarsum Utility](Compiling_Tarsum_Utility.md).
-
-It stores an additional 8-byte hash in the unused padding area of every TAR header.
-
-The hash is based on CRC64/ECMA-182 and remains completely transparent to standard TAR utilities, since these bytes are ignored by the TAR format.
-
-When mounting an archive processed by `tarsum`, TARFS automatically detects the embedded hashes and verifies filesystem integrity.
-
-Integrity verification can be disabled if minimizing mount time is more important. A typical workflow is to run tarsum on each newly created TAR archive immediately before flashing it to the device with `esptool.py`.
-
-
-Integrity verification can also be started manually using the `tarfs_fsck()` API:
-
-```c
-tarfs_fsck(const char *partition_label);
-```
 
 ---
 
