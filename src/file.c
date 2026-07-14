@@ -26,7 +26,7 @@
                 fs_idx < TARFS_MAX_FS && \
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
 \
-    logerr("bad filesystem context: %d, %p\r\n",fs_idx, fs); \
+    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); \
     errno = EIO; \
     return (TYPE)(-1); \
   } \
@@ -79,7 +79,7 @@
 #include "posix.h"
 
 /* Compile-time sanity checks */
-_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32);
+_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "TARFS_MAX_FD must be in range [1..32]");
 
 
 static const uint32_t    s_valid_mask   = (TARFS_MAX_FDS == 32) ? 0xffffffffUL : ((1UL << TARFS_MAX_FDS) - 1UL);
@@ -200,7 +200,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   */
   if ( NULL == (fs = tarfs_getfs_addref(fs_idx))) { 
 
-    log("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO;
     return -1; 
   } 
@@ -586,14 +586,16 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
 
     /* Bytes left == File_Size - File_Current_Position */
     case FIONREAD:
-      int *o = va_arg(args, int *);
+    {
+      int *o;  
+      o = va_arg(args, int *);
       if (o == NULL) {
         errno = EINVAL;
         return -1;
       }
       *o = fs->fs_fd[fd].fp_size - fs->fs_fd[fd].fp_pos;
       return 0;
-
+    }
     /* TARFS is non-blocking by design. Just ignore O_NONBLOCK */
     case FIONBIO:
       return 0;
@@ -601,7 +603,7 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
     /* Return local FD number and the FS index
      */
     case FIOGETFD:
-
+    {
       struct ioctl_req *out = va_arg(args, struct ioctl_req *);
 
       if (out) {
@@ -613,7 +615,7 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
       }
       errno = EINVAL;
       return -1;
-
+    }
     default:
       break;
   };
@@ -846,7 +848,7 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
                 fs_idx < TARFS_MAX_FS && 
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
 
-    logerr("bad filesystem context: %d, %p\r\n",fs_idx, fs); 
+    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO; 
     return -1; 
   }

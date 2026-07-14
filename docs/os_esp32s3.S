@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 #include "config.h"  
 
 #if CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY

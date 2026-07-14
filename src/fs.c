@@ -326,12 +326,16 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 
   char base_dir[128] = { '/' };
 
+#if CONFIG_TARFS_INTEGRITY
+#if CONFIG_TARFS_AUTOCHECK
   log("Running filesystem check, wait..\r\n");
   int bad = tar_verify_crc(map,size, false);
   if (bad)
     logerr("FS checked: %d bad entries\r\n", bad);
   else
     log("Filesystem has no errors\r\n");
+#endif
+#endif /* CONFIG_TARFS_INTEGRITY */
 
   if (link_rebase == NULL)
     link_rebase = "";
@@ -436,7 +440,7 @@ unmap_and_return_error:
     log("registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
 
-  log("Congrats! Mount is done. Filesystem slot is %d\r\n", slot);
+  log("mount is done. filesystem slot is %d\r\n", slot);
   return slot;
 }
 
@@ -582,7 +586,7 @@ void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...))
   tarfs_unref(fs);
 }
 
-
+#if CONFIG_TARFS_INTEGRITY
 /**
  * Perform a deep filesystem integrity check.
  *
@@ -608,4 +612,4 @@ int tarfs_fsck(const char *label) {
 
   return -1;
 }
-
+#endif /* #if CONFIG_TARFS_INTEGRITY */

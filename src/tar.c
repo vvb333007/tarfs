@@ -262,7 +262,14 @@ bool tar_badhdr(tarhdr_t const * hdr) {
       case TART_AFILE:
       case TART_PAX:
       case TART_PAX_G:
-      case TART_FILE ... TART_CONT:
+      case TART_FILE:
+      case TART_HARDLINK:
+      case TART_SYMLINK:
+      case TART_CHRDEV:
+      case TART_BLKDEV:
+      case TART_DIR:
+      case TART_FIFO:
+      case TART_CONT:
         /* Supported TAR entry type. */
         break;
       default:
@@ -337,7 +344,7 @@ bad_header:
 
           case TART_DIR: dirs++; break;
 
-          default:
+          default: break;
             /* all-zero headers are filtered here */
         };
 
@@ -429,6 +436,8 @@ void tar_print(const char *buf, const char *end) {
 }
 #endif
 
+
+#ifdef TARSUM_BUILD
 /**
  * Insert CRC64 file checksums into tar archive. This function is used by `tarsum.c` utility
  * only
@@ -506,8 +515,9 @@ bad_header:
 
     return inserted;
 }
+#endif /* TARSUM_BUILD */
 
-
+#if CONFIG_TARFS_INTEGRITY
 /**
  * Verify CRC64 checksums stored in a TAR archive, if present.
  *
@@ -582,4 +592,5 @@ bad_header:
 
     return total_bad;
 }
+#endif /* #if CONFIG_TARFS_INTEGRITY */
 

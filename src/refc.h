@@ -99,7 +99,8 @@ static inline void initrefn(refc_t *ref, refc_type_t n) {
  * @param ref : pointer to reference counter.
  * @param n : number of references to add.
  *
- * @return : true - success, false - object is dead or counter overflow detected.
+ * @return : refcount value AFTER addref(). Returned value of Zero means this object
+ *           is either dead or can not increase its refcounter anymore (overflow)
  *
  * @note This function fails if reference counter is zero.
  *
@@ -108,7 +109,7 @@ static inline void initrefn(refc_t *ref, refc_type_t n) {
  *
  * @note If /n/ is zero, function performs a liveness check.
  */
-bool addrefn(refc_t *ref, refc_type_t n);
+refc_type_t addrefn(refc_t *ref, refc_type_t n);
 
 
 /**
@@ -118,11 +119,11 @@ bool addrefn(refc_t *ref, refc_type_t n);
  *
  * @param ref : pointer to reference counter.
  *
- * @return : true - success, false - object is dead.
+ * @return : refcounter value after increment or 0
  *
  * @note This function fails if reference counter is zero.
  */
-static inline bool addref(refc_t *ref) {
+static inline refc_type_t addref(refc_t *ref) {
 
   return addrefn(ref, 1);
 }

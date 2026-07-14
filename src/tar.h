@@ -125,7 +125,7 @@ extern "C" {
 int tar_strcmp(const char *s1, const char *s1_end, const char *s2);
 
 /*
- * strncmp() for two CTS
+ * strncmp() for two CTS, len is the hard limit 
  *
  */
 int tar_strncmp(const char *s1, const char *s2, size_t len);
@@ -178,6 +178,17 @@ char *tar_strdup1(const char *s1, const char *s1_end);
  * @return decimal value
  */
 uint32_t tar_octal(const char *p, size_t max_len);
+
+#if CONFIG_TARFS_LOG
+/* Devel only:
+ * Displays CTS `buf`; `end` is the UTS_limit
+ *
+ * We dont go past the `end` pointer even if we didnt find any line 
+ * terminator
+ */
+void tar_print(const char *buf, const char *end);
+#endif /* CONFIG_TARFS_LOG */
+
 
 /** Validate a TAR header.
  *
@@ -261,21 +272,7 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
 uint32_t tar_hdrsum(const tarhdr_t *hdr);
 
 
-/**
- * Calculate and insert CRC64 checksums into a TAR archive.
- *
- * The checksum of each file entry is stored in the corresponding TAR
- * header. Existing CRC64 values are overwritten.
- *
- * This function is intended for use by the `tarsum.c` utility.
- *
- * @param tar_start Pointer to the beginning of the TAR archive.
- * @param tar_length Size of the TAR archive in bytes.
- * @return Number of entries for which a CRC64 checksum was written,
- *         or a negative value on error.
- */
-int tar_addsum(uint8_t *tar_start, size_t tar_length);
-
+#if CONFIG_TARFS_INTEGRITY
 /**
  * Verify CRC64 checksums stored in a TAR archive, if present.
  *
@@ -287,15 +284,25 @@ int tar_addsum(uint8_t *tar_start, size_t tar_length);
  *         verified entries are valid or if no CRC64 checksums are present.
  */
 int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc);
+#endif /* CONFIG_TARFS_INTEGRITY */
 
-/* Devel:
- * Displays string `buf`, which may or may not end with NUL: the line end
- * markers are \r, \n and \0.
+#ifdef TARSUM_BUILD
+/**
+ * Calculate and insert CRC64 checksums into a TAR archive.
  *
- * We dont go past the `end` pointer even if we didnt find any line 
- * terminator from the list above
+ * The checksum of each file entry is stored in the corresponding TAR
+ * header. Existing CRC64 values are overwritten.
+ *
+ * This function is intended for use by the `tarsum.c` utility.
+ *
+ * @param tar_start Pointer to the beginning of the TAR archive, must be WRITEABLE memory!
+ * @param tar_length Size of the TAR archive in bytes.
+ * @return Number of entries for which a CRC64 checksum was written,
+ *         or a negative value on error.
  */
-void tar_print(const char *buf, const char *end);
+int tar_addsum(uint8_t *tar_start, size_t tar_length);
+#endif /* TARSUM_BUILD */
+
       
 #ifdef __cplusplus
 };

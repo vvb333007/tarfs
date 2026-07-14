@@ -32,11 +32,11 @@
 
 
 #if CONFIG_TARFS_LOG
-#  define log( Format_, ... ) printf( "%s(): " Format_, __FUNCTION__,  ##__VA_ARGS__ )
+#  define log( Format_, ... ) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ )
 #else
 #  define log( Format_, ... ) do {} while(0)
 #endif
-#define logerr( Format_, ... ) printf( "%s(): " Format_, __FUNCTION__,  ##__VA_ARGS__ )
+#define logerr( Format_, ... ) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ )
 
 #include "refc.h"
 #include "file.h"
@@ -103,12 +103,13 @@ struct tarfs_fs {
   _Atomic(uint32_t)             fs_usedfd;            /*!< A bitmask for fs_fd[] array: 0100 means FD #2 is 
                                                            used. Indicates which elements of fs_fd[] array are used */
 #if CONFIG_HAVE_READLINK
-  struct tarfs_link const      *fs_lin;               /*!< for readlink() */
+  struct tarfs_link const      *fs_lin;               /*!< Sorted array of link->target associations, used exclusively by the readlink() */
   uint32_t                      fs_nlin;              /*!< Number of entries in fs_lin array */
 #endif
+
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
   time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS)>*/
-  char                          fs_mountpoint[0];     /*!< Mount point */
+  char                          fs_mountpoint[];     /*!< Mount point */
 };
 
 #ifdef __cplusplus

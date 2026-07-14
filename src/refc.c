@@ -33,13 +33,13 @@
  * This function attempts to increase reference counter by `n` (user defined integer
  * type variable or integer literal, e.g. addrefn(&ref, 10)).
  */
-bool addrefn(refc_t *ref, refc_type_t n) {
+refc_type_t addrefn(refc_t *ref, refc_type_t n) {
 
   refc_type_t r;
   refc_type_t lim;
 
   if ( ref == NULL )
-    return false;
+    return 0;
 
   r = atomic_load_explicit(ref, memory_order_relaxed);
   lim = ((refc_type_t )(-1)) - n;
@@ -48,7 +48,7 @@ bool addrefn(refc_t *ref, refc_type_t n) {
 
     /* refcounter is dead or will be overflow by the addition of `n`? return `false` */
     if (r < 1 || r > lim)
-      return false;
+      return 0;
 
     /* CAS, acquire */
   } while (!atomic_compare_exchange_weak_explicit( 
@@ -58,7 +58,7 @@ bool addrefn(refc_t *ref, refc_type_t n) {
               memory_order_acquire,
               memory_order_relaxed));
 
-  return true;
+  return r + n;
 }
 
 
@@ -79,7 +79,7 @@ refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (* dtor)(void *
       
       if ((prev = atomic_fetch_sub_explicit(r, 1, memory_order_release)) == 1) { 
         atomic_thread_fence(memory_order_acquire);
-        /* call eitehr dtor() or free() with eitehr /object/ or /r/ as its argument */
+        /* call either dtor() or free() with either /object/ or /r/ as its argument */
         if (dtor != NULL)
           dtor(object ? object : r);
         break;

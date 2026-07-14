@@ -80,7 +80,7 @@ struct tarfs_dir {
 
 };
 
-[[maybe_unused]] static const char *remove_subpath(const char *path, const char *subpath) {
+static const char *remove_subpath(const char *path, const char *subpath) {
 
   const char *text = path;
 
@@ -102,7 +102,7 @@ struct tarfs_dir {
  * Check if 'path' is direct child of 'prefix'; 
  * Prefix MUST NOT have '/' at the end.
  */
-[[maybe_unused]] static int is_direct_child(const char *path, const char *prefix) {
+static int is_direct_child(const char *path, const char *prefix) {
 
     const char *tail;
     const char *slash;
