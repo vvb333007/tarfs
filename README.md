@@ -1,5 +1,7 @@
-# WORK IS IN PROGRESS. NOT FULLY TESTED! PLANNED RELEASE IS IN AUGUST 2026
 
+#### [ README.md (этот файл) на русском языке находится здесь](docs/README_RU.md).
+
+#### [ QuickStart.md на русском языке находится здесь](docs/QuickStart_RU.md).
 
 ## TARFS — Read-only mmap-oriented filesystem over TAR images for firmware assets and runtime resources
 
