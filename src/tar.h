@@ -274,16 +274,10 @@ uint32_t tar_hdrsum(const tarhdr_t *hdr);
 
 #if CONFIG_TARFS_INTEGRITY
 /**
- * Verify CRC64 checksums stored in a TAR archive, if present.
- *
- * @param tar_start Pointer to the beginning of the TAR archive.
- * @param tar_length Size of the TAR archive in bytes.
- * @param has_crc True if the archive is known to contain CRC64 checksums;
- *                false to auto-detect them.
- * @return Number of entries that failed CRC64 verification. Returns 0 if all
- *         verified entries are valid or if no CRC64 checksums are present.
+ *  Verify CRC64 checksums stored in a TAR archive, if present.
+ *  hdr must pass tar_badhdr() check!!
  */
-int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc);
+bool tar_baddata(struct tarhdr const *hdr, size_t size);
 #endif /* CONFIG_TARFS_INTEGRITY */
 
 #ifdef TARSUM_BUILD

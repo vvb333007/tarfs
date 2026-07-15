@@ -703,6 +703,12 @@ bad_header:
 
         total_headers_size += 512;
 
+#if CONFIG_TARFS_INTEGRITY
+        bool bad_crc = tar_baddata(hdr, (size_t)size);
+        if (bad_crc)
+          total_bad++;
+#endif
+
 
         /* Only create inodes of type FILE, SYMLINK, HARDLINK and DIRECTORY*/
         switch(hdr->type) {
@@ -836,7 +842,14 @@ bad_header:
         }
 
         inodes[idx].in_vaddr = (uintptr_t)hdr;
-        inodes[idx].in_dvaddr = (uintptr_t)hdr;
+#if CONFIG_TARFS_INTEGRITY
+        if (bad_crc) {
+          inodes[idx].in_dvaddr = 0;
+          logerr("Inode %d, dropped, hash sum mismatch\r\n", idx);
+        } else
+#endif
+          inodes[idx].in_dvaddr = (uintptr_t)hdr;
+
 
         /* go to the next inode index */
         idx++;
@@ -859,7 +872,7 @@ skip_header_and_data:
 
     log("end of file reached\r\n");
     if (total_bad)
-      logerr("%u blocks (%u bytes) were skipped\n", total_bad, total_bad * 512);
+      logerr("%u blocks (%u bytes) were skipped as BAD\n", total_bad, total_bad * 512);
       
 
   log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  

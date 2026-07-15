@@ -326,17 +326,6 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 
   char base_dir[128] = { '/' };
 
-#if CONFIG_TARFS_INTEGRITY
-#if CONFIG_TARFS_AUTOCHECK
-  log("Running filesystem check, wait..\r\n");
-  int bad = tar_verify_crc(map,size, false);
-  if (bad)
-    logerr("FS checked: %d bad entries\r\n", bad);
-  else
-    log("Filesystem has no errors\r\n");
-#endif
-#endif /* CONFIG_TARFS_INTEGRITY */
-
   if (link_rebase == NULL)
     link_rebase = "";
 
@@ -355,7 +344,9 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 
   len = strlen(mountpoint);
 
-
+#if CONFIG_TARFS_INTEGRITY
+  logerr("TAR-CRC64 filesystem is expected\r\n");
+#endif
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
       logerr("mountpoint is too short or invalid '%s'\r\n", mountpoint);
@@ -605,7 +596,8 @@ int tarfs_fsck(const char *label) {
   log("Checking filesystem '%s'..\r\n", label);
 
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
-    int num = tar_verify_crc(map, size, false);
+    int num = 0;
+    logerr("not implemented\r\n");
     tarfs_os_unmap_tarfile(os_handle, map, size);
     return num;
   }

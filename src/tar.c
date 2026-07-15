@@ -519,78 +519,34 @@ bad_header:
 
 #if CONFIG_TARFS_INTEGRITY
 /**
- * Verify CRC64 checksums stored in a TAR archive, if present.
- *
+ *  Verify CRC64 checksum stored in a TAR archive, if present.
+ *  hdr must pass tar_badhdr() check!!
  */
-int tar_verify_crc(uint8_t const *tar_start, size_t tar_length, bool has_crc) {
+bool tar_baddata(struct tarhdr const *hdr, size_t size) {
 
-    uint32_t size;
-    size_t off = 0;
-    int bad = 0, total_bad = 0;
-    uintptr_t tar_end = (uintptr_t )(tar_start + tar_length);
+  
+  uint64_t icv_calc, icv_hdr;
 
-    while (off + sizeof(tarhdr_t) <= tar_length) {
+  /* CRC64 is verified only for entries containing data (including PAX
+   * headers). The computed CRC is compared against the value stored in
+   * hdr->padding[]. Empty headers (size == 0) are ignored.
+   */
+  if (size > 0) {          
 
-        tarhdr_t const *hdr = (tarhdr_t const *)(tar_start + off);
+    void const *data   = (void *)(hdr + 1);
 
-        if (tar_badhdr(hdr)) {
-
-bad_header:
-          //log("CRC64 fail for <offset=%08x>, header and data are damaged\r\n",(uint32_t)off);
-          bad++;
-
-          off += sizeof(tarhdr_t);
-          continue;
-        }
-
-        total_bad += bad;
-        bad = 0;
-
-        /* The size field is parsed as zero if hdr->size contains either an octal
-         * string of zeros ("00000000") or is filled with '\0' bytes. A header
-         * consisting entirely of zero bytes also has a valid checksum (zero), so
-         * such empty headers are skipped. They normally mark the end of a TAR
-         * archive.
-         */
-        size = tar_octal(hdr->size, sizeof(hdr->size));
-
-        /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
-        if (((uintptr_t)(hdr + 1)) + size >= tar_end)
-          goto bad_header;
-        
-
-        /* CRC64 is verified only for entries containing data (including PAX
-         * headers). The computed CRC is compared against the value stored in
-         * hdr->padding[]. Empty headers (size == 0) are ignored.
-         */
-        if (size > 0 && (has_crc || (hdr->md[0] == 'C' && hdr->md[1] == '6' && hdr->md[2] == '4'))) {          
-          if (!has_crc) {
-            log("A CRC64/ECMA182 record detected, rescanning from the beginning..\n");
-            return tar_verify_crc(tar_start, tar_length, true);
-          }
-
-          void const *data   = (void *)(hdr + 1);
-          uint64_t icv_calc, icv_hdr;
-
-          /* calculate integrity check value */
-          icv_calc = hash64(0, data, size);
-          memcpy(&icv_hdr, hdr->digest, 8);
+    /* calculate integrity check value */
+    icv_calc = hash64(0, data, size);
+    memcpy(&icv_hdr, hdr->digest, 8);
 
 #if CONFIG_TARFS_BIG_ENDIAN
-          /* ICV is stored in little-endian byte order */
-          icv_hdr = __builtin_bswap64(icv_hdr);
+    /* ICV is stored in little-endian byte order */
+    icv_hdr = __builtin_bswap64(icv_hdr);
 #endif          
-          if (icv_hdr != icv_calc) {
-            //log("CRC64 fail for %s, data is damaged\r\n", hdr->name);
-            total_bad++;
-          }
-        }
-  
-        /* Real size is 512 bytes aligned */
-        off += sizeof(tarhdr_t) + (((size_t)size + 511) & ~511u);
-    }
+    return icv_hdr != icv_calc;
+  }
 
-    return total_bad;
+  return false;
 }
 #endif /* #if CONFIG_TARFS_INTEGRITY */
 

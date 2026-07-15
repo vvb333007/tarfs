@@ -18,8 +18,7 @@
 #define CONFIG_TARFS_MAX_FS  4      /*!< Max number of mounted TARFS filesystems */
 #define CONFIG_TARFS_MAX_FDS 5      /*!< Max number of active opened files (per filesystem, must be < 33) */
 
-#define CONFIG_TARFS_INTEGRITY  1   /*!< Support for file data integrity records */
-#define CONFIG_TARFS_AUTOCHECK  1   /*!< Check file integrity on mount */
+//#define CONFIG_TARFS_INTEGRITY  1   /*!< Check data integrity records. FS must be processed with tarsum utility or mount will fail */
 
 #define CONFIG_TARFS_HAVE_FDOPENDIR  1   /*!< Support for fdopendir() */
 #define CONFIG_TARFS_HAVE_MMAP  1        /*!< Support for mmap()/munmap() */
@@ -34,6 +33,7 @@
                                           *   Select an appropriate .S file from doc/ folder and copy it to the src/ folder
                                           *   Uncomment CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 
                                           */
+
 //#define CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 1  
 
 #ifdef TARSUM_BUILD
