@@ -1,13 +1,13 @@
 {
   "name": "tarfs",
   "keywords": "tarfs, read-only, mmap, esp32",
-  "description": "TARFS: immutable filesystem for microcontrollers",
+  "description": "Memory-efficient read-only TAR filesystem with zero-copy mmap(), POSIX-compatible API, hard links, symbolic links, long filenames, UTF-8, CRC64 integrity checking, and low RAM overhead.",
   "homepage": "https://github.com/vvb333007/tarfs/",
   "repository": {
     "type": "git",
     "url": "https://github.com/vvb333007/tarfs.git"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MMIT",
   "authors": {
     "name": "Viacheslav Logunov",
