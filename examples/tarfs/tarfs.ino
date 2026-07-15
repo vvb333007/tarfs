@@ -9,7 +9,7 @@ void setup() {
   // Name of the flash partition containing the TAR archive.
   // In this example, the archive was written into a partition
   // previously used as a FAT filesystem.
-  const char *partition_name = "ffat";
+  const char *partition_name = "tarfs";
 
   // Some versions of tar may store absolute paths in the archive.
   // If this happens, specify the path prefix to strip during mount.
