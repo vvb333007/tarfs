@@ -961,6 +961,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
       fs->fs_nino  = nino;
       fs->fs_root  = (struct tarfs_inode const * )root;
       fs->fs_dsize = dsize;
+      fs->fs_mtime = time( NULL );
 
       if (root != NULL) {
       
@@ -968,6 +969,18 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
         if (root->in_hash != HASH32_SLASH) {
         /* inode_dumppath_sorted(root); */
           logerr("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
+        }
+        /* Read root's directory mtime from the tar header
+         * in_vaddr can not be NULL
+         * TODO: add assert()
+         */
+        struct tarhdr const *hdr = (struct tarhdr const *)root->in_vaddr;
+        if (hdr != NULL) {
+          time_t mtime = tar_octal(hdr->mtime, sizeof(hdr->mtime));
+          if (mtime != 0) {
+            fs->fs_mtime = mtime;
+            printf("mtime is taken from the root entry\r\n");
+          }
         }
         return 0;
       }
