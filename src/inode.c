@@ -979,7 +979,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
           time_t mtime = tar_octal(hdr->mtime, sizeof(hdr->mtime));
           if (mtime != 0) {
             fs->fs_mtime = mtime;
-            printf("mtime is taken from the root entry\r\n");
+            log("mtime is taken from the root entry\r\n");
           }
         }
         return 0;
