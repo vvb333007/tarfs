@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file fs.h
+ * @brief Public file system API
  */
 
 

@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file file.h
+ * @brief Public file API
  */
 
 #pragma once

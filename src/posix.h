@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file posix.h
+ * @brief POSIX extensions API
  */
 
 #pragma once

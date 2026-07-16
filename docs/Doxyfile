@@ -1,0 +1,90 @@
+#-------------------------------------------------
+# Project
+#-------------------------------------------------
+
+PROJECT_NAME           = "TARFS"
+PROJECT_NUMBER         = "0.1.2"
+PROJECT_BRIEF          = "Read-only TAR filesystem for ESP32"
+
+OUTPUT_DIRECTORY       = docs
+
+#-------------------------------------------------
+# Input
+#-------------------------------------------------
+
+INPUT                  = src README.md docs/QuickStart.md docs/FAQ.md
+FILE_PATTERNS          = *.h *.c *.md
+RECURSIVE              = YES
+
+#-------------------------------------------------
+# Extraction
+#-------------------------------------------------
+
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = NO
+EXTRACT_PRIVATE        = YES
+EXTRACT_LOCAL_CLASSES  = NO
+
+JAVADOC_AUTOBRIEF      = YES
+MULTILINE_CPP_IS_BRIEF = YES
+
+OPTIMIZE_OUTPUT_FOR_C  = YES
+TYPEDEF_HIDES_STRUCT   = YES
+
+#-------------------------------------------------
+# HTML
+#-------------------------------------------------
+
+GENERATE_HTML          = NO
+HTML_OUTPUT            = html
+HTML_COLORSTYLE_HUE    = 210
+HTML_DYNAMIC_SECTIONS  = YES
+
+#-------------------------------------------------
+# Other formats
+#-------------------------------------------------
+
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = YES
+
+#-------------------------------------------------
+# Source browser
+#-------------------------------------------------
+
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+#-------------------------------------------------
+# Graphs
+#-------------------------------------------------
+
+HAVE_DOT               = NO
+DOT_IMAGE_FORMAT       = svg
+
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+DIRECTORY_GRAPH        = YES
+
+CLASS_GRAPH            = NO
+COLLABORATION_GRAPH    = NO
+
+#-------------------------------------------------
+# Warnings
+#-------------------------------------------------
+
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+
+ENABLE_PREPROCESSING = YES
+MACRO_EXPANSION      = YES
+EXPAND_ONLY_PREDEF   = NO
+SKIP_FUNCTION_MACROS = YES
+
+QUIET                  = NO

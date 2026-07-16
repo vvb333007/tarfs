@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file tar.h
+ * @brief Public tar file API
  */
 
 

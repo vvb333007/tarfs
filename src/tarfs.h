@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file tarfs.h
+ * @brief Main include file for the library
  */
 
 #pragma once

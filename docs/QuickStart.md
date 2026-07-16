@@ -160,7 +160,7 @@ For stronger protection, the `tarsum` utility may be used:
 ./tarsum input.tar [output.tar]
 ```
 
-Instructions for building the `tarsum` utility can be found in [Compiling the Tarsum Utility](Compiling_Tarsum_Utility.md).
+Instructions for building the `tarsum` utility can be found in [Compiling the Tarsum Utility](../tarsum/Compiling_Tarsum_Utility.md).
 
 It stores an additional 8-byte hash in the unused padding area of every TAR header.
 

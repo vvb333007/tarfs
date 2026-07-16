@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file hash.h
+ * @brief Public hash functions API
  */
 
 

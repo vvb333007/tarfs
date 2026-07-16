@@ -6,30 +6,25 @@
 CC      := gcc
 
 # Directories
-OBJDIR  := obj
+OBJDIR  := .
 
 # Flags
-CFLAGS  := -Wall -Os -pedantic
-CFLAGS  += -DTARSUM_BUILD=1 
+CFLAGS  := -Wall -Os -pedantic -I../src
+CFLAGS  += -DTARSUM_BUILD=1
 CFLAGS += -MMD -MP 
 
 # Общие исходники
 COMMON_SRC := \
-    file.c \
-    tar.c \
-    inode.c \
+    ../src/file.c \
+    ../src/tar.c \
+    ../src/inode.c \
     os_cygwin.c \
-    hash.c \
-    fs.c \
-    refc.c \
-    posix.c \
-    dir.c
+    ../src/hash.c \
+    ../src/fs.c \
+    ../src/refc.c \
+    ../src/posix.c \
+    ../src/dir.c
 
-# Для test
-TEST_SRC := test.c $(COMMON_SRC)
-TEST_OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(TEST_SRC))
-
-# Для tarsum
 TARSUM_SRC := tarsum.c $(COMMON_SRC)
 TARSUM_OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(TARSUM_SRC))
 
@@ -37,15 +32,11 @@ TARSUM_OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(TARSUM_SRC))
 OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
 
 # Target executable
-
 TARGETS := tarsum
 
-.PHONY: all clean
+.PHONY: all
 
-all: $(TARGETS)
-
-test: $(TEST_OBJ)
->$(CC) $^ -o $@
+all: $(TARGETS)  clean
 
 tarsum: $(TARSUM_OBJ)
 >$(CC) $^ -o $@
@@ -57,6 +48,6 @@ $(OBJDIR):
 >mkdir -p $(OBJDIR)
 
 clean:
->rm -rf $(OBJDIR) $(TARGETS)
+>rm -f *.o *.d ../src/*.o ../src/*.d
 
 -include $(OBJ:.o=.d)
