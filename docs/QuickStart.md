@@ -99,11 +99,7 @@ Put your `partitions.csv` to your source code directory
 Write the archive into the TARFS partition:
 
 ```sh
-esptool.py --chip esp32 \
-    --port COM5 \
-    --baud 921600 \
-    write_flash \
-    0x310000 tarfile.tar
+esptool.py --chip esp32 --port COM5 --baud 921600 write_flash 0x310000 tarfile.tar
 ```
 
 on Windows,
@@ -111,12 +107,7 @@ on Windows,
 or
 
 ```sh
-esptool.py \
-    --chip esp32 \
-    --port /dev/ttyUSB0 \
-    --baud 921600 \
-    write_flash \
-    0x310000 tarfile.tar
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 write_flash 0x310000 tarfile.tar
 ```
 
 on Linux.
