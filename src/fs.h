@@ -108,7 +108,7 @@ struct tarfs_fs {
 #endif
 
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
-  time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS)>*/
+  time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS) */
   char                          fs_mountpoint[];     /*!< Mount point */
 };
 

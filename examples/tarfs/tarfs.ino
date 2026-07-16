@@ -1,38 +1,37 @@
 #include <Arduino.h>
 #include "tarfs.h"
 
+
+
 void setup() {
 
   Serial.begin(115200);
-  delay(500);
 
-  // Name of the flash partition containing the TAR archive.
-  // In this example, the archive was written into a partition
-  // previously used as a FAT filesystem.
-  const char *partition_name = "tarfs";
 
-  // Some versions of tar may store absolute paths in the archive.
-  // If this happens, specify the path prefix to strip during mount.
-  //
-  // Example:
-  // const char *rebase_link = "/\?\?/D:/Arduino/dev";
-  const char *rebase_link = NULL;
-
-  // Initialize TARFS (call once).
+  // Initialize TARFS library
   tarfs_init();
 
-  // Mount the filesystem.
+  // Mount the filesystem. Partition name="tarfs". Mountpoint is "/My_FS"
   //
   // The mount point may be NULL, in which case TARFS will determine
   // it automatically from the archive contents.
-  int err = tarfs_mount(partition_name, "/My_FS", rebase_link, NULL);
+  int fs_idx = tarfs_mount(partition_name, "/My_FS", NULL, NULL);
 
-  printf("tarfs: mounting resource '%s', err = %d\r\n", partition_name, err);
+  if (fs_idx < 0)
+    Serial.printf("TARFS: partition '%s' NOT mounted\r\n", partition_name);
+  else
+    Serial.printf("TARFS: partition '%s' mounted, FS index is %d\r\n", partition_name, fs_idx);
+}
+
+void loop() {
+
+  delay(1000);
+
 
   //
   // Read a file using the POSIX API.
   //
-  puts("\n--- Reading file ---");
+  puts("\n--- TEST1: Reading file ---");
 
   int fd = open("/My_FS/list/example.c", O_RDONLY);
   if (fd < 0) {
@@ -51,7 +50,7 @@ void setup() {
   //
   // List directory contents.
   //
-  puts("\n\n--- Directory listing ---");
+  puts("\n\n--- TEST2: Directory listing ---");
 
   DIR *dir = opendir("/My_FS/list");
   if (dir) {
@@ -67,7 +66,7 @@ void setup() {
   //
   // Access a file using mmap().
   //
-  puts("\n--- mmap() example ---");
+  puts("\n--- TEST3: mmap() example ---");
 
   fd = open("/My_FS/list/example.c", O_RDONLY);
 
@@ -94,8 +93,6 @@ void setup() {
 
     close(fd);
   }
+
 }
 
-void loop() {
-  delay(1000);
-}
