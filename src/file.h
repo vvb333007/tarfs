@@ -16,6 +16,30 @@
 
 #pragma once
 
+/**
+ * TARFS File API: tarf_open(), tarf_close(), tarf_read(),
+ * tarf_pread(), tarf_lseek(), tarf_mmap(), tarf_munmap(),
+ * tarf_dupfd(), tarf_stat(), tarf_fstat(), tarf_fcntl(), tarf_ioctl()
+ *
+ * tarf_dupfd() is similar to POSIX dup(), except that the duplicated file
+ * descriptor does not share its file position with the original. Instead,
+ * a completely independent copy of the file descriptor is created.
+ *
+ * How it works:
+ * open() uses inode_lookup() to find the requested inode, allocates a file
+ * descriptor structure, initializes it from the inode, and increments the
+ * filesystem reference count.
+ *
+ * close() decrements the filesystem reference count.
+ *
+ * read() and pread() are implemented as simple memcpy() operations.
+ *
+ * Functions that operate on a file descriptor rely on the open()/close()
+ * reference-counting protocol. The filesystem reference is acquired by
+ * open() and released by close(), guaranteeing that the filesystem remains
+ * valid for the lifetime of every open file descriptor.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,11 +47,7 @@
 #include <sys/stat.h>
 #include <sys/utime.h>
 #include "config.h"
-//#include "os.h"
-//#include "fs.h"
 
-/* Compile-time sanity checks. */
-_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "Code review is required");
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +57,7 @@ extern "C" {
  * This internal file descriptor maps to a local fd number 
  * as descriptor_ptr = s_tarfs[slot]->fs_fds[local_fd];
  *
- * @brief TARFS file descriptor, 12 bytes
+ * @brief TARFS file descriptor, 16 bytes
  *
  */
 struct tarfs_fp {
@@ -413,3 +433,6 @@ int tarf_munmap(void *ctx, void *addr, size_t length);
 #ifdef __cplusplus
 };
 #endif
+
+/* Compile-time sanity checks. */
+_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "Code review is required");

@@ -71,20 +71,6 @@ uint32_t hash32(uint32_t prev_hash, uint8_t const *data, size_t len);
  */
 uint64_t hash64(uint64_t prev_hash, void const *data, size_t len);
 
-/**
- * @brief Straight 32 and 64 bit sums over a byte buffer
- *
- * These functions supports incremental hashing just as hash32 and hash64
- *
- * @param prev_hash initial hash state (use 0 for fresh hash)
- * @param data      Input byte buffer
- * @param len       Length of input buffer
- *
- * @return Updated 32/64-bit sum
- *
- */
-uint64_t sum64(uint64_t prev_sum, void const *buffer0, size_t buf_len);
-uint32_t sum32(uint32_t prev_sum, void const *buffer0, size_t buf_len);
 #ifdef __cplusplus
 };
 #endif

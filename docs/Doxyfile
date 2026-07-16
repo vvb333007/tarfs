@@ -6,13 +6,13 @@ PROJECT_NAME           = "TARFS"
 PROJECT_NUMBER         = "0.1.2"
 PROJECT_BRIEF          = "Read-only TAR filesystem for ESP32"
 
-OUTPUT_DIRECTORY       = docs
+OUTPUT_DIRECTORY       = .
 
 #-------------------------------------------------
 # Input
 #-------------------------------------------------
 
-INPUT                  = src README.md docs/QuickStart.md docs/FAQ.md
+INPUT                  = ../src
 FILE_PATTERNS          = *.h *.c *.md
 RECURSIVE              = YES
 
@@ -35,7 +35,7 @@ TYPEDEF_HIDES_STRUCT   = YES
 # HTML
 #-------------------------------------------------
 
-GENERATE_HTML          = NO
+GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_COLORSTYLE_HUE    = 210
 HTML_DYNAMIC_SECTIONS  = YES
@@ -47,7 +47,7 @@ HTML_DYNAMIC_SECTIONS  = YES
 GENERATE_LATEX         = NO
 GENERATE_XML           = NO
 GENERATE_MAN           = NO
-GENERATE_RTF           = YES
+GENERATE_RTF           = NO
 
 #-------------------------------------------------
 # Source browser

@@ -29,11 +29,6 @@
 #define TARFS_MAX_FS  CONFIG_TARFS_MAX_FS
 #define TARFS_MAX_FDS CONFIG_TARFS_MAX_FDS
 
-#include "inode.h"
-#include "file.h"
-#include "refc.h"
-
-
 #if CONFIG_TARFS_LOG
 #  define log( Format_, ... ) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ )
 #else

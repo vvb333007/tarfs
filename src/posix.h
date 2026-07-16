@@ -25,16 +25,18 @@
 /**
  * @brief POSIX mmap()/munmap() support for TARFS
  */
-#define PROT_READ     1 /*!< Supported */
-#define PROT_WRITE    2 /*!< Ignored, if used together with PROT_READ. Alone causes mmap() error (RO filesystem!) */
-#define PROT_EXEC     4 /*!< Ignored */
+#define PROT_READ     1  /*!< Default memory protection flag. */
+#define PROT_WRITE    2  /*!< Ignored, if used together with PROT_READ. Alone causes mmap() error (RO filesystem!) */
+#define PROT_EXEC     4  /*!< Ignored */
 
-#define MAP_SHARED    1 /*!< Supported */
-#define MAP_PRIVATE   2 /*!< Supported */
+#define MAP_FILE      0  /*!< Default flag is MAP_FILE, we do not support MAP_ANON, we always expect MAP_FILE */
+#define MAP_SHARED    1  /*!< Supported */
+#define MAP_PRIVATE   2  /*!< Supported */
 
-#define MAP_FIXED     4 /*!< Ignored, no legit use for this flag :) */
-#define MAP_ANONYMOUS 8 /*!< Unsupported, use malloc() instead */
+#define MAP_FIXED     4  /*!< Ignored, no legit use for this flag :) */
+#define MAP_ANONYMOUS 8  /*!< Unsupported, use malloc() instead */
 #define MAP_ANON      8 
+
 
 #define MAP_FAILED   ((void *)(-1))
 

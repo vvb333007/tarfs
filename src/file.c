@@ -12,48 +12,28 @@
  */
 
 
-/* Common functions prologue. Note that tarf_open() uses hardcoded version of PROLOGUE() macro 
- * whenever this macro is changed, then tarf_open() code should be changed accordingly. Right now
- * hardcoded version of PROLOGUE() macro is different from the macro in is_sanefd() check
- */
-
-#define PROLOGUE( TYPE ) \
-  struct tarfs_fs *fs = NULL; \
-\
-  int fs_idx = (intptr_t )ctx; \
-\
-  if (false == (fs_idx >= 0 && \
-                fs_idx < TARFS_MAX_FS && \
-                ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
-\
-    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); \
-    errno = EIO; \
-    return (TYPE)(-1); \
-  } \
-  if (!is_sanefd(fs, fd)) { \
-    log("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
-    errno = EBADF; \
-    return (TYPE)(-1); \
-  }
-
-
 /*
- * Thread-safety notes
+ * Thread Safety Notes
  * ===================
  *
- * close() during an active read()
+ * close() during an active read():
  *
- *   If Thread 1 is executing read(), it may be preempted while another thread
- *   closes the file descriptor and immediately opens another file.
- *   Since file descriptor numbers may be reused, Thread 1 will resume the
- *   read() operation on the newly opened file instead of the original one.
+ *   In TARFS, every read() operation is atomic and guaranteed to complete,
+ *   even if another thread successfully calls close() before read() returns.
+ *   In this case, the file descriptor is closed, but the ongoing read()
+ *   completes as if it were still open.
  *
- * To avoid this race (if you really need to close() a file descriptor while
- * another thread is reading from it), provide the required synchronization in
- * your application or, preferably, redesign the application logic.
+ *   However, if unmount() has already been called, close() may release the
+ *   filesystem and unmap the underlying image. In this case, an ongoing
+ *   read() may access unmapped memory, resulting in undefined behavior
+ *   (typically a crash).
  *
- * unmount() + close() during an active read() is undefined behavior (UB).
+ * To avoid this race (if you really need to call unmount() and close() while
+ * another thread is reading from the same file descriptor), provide the
+ * necessary synchronization in your application or, preferably, redesign
+ * the application logic.
  */
+
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -78,18 +58,47 @@
 #include "fs.h"
 #include "posix.h"
 
-/* Compile-time sanity checks */
-_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "TARFS_MAX_FD must be in range [1..32]");
 
+/*
+ * Common function prologue.
+ *
+ * Note that tarf_open() uses a hardcoded version of the PROLOGUE() macro.
+ * Whenever this macro is modified, the corresponding code in tarf_open()
+ * must be updated accordingly.
+ *
+ * The hardcoded version differs from this macro in two ways:
+ *
+ *   - it performs the is_sanefd() check differently;
+ *   - it obtains the filesystem context by incrementing its reference
+ *     count, whereas this macro simply retrieves the filesystem pointer,
+ *     assuming that open() has already acquired the reference.
+ */
 
-static const uint32_t    s_valid_mask   = (TARFS_MAX_FDS == 32) ? 0xffffffffUL : ((1UL << TARFS_MAX_FDS) - 1UL);
-
+#define PROLOGUE( TYPE ) \
+  struct tarfs_fs *fs = NULL; \
+\
+  int fs_idx = (intptr_t )ctx; \
+\
+  if (false == (fs_idx >= 0 && \
+                fs_idx < TARFS_MAX_FS && \
+                ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
+\
+    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); \
+    errno = EIO; \
+    return (TYPE)(-1); \
+  } \
+  if (!is_sanefd(fs, fd)) { \
+    log("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
+    errno = EBADF; \
+    return (TYPE)(-1); \
+  }
 
 
 /* Bitmap is used only for fd allocation. It is NOT used as a publication mechanism.
  * Descriptor contents are initialized before open() returns and become visible through
  * the VFS call chain. Therefore memory_order_relaxed is sufficient. Period.
  */
+static const uint32_t    s_valid_mask   = (TARFS_MAX_FDS == 32) ? 0xffffffffUL : ((1UL << TARFS_MAX_FDS) - 1UL);
 
 
 /**
@@ -133,8 +142,8 @@ static void freefd(struct tarfs_fs *fs, int index) {
 
     uint32_t used_indices, new_value;
 
-    assert(index >= 0);
-    assert(index < TARFS_MAX_FDS);
+    if (index < 0 || index >= TARFS_MAX_FDS)
+      return ;
 
     do {
       used_indices = atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed);
@@ -160,12 +169,18 @@ static bool is_sanefd(struct tarfs_fs *fs, int fd) {
             ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
 }
 
-/* File operation handlers. These are called by VFS (on systems with VFS) or directly
- * When called directly it is user resposibility to pass the FS context as the first
- * argument. The FS context is a number (not a pointer, don't be confused by void *) 
- * in the range [0..TARFS_MAX_FS). This number is returned by tarfs_mount()
- */
 
+/*
+ * File operation handlers.
+ *
+ * These functions are called either by the VFS (on systems that provide one)
+ * or directly by the application.
+ *
+ * When called directly, it is the caller's responsibility to pass the
+ * filesystem context as the first argument. Although its type is void *,
+ * the filesystem context is actually an integer index (not a pointer) in
+ * the range [0..TARFS_MAX_FS). This index is returned by tarfs_mount().
+ */
 
 
 /**
@@ -296,7 +311,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       fp->fp_size  = size;
       fp->fp_idx   = idx; /* inode index, used by opendir()/readdir() */
 
-      log("success, ino=%d, type=%c, path=%s, fd=%d, size=%lu, vaddr=%p\r\n",idx, type, path, fd,fp->fp_size, (void *)fp->fp_vaddr);
+      log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
 
       /* free strduped path */
       if (path != path0) {
@@ -654,14 +669,6 @@ int tarf_stat(void* ctx, const char * path, struct stat * st) {
  *
  * TARFS is a read-only filesystem and does not support modifying files.
  * This function always fails with ::EROFS.
- *
- * @param ctx     Filesystem context.
- * @param path    Path to the file.
- * @param length  Requested file length.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
  */
 int tarf_truncate(void *ctx, const char *path, off_t length) {
 
@@ -676,14 +683,6 @@ int tarf_truncate(void *ctx, const char *path, off_t length) {
  *
  * TARFS is a read-only filesystem and does not support modifying files.
  * This function always fails with ::EROFS.
- *
- * @param ctx     Filesystem context.
- * @param fd      File descriptor.
- * @param length  Requested file length.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
  */
 int tarf_ftruncate(void* ctx, int fd, off_t length) {
 
@@ -698,14 +697,6 @@ int tarf_ftruncate(void* ctx, int fd, off_t length) {
  *
  * TARFS is a read-only filesystem and does not support creating links.
  * This function always fails with ::EROFS.
- *
- * @param ctx  Filesystem context.
- * @param n1   Existing pathname.
- * @param n2   New pathname.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
  */
 int tarf_link(void* ctx, const char* n1, const char* n2) {
 
@@ -720,13 +711,6 @@ int tarf_link(void* ctx, const char* n1, const char* n2) {
  *
  * TARFS is a read-only filesystem and does not support deleting files.
  * This function always fails with ::EROFS.
- *
- * @param ctx   Filesystem context.
- * @param path  Path to the file.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
  */
 int tarf_unlink(void* ctx, const char *path) {
 
@@ -741,14 +725,6 @@ int tarf_unlink(void* ctx, const char *path) {
  *
  * TARFS is a read-only filesystem and does not support renaming files.
  * This function always fails with ::EROFS.
- *
- * @param ctx  Filesystem context.
- * @param src  Source pathname.
- * @param dst  Destination pathname.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
  */
 int tarf_rename(void* ctx, const char *src, const char *dst) {
 
@@ -790,8 +766,10 @@ int tarf_dupfd(void *ctx, int fd) {
 
 
 /**
- * Mimic POSIX mmap().
+ * Mimics POSIX mmap().
  *
+ * Only read-only file mappings are supported. MAP_ANON(YMOUS),
+ * MAP_FIXED, PROT_EXEC, and PROT_WRITE are not supported.
  */
 void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
 
@@ -818,7 +796,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       offset > fp->fp_size || 
       length > (fp->fp_size - offset)) {
 
-      log("failed: offset=%ld, fp_size=%lu, length=%lu\r\n", offset, fp->fp_size, length);
+      log("failed: offset=%u, fp_size=%u, length=%u\r\n", (unsigned int)offset, (unsigned int)fp->fp_size, (unsigned int)length);
       errno = EINVAL;
 
       return MAP_FAILED;
@@ -828,15 +806,19 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
    * memory offset
    */
   tarfs_addref(fs);
-  log("fd=%d, mapped %lu bytes vaddr=%p, offset=%ld\r\n",fd, length, (void *)fp->fp_vaddr, offset);
+  log("fd=%d, mapped %u bytes vaddr=%p, offset=%d\r\n",fd, (unsigned int)length, (void *)fp->fp_vaddr, (int)offset);
   return (void *)(fp->fp_vaddr + offset);
 }
 
 
 /**
- * munmap(). We do not check the address/length here. Unmapping only affects filesystem refcounter
- * so it is important that the same ctx is used as with tarfs_mmap()
- * 
+ * munmap().
+ *
+ * The address and length arguments are ignored and are not validated.
+ * Unmapping only affects the filesystem reference count, so the same
+ * filesystem context used with tarf_mmap() must also be used with
+ * tarf_munmap().
+ *
  */
 int tarf_munmap(void *ctx, void *addr, size_t length) {
 
@@ -853,7 +835,10 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
     return -1; 
   }
 
-  log("unmapping %p (%u) from fs_idx=%d\r\n",addr, length, fs_idx); 
+  log("unmapping %p (%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
   tarfs_unref(fs);
   return 0;
 }
+
+/* Compile-time sanity checks */
+_Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "TARFS_MAX_FD must be in range [1..32]");

@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     }
 
     const char *filename     = argv[1];
-    const char *filename2    = argc > 2 ? argv[2] : "out.tar";
+    const char *filename2    = argc > 2 ? argv[2] : "output.tar";
 
 
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
@@ -57,10 +57,7 @@ int main(int argc, char **argv) {
 #if 0
 /* for CRC64 integrity test, DO NOT UNCOMMENT! */
     memset(buf + 0, 0x5a, 200);
-    memset(buf + 1000, 0x5a, 200);
-    memset(buf + 7000, 0x5a, 2000);
-    memset(buf + 10000, 0x5a, 2000);
-    memset(buf + size - 10000, 0x5a, 2000);
+    memset(buf + size/2, 0x5a, 200);
 #endif
     if (processed) {
       FILE *f = fopen(filename2, "wb");

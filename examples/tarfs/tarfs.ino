@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "tarfs.h"
 
-
+const char *partition_name = "tarfs";
 
 void setup() {
 

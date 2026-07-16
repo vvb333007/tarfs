@@ -1,4 +1,4 @@
-# This Makefile is used for TARFS development: copy doc/os_cygwin.c to this dir and 'make'
+# 
 # 
 .RECIPEPREFIX := >
 
@@ -13,7 +13,7 @@ CFLAGS  := -Wall -Os -pedantic -I../src
 CFLAGS  += -DTARSUM_BUILD=1
 CFLAGS += -MMD -MP 
 
-# Общие исходники
+# Common sources
 COMMON_SRC := \
     ../src/file.c \
     ../src/tar.c \
@@ -28,6 +28,11 @@ COMMON_SRC := \
 TARSUM_SRC := tarsum.c $(COMMON_SRC)
 TARSUM_OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(TARSUM_SRC))
 
+# Internal test
+TEST_SRC := test.c $(COMMON_SRC)
+TEST_OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(TEST_SRC))
+
+
 # Object files
 OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
 
@@ -41,6 +46,10 @@ all: $(TARGETS)  clean
 tarsum: $(TARSUM_OBJ)
 >$(CC) $^ -o $@
 
+test: $(TEST_OBJ)
+>$(CC) $^ -o $@
+
+
 $(OBJDIR)/%.o: %.c | $(OBJDIR)
 >$(CC) $(CFLAGS) -c $< -o $@
 
@@ -51,3 +60,7 @@ clean:
 >rm -f *.o *.d ../src/*.o ../src/*.d
 
 -include $(OBJ:.o=.d)
+
+
+
+

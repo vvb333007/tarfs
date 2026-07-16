@@ -13,9 +13,9 @@
 
 
 /**
- *  This implementation is an optimized variation of the FNV-1a hash algorithm.
- *  This is NOT a strict reference implementation of FNV, but preserves
- *  byte-equivalence of FNV-1a while improving memory throughput.
+ * This implementation is an optimized variation of the FNV-1a hash algorithm.
+ * This is NOT a strict reference implementation of FNV, but preserves
+ * byte-equivalence of FNV-1a while improving memory throughput.
  *
  * const char *test_vector3 = "The_Prefix/The_Name.txt";
  * const uint32_t ref_value = 0x6f914293;
@@ -178,38 +178,4 @@ uint64_t hash64(uint64_t prev_crc, void const *buffer0, size_t buf_len) {
     }
 
     return crc;
-}
-
-/**
- * Straight 64 bit sum
- * This is the replacement of `C64` integrity check value for MCUs which are not
- * capable of doing CRC64
- */
-uint64_t sum64(uint64_t prev_sum, void const *buffer0, size_t buf_len) {
-
-    uint64_t sum = prev_sum;
-    uint8_t const *buffer = buffer0;
-
-    while (buf_len--)
-      sum += *buffer++;
-
-    return sum;
-}
-
-
-
-/**
- * Straight 32 bit sum
- * This is the replacement of `S64` integrity check value for MCUs which are not
- * capable of doing 64 bit arith
- */
-uint32_t sum32(uint32_t prev_sum, void const *buffer0, size_t buf_len) {
-
-    uint32_t sum = prev_sum;
-    uint8_t const *buffer = buffer0;
-
-    while (buf_len--)
-      sum += *buffer++;
-
-    return sum;
 }

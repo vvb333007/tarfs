@@ -246,13 +246,13 @@ static void commit_unmount(void *ctx) {
   /* Release the FS image */
   if (fs->fs_vaddr != NULL) {
     if (fs->fs_handle != 0) {
-      log(" unmapping filesystem image, vaddr=%p, size=%lu\r\n", fs->fs_vaddr, fs->fs_size);
+      log(" unmapping filesystem image, vaddr=%p, size=%u\r\n", (const void *)fs->fs_vaddr, (unsigned int)fs->fs_size);
       tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
     }
     fs->fs_vaddr = NULL;
   }
 
-  log("deleting FS descriptor %p\r\n", fs);
+  log("deleting FS descriptor %p\r\n", (void *)fs);
   tarfs_os_free(fs);
 }
 
@@ -394,7 +394,7 @@ unmap_and_return_error:
     tarfs_unlock();
   /* ------- unlocked -------*/
 
-    log("allocated new FS descriptor s_tarfs[%d] = %p\r\n", slot, fs);
+    log("allocated new FS descriptor s_tarfs[%d] = %p\r\n", slot, (void *)fs);
 
     /* set refcounter to 1 */
     initref(&fs->fs_ref);
@@ -421,7 +421,7 @@ unmap_and_return_error:
       logerr("WARN: running in degraded mode\r\n");
     }
 
-  log("addr %p:%lu --> %u inodes successfully mounted\r\n", map, size, fs->fs_nino);
+  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, fs->fs_nino);
 
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
@@ -454,7 +454,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
 
-    log("resource is available at %p, %lu bytes. mounting from memory..\r\n", map, size);
+    log("resource is available at %p, %u bytes. mounting from memory..\r\n", map, (unsigned int)size);
 
     slot = tarfs_mount_memory(map, size, mountpoint, link_rebase, path_rebase);
     if (slot >= 0) {

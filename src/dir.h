@@ -17,16 +17,28 @@
 #pragma once
 
 /**
- * Note on dirent structure:
+ * TARFS Directory API: tard_opendir(), tard_fdopendir(), tard_closedir(),
+ * tard_telldir(), tard_seekdir()
  *
- *  Unlike POSIX, where d_off is an opaque implementation-defined
- *  value, TARFS stores the logical directory position in this field.
+ * tard_fdopendir() is the only function that allocates memory for the DIR
+ * structure. tard_opendir() internally calls tard_fdopendir().
  *
- *  Specifically, d_off is the zero-based index of the next directory
- *  entry. The value can be saved and later passed to tard_seekdir() to
- *  resume directory traversal.
+ * How it works:
+ * opendir() calls open(O_DIRECTORY) and positions its internal inode pointer
+ * at the requested directory. Subsequent calls to readdir() advance this
+ * pointer through the inode list (inodes are linked alphabetically via
+ * ->in_next) until the next inode no longer matches the directory prefix
+ * specified in opendir().
+ *
+ * Note on the dirent structure:
+ *
+ * Unlike POSIX, where d_off is an opaque implementation-defined value,
+ * TARFS stores the logical directory position in this field.
+ *
+ * Specifically, d_off is the zero-based index of the next directory entry.
+ * The value can be saved and later passed to tard_seekdir() to resume
+ * directory traversal.
  */
-
 
 #ifdef __CYGWIN__
 /* Glibc-based systems dont expose DIR so we use a placeholder */

@@ -313,7 +313,7 @@ struct tarfs_inode **inode_alloc(size_t count) {
     for (size_t i = 0; i < count; i++)
       index[i] = &nodes[i];
 
-    log("Allocated %lu inodes, %lu bytes (%lu + %lu)\r\n",count,index_size + nodes_size,index_size, nodes_size);
+    log("Allocated %u inodes, %u bytes (%u + %u)\r\n",(unsigned int)count,(unsigned int)(index_size + nodes_size),(unsigned int)index_size, (unsigned int)nodes_size);
     return index;
 }
 
@@ -656,7 +656,7 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
     int files = 0, dirs = 0, links = 0, pax_headers = 0, idx = 0, bad_path = 0;
     
     size_t off = 0;
-    size_t hdr_no = 0;
+    unsigned int hdr_no = 0;
     unsigned int bad = 0, total_bad = 0;
     const char *pax_entry_path = NULL, *pax_entry_link = NULL, *pax_entry_end;
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
@@ -675,9 +675,9 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
           pax_entry_link = NULL;
 
           if (!bad) {
-            logerr("Header #%lu is invalid (or NUL-header)\r\n", hdr_no);
+            logerr("Header #%u is invalid (or NUL-header)\r\n", hdr_no);
 bad_header:
-            logerr("Skipping blocks starting from offset %lu..\r\n", off);
+            logerr("Skipping blocks starting from offset %u..\r\n", (unsigned int)off);
             bad++;
             bad_start = off;
           }
@@ -687,7 +687,7 @@ bad_header:
         }
 
         if (bad) {
-          logerr("Resuming at offset %lu; (%lu blocks/ %lu bytes) were lost \n", off, (off - bad_start)/sizeof(struct tarhdr), off - bad_start);
+          logerr("Resuming at offset %u; (%u blocks/ %u bytes) were lost \n", (unsigned int)off, (unsigned int)(off - bad_start)/sizeof(struct tarhdr), (unsigned int)(off - bad_start));
           total_bad += bad;
           bad = 0;
           
@@ -914,7 +914,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
     log("PASS1, analyzing..\n");
     nino = tar_getnino(buf, size);
 
-    log("%u inodes, expected RAM usage: %lu bytes of RAM\n",nino, sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *)));
+    log("%u inodes, expected RAM usage: %u bytes of RAM\n",nino, (unsigned int)(sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode) + sizeof(struct tarfs_inode *))));
     if (nino < 1)
       return -1;
 
@@ -972,7 +972,6 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
         }
         /* Read root's directory mtime from the tar header
          * in_vaddr can not be NULL
-         * TODO: add assert()
          */
         struct tarhdr const *hdr = (struct tarhdr const *)root->in_vaddr;
         if (hdr != NULL) {
@@ -981,6 +980,8 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
             fs->fs_mtime = mtime;
             log("mtime is taken from the root entry\r\n");
           }
+        } else {
+          logerr("CRITICAL: root->in_vaddr is NULL, this must not happen!\r\n");
         }
         return 0;
       }
@@ -988,7 +989,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
       logerr("WARN: no root inode after alphasort, opendir() is disabled\r\n");
       /* inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino); */
     }      
-
+    /* Return "we have some problems" */
     return -1;
 }
 

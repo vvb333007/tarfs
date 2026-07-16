@@ -288,22 +288,26 @@ bool tar_badhdr(tarhdr_t const * hdr) {
     calc = tar_hdrsum(hdr);
     expc = tar_octal(hdr->checksum, sizeof(hdr->checksum));
 
-    if (expc != calc)
+    /* All zero TAR header will pass all these checks. We consider all-zero headers as invalid
+     * zero size entry (these can be found at the end of the tar archive, but this doesnt matter)
+     */
+    if (expc != calc || (calc == 0 && expc == 0))
       return true;
+
 
     return false;
 }
 
 /**
- * Quick run through the tarfile to count number of inodes we have to create
+ * Quick run through the tarfile to count number of inodes we have to create.
  * Bad blocks are skipped; inodes_count = number_of_links + number_files + number_of_directoris
  *
  */
 int tar_getnino(const uint8_t *tar_start, size_t tar_length) {
 
     uint32_t size;
-    size_t off = 0, hdr_no = 0;
-    int bad = 0, files = 0, dirs = 0, links = 0, bad_total = 0;
+    size_t off = 0;
+    int bad = 0, files = 0, dirs = 0, links = 0, bad_total = 0, hdr_no = 0;
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
 
     while (off + sizeof(tarhdr_t) <= tar_length) {
@@ -358,8 +362,12 @@ bad_header:
         hdr_no++;
     }
 
-  return files + links + dirs;
+    unsigned int total = files + links + dirs;
 
+    log("headers processed: %u, number of bad metadata headers: %u\r\n", hdr_no, bad_total);
+    log("# of inodes calculated: %u (%u files, %u dirs, %u links\r\n",total, files, dirs, links);
+
+    return total;
 }
 
 /**
@@ -403,6 +411,7 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
 
     off += (((size_t)size + 511) & ~511u) + sizeof(tarhdr_t);
   }
+  log("failed to guess root directory\r\n");
   return false;
 }
 

@@ -151,13 +151,13 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   esp_partition_iterator_t    i;
   esp_partition_mmap_handle_t handle;
   const esp_partition_t      *part;
-  size_t len;
+  
   void const *map;
 
   if (label == NULL || os_handle_out == NULL) {
     logerr("ESP32: invalid arguments\r\n");
     errno = EINVAL;
-    return false;
+    return NULL;
   }
   
   /* Fetch pointer to the FLASH partition descriptor by its label */
@@ -167,13 +167,18 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   if (i == NULL) {
     logerr("ESP32: partition not found '%s'\r\n", label);
     errno = ENOENT;
-    return false;
+    return NULL;
   }
 
   part = esp_partition_get(i);
   esp_partition_iterator_release(i);
 
-  assert(part != NULL); // non-NULL iterator can not yield NULL partition pointer, but just in case
+  /* non-NULL iterator can not yield NULL partition pointer, but just in case */
+  if (part == NULL) {
+    logerr("esp_partition_get() returned NULL, this must not happen!\r\n");
+    errno = EIO;
+    return NULL;
+  }
 
   if (ESP_OK == esp_partition_mmap(part,0,part->size,ESP_PARTITION_MMAP_DATA,&map,&handle)) {
     *os_handle_out = (void *)handle;
@@ -187,7 +192,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
 
   logerr("esp_partition_mmap() failed\r\n");
   errno = ENOMEM;
-  return false;
+  return NULL;
 }
 
 /**

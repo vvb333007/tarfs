@@ -348,7 +348,7 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 
   while(dir->di_off < offset) {
     if (NULL == tard_readdir(ctx, pdir)) {
-      log("offset %ld is not reachable, stopped at offset %lu\r\n", offset, dir->di_off);
+      log("offset %ld is not reachable, stopped at offset %u\r\n", offset, (unsigned int)dir->di_off);
       break;
     }
   }
