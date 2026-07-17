@@ -424,7 +424,7 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
       break;
     }
   } /* while left < right */
-  log("hash=<%08x> path='%s' not found\r\n",hash, path);
+  log("hash=<%08x> path='%s' not found\r\n",(unsigned int)hash, path);
   return -ENOENT;
 }
 
@@ -876,8 +876,8 @@ skip_header_and_data:
       
 
   log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
-  log("TAR data/headers ratio: %u data bytes, %u header bytes\r\n", total_data_size, total_headers_size);  
-  log("RAM overhead (total RAM used by the FS): %u bytes\r\n", overhead);
+  log("TAR data/headers ratio: %u data bytes, %u header bytes\r\n", (unsigned int)total_data_size, (unsigned int)total_headers_size);  
+  log("RAM overhead (total RAM used by the FS): %u bytes\r\n", (unsigned int)overhead);
 
   return total_data_size;
 }
@@ -1006,7 +1006,7 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
   for (size_t i = 0; i < count; i++) {
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
 
-    printf("<%08x> %c %s path=", inode->in_hash,
+    printf("<%08x> %c %s path=", (unsigned int)inode->in_hash,
       inode_getinfo(index, i, NULL, NULL) ,
       inode->in_vaddr != inode->in_dvaddr ? "*" : " ");
 
@@ -1030,7 +1030,7 @@ void inode_dumppath_sorted(struct tarfs_inode const * root) {
   for (size_t i = 0; root != NULL; i++) {
 
     printf("<%08x> %s%s path=", 
-            root->in_hash,
+            (unsigned int)root->in_hash,
             root->in_vaddr != root->in_dvaddr ? "*" : " ",
             root->in_dvaddr == 0 ? "X" : " ");
 

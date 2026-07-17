@@ -238,7 +238,7 @@ static void commit_unmount(void *ctx) {
   /* Release all associated memory: inodes, inode index*/
   if (fs->fs_ino != NULL && fs->fs_nino > 0) {
 
-    log(" deleting inodes (%u)\r\n", fs->fs_nino);
+    log(" deleting inodes (%u)\r\n", (unsigned int)fs->fs_nino);
     inode_unmount(fs, (const void *)fs->fs_vaddr, fs->fs_size);
     fs->fs_ino = NULL;
   }
@@ -421,7 +421,7 @@ unmap_and_return_error:
       logerr("WARN: running in degraded mode\r\n");
     }
 
-  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, fs->fs_nino);
+  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, (unsigned int)fs->fs_nino);
 
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");

@@ -185,7 +185,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
     if (size_out)
       *size_out = part->size;
 
-    log("ESP32: partition '%s' -> vaddr=%p, size=%u\r\n", label, map, part->size);
+    log("ESP32: partition '%s' -> vaddr=%p, size=%u\r\n", label, map, (unsigned int)part->size);
 
     return map;
   }
