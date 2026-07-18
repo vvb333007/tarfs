@@ -112,6 +112,32 @@ struct tarfs_fs {
   char                          fs_mountpoint[];      /*!< Mount point */
 };
 
+enum {
+  ST_NOATIME     = 1,
+  ST_NODEV       = 2,
+  ST_NODIRATIME  = 4,
+  ST_NOEXEC      = 8,
+  ST_NOSUID      = 16,
+  ST_RDONLY      = 32,
+  ST_RELATIME    = 64,
+  ST_SYNCHRONOUS = 128,
+};
+
+struct statvfs {
+  size_t  f_bsize;    /* Filesystem block size */
+  size_t  f_frsize;   /* Fragment size */
+  size_t  f_blocks;   /* Size of fs in f_frsize units */
+  size_t  f_bfree;    /* Number of free blocks */
+  size_t  f_bavail;   /* Number of free blocks for unprivileged users */
+  size_t  f_files;    /* Number of inodes */
+  size_t  f_ffree;    /* Number of free inodes */
+  size_t  f_favail;   /* Number of free inodes for unprivileged users */
+  size_t  f_fsid;     /* Filesystem ID */
+  int     f_flag;     /* Mount flags */
+  size_t  f_namemax;  /* Maximum filename length */
+};
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -278,6 +304,22 @@ int tarfs_fsindex(const char *path);
  */
 time_t tarfs_getmtime(int fs_idx);
 
+/**
+ * Obtain filesystem statistics.
+ *
+ * Fills a POSIX statvfs structure with information about the mounted
+ * filesystem. Since TARFS is a read-only filesystem, the number of
+ * available blocks and inodes is always reported as zero.
+ *
+ * @param ctx Filesystem context.
+ * @param st  Pointer to the statvfs structure to fill.
+ *
+ * @return 0 on success, or -1 on error with errno set appropriately.
+ */
+
+int tarfs_statvfs(void *ctx, struct statvfs *st);
+
+
 /* Implementation of a calloc() and a strdup() via memory backend
  *
  */
@@ -306,21 +348,9 @@ int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size);
 /**
  * Dump internal filesystem information for debugging.
  *
- * The output is generated using the supplied printf-compatible callback.
- *
- * Example:
- * @code
- * tarfs_dump(0, stdout, fprintf);
- * @endcode
- *
  * @param fs_idx
  *        Filesystem index returned by tarfs_mount().
  *
- * @param vty
- *        User-defined output context passed to @p vtyout.
- *
- * @param vtyout
- *        printf-compatible output callback.
  */
 void tarfs_dump(int fs_idx);
 

@@ -594,7 +594,7 @@ void tarfs_dump(int fs_idx) {
 #define vty stdout
 
   if (fs == NULL) {
-    vtyout(vty,"filesystem %d is not mounted\r\n");
+    vtyout(vty,"filesystem %d is not mounted\r\n", fs_idx);
     return ;
   }
 
@@ -604,14 +604,14 @@ void tarfs_dump(int fs_idx) {
              "size  : %u\r\n"
              "dsize : %u\r\n"
              "nino  : %u\r\n"
-             "usedfd: %08x\r\n", fs->fs_ref - 1, fs->fs_vaddr, fs->fs_size, fs->fs_dsize, fs->fs_nino, fs->fs_usedfd);
+             "usedfd: %08x\r\n", fs->fs_ref - 1, fs->fs_vaddr, (unsigned int)fs->fs_size, (unsigned int)fs->fs_dsize, fs->fs_nino, fs->fs_usedfd);
 
   for (int fd = 0; fd < TARFS_MAX_FDS; fd++) {
     
     if ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0) {
       vtyout(vty, "fd#%d: allocated: ", fd);
       struct tarfs_fp  *fp = &fs->fs_fd[fd];
-      vtyout(vty,"vaddr=%p, pos=%p, size=%u, inode=%d\r\n", fp->fp_vaddr, fp->fp_pos, fp->fp_size, fp->fp_idx);
+      vtyout(vty,"vaddr=%p, pos=%u, size=%u, inode=%d\r\n", (void *)fp->fp_vaddr, (unsigned int)fp->fp_pos, (unsigned int)fp->fp_size, fp->fp_idx);
     } else
       vtyout(vty, "fd#%d: free\r\n", fd);
   }
@@ -735,4 +735,46 @@ bad_header:
 
   /* all headers are bad */
   return -1;
+}
+
+
+/**
+ * Obtain filesystem statistics.
+ *
+ * Fills a POSIX statvfs structure with information about the mounted
+ * filesystem. Since TARFS is a read-only filesystem, the number of
+ * available blocks and inodes is always reported as zero.
+ */
+
+int tarfs_statvfs(void *ctx, struct statvfs *st) {
+
+    if (!st) {
+        errno = EFAULT;
+        return -1;
+    }
+
+    struct tarfs_fs *fs = tarfs_getfs_addref((int)(uintptr_t)ctx);
+
+    if (fs == NULL) {
+      errno = EIO;
+      return -1;
+    }
+
+    memset(st, 0, sizeof(*st));
+
+    /* Logical block size and total filesystem size */
+    st->f_bsize  = 512;
+    st->f_frsize = 512;
+    st->f_blocks = ((fs->fs_dsize + 511) & ~511) / 512;
+    
+    /* Number of files (ROFS!) */
+    st->f_files  = fs->fs_nino;
+
+    /* Maximum filename length and flags */
+    st->f_namemax = 255;
+    st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
+
+    tarfs_unref(fs);
+
+    return 0;
 }

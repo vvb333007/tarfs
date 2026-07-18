@@ -40,6 +40,9 @@
 
 #define MAP_FAILED   ((void *)(-1))
 
+
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -137,6 +140,22 @@ DIR *fdopendir(int fd);
  */
 int dupfd(int fd);
 #endif /* CONFIG_TARFS_HAVE_DUPFD */
+
+
+#if CONFIG_TARFS_HAVE_STATVFS
+/**
+ * Obtain filesystem statistics.
+ *
+ * Fills a POSIX statvfs structure with information about the mounted
+ * filesystem. Since TARFS is a read-only filesystem, the number of
+ * available blocks and inodes is always reported as zero.
+ *
+ * @param st  Pointer to the statvfs structure to fill.
+ *
+ * @return 0 on success, or -1 on error with errno set appropriately.
+ */
+int statvfs(const char *path, struct statvfs *st);
+#endif /* CONFIG_TARFS_HAVE_STATVFS */
 
 #ifdef __cplusplus
 };

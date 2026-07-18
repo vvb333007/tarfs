@@ -158,3 +158,23 @@ ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
 }
 #endif /* CONFIG_TARFS_HAVE_READLINK */
 
+
+#if CONFIG_TARFS_HAVE_STATVFS
+/**
+ * Obtain filesystem statistics.
+ *
+ * Fills a POSIX statvfs structure with information about the mounted
+ * filesystem. Since TARFS is a read-only filesystem, the number of
+ * available blocks and inodes is always reported as zero.
+ *
+ * @param path  Pointer to the path
+ * @param st  Pointer to the statvfs structure to fill.
+ *
+ * @return 0 on success, or -1 on error with errno set appropriately.
+ */
+int statvfs(const char *path, struct statvfs *st) {
+
+  errno = ENOTSUP;
+  return -1;
+}
+#endif /* CONFIG_TARFS_HAVE_STATVFS */
