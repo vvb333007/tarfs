@@ -315,13 +315,8 @@ int tar_getnino(const uint8_t *tar_start, size_t tar_length) {
         const tarhdr_t *hdr = (const tarhdr_t *)(tar_start + off);
 
         if (tar_badhdr(hdr)) {
-
-          if (!bad) {
 bad_header:
-            bad++;
-            
-          }
-
+          bad++;
           off += sizeof(tarhdr_t);
           continue;
         }
@@ -526,14 +521,14 @@ bad_header:
 }
 #endif /* TARSUM_BUILD */
 
-#if CONFIG_TARFS_INTEGRITY
+
 /**
  *  Verify CRC64 checksum stored in a TAR archive, if present.
  *  hdr must pass tar_badhdr() check!!
  */
 bool tar_baddata(struct tarhdr const *hdr, size_t size) {
 
-  
+#if CONFIG_TARFS_INTEGRITY  
   uint64_t icv_calc, icv_hdr;
 
   /* CRC64 is verified only for entries containing data (including PAX
@@ -554,8 +549,9 @@ bool tar_baddata(struct tarhdr const *hdr, size_t size) {
 #endif          
     return icv_hdr != icv_calc;
   }
+#endif /* #if CONFIG_TARFS_INTEGRITY */
 
   return false;
 }
-#endif /* #if CONFIG_TARFS_INTEGRITY */
+
 

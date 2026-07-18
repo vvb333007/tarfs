@@ -88,10 +88,19 @@
     return (TYPE)(-1); \
   } \
   if (!is_sanefd(fs, fd)) { \
-    log("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
+    logerr("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
     errno = EBADF; \
     return (TYPE)(-1); \
   }
+
+
+/* Macro to increment stats */
+#if CONFIG_TARFS_COUNTERS
+#  define ADD_STATS(X, Y) do { X += Y; } while(0)
+#else
+#  define ADD_STATS(X, Y) do {} while(0)
+#endif
+
 
 
 /* Bitmap is used only for fd allocation. It is NOT used as a publication mechanism.
@@ -205,8 +214,11 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   /* Quick reject */
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
+      ADD_STATS(fs->fs_nfail, 1);
+
       log("file %s bad flags %08x, read-only filesystem!\r\n",path, flags);
       errno = EROFS;
+
       return -1;
   }
 
@@ -215,8 +227,11 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   */
   if ( NULL == (fs = tarfs_getfs_addref(fs_idx))) { 
 
+    ADD_STATS(fs->fs_nfail, 1);
+
     log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO;
+
     return -1; 
   } 
 
@@ -242,8 +257,8 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
             p[i] = '/';
             path = (const char *)p;
             log("path has been changed to '%s'\r\n", path);
-          }
-          /* TODO: ENOMEM on failed strdup? */
+          } else
+            ADD_STATS(fs->fs_nfail, 1);
         }
       }
     }
@@ -264,6 +279,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     /* bad inode? */
     if (inode->in_dvaddr == 0) {
 
+      ADD_STATS(fs->fs_nfail, 1);
       logerr("inode '%s' was found but has NULL DVADDR\r\n", path);
       errno = EIO;
       goto unref_and_exit;
@@ -330,6 +346,8 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     log("fs='%s' bad path\r\n",fs->fs_mountpoint);
     errno = EINVAL;
   }
+
+  ADD_STATS(fs->fs_nfail, 1);
 
 unref_and_exit:
 
@@ -406,6 +424,7 @@ ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
   if (size > 0) {
     fp->fp_pos += size;
     tarfs_os_memcpy(dst, src, size);
+    ADD_STATS(fs->fs_bread, size);
   }
 
   /* Return number of data copied */
@@ -452,8 +471,10 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
   /* Copy the requested data.
    * Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.).
    */
-  if (size > 0)
+  if (size > 0) {
     tarfs_os_memcpy(dst, src, size);
+    ADD_STATS(fs->fs_bread, size);
+  }
 
   /* Return number of data copied */
   return size;
@@ -802,11 +823,14 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       return MAP_FAILED;
   }
     
+  tarfs_addref(fs);
+  ADD_STATS(fs->fs_bmmap, length);
+
+  log("fd=%d, mapped %u bytes vaddr=%p, offset=%d\r\n",fd, (unsigned int)length, (void *)fp->fp_vaddr, (int)offset);
+
   /* Partition is mmaped already by mount, here we just calculate the right 
    * memory offset
    */
-  tarfs_addref(fs);
-  log("fd=%d, mapped %u bytes vaddr=%p, offset=%d\r\n",fd, (unsigned int)length, (void *)fp->fp_vaddr, (int)offset);
   return (void *)(fp->fp_vaddr + offset);
 }
 

@@ -70,12 +70,7 @@ struct ioctl_req {
 
 
 #if CONFIG_HAVE_READLINK
-#  error "Not yet, sorry"
-struct tarfs_link {
-  uint32_t    li_hash; /*!< hashed link name */
-  const char *li_src;  /*!<        link name, for collision resolution */
-  const char *li_dest; /*!< "points to" name (has to be free()ed, allocated by inode_populate() for inode_resolve()) */
-};
+struct tarfs_link;
 #endif
 
 /**
@@ -107,8 +102,16 @@ struct tarfs_fs {
 
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
   time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS) */
-  char                          fs_mountpoint[];     /*!< Mount point */
+
+#if CONFIG_TARFS_COUNTERS
+  uint64_t                      fs_bmmap;             /*!< Number of bytes mmaped through mmap() (sum active mmapings only) */
+  uint64_t                      fs_bread;             /*!< Number of bytes read by read() (sum of all read() and pread() ) */
+  uint32_t                      fs_nfail;             /*!< Number of failed open() calls */
+#endif
+
+  char                          fs_mountpoint[];      /*!< Mount point */
 };
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -202,7 +205,7 @@ int  tarfs_unmount(const char *mountpoint);
  * @param label Filesystem label.
  * @return Number of entries that failed verification.
  */
-int tarfs_fsck(const char *label);
+unsigned int tarfs_fsck(const char *label);
 
 /**
  * Filesystem reference counting.
@@ -320,6 +323,18 @@ bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size);
 void tarfs_dump(int fs_idx,
                 void *vty,
                 int (*vtyout)(void *, const char *, ...));
+
+#if CONFIG_TARFS_COUNTERS
+/**
+ * Get filesystem stats
+ *
+ * @param fs_idx
+ *        Filesystem index returned by tarfs_mount().
+ *
+ */
+uint32_t tarfs_getcounters(int fs_idx, uint64_t *bread, uint64_t *bmmap );
+
+#endif
 
 #ifdef __cplusplus
 };

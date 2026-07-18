@@ -542,6 +542,34 @@ bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size) {
   return false;
 }
 
+#if CONFIG_TARFS_COUNTERS
+/**
+ * Get filesystem stats
+ *
+ * @param fs_idx
+ *        Filesystem index returned by tarfs_mount().
+ *
+ */
+uint32_t tarfs_getcounters(int fs_idx, uint64_t *bread, uint64_t *bmmap ) {
+
+  uint32_t nfail = (uint32_t)(-1);
+  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+
+  if (fs != NULL) {
+
+    if (bread)
+      *bread = fs->fs_bread;
+
+    if (bmmap)
+      *bmmap = fs->fs_bmmap;
+
+    nfail = fs->fs_nfail;
+    tarfs_unref(fs);
+  }
+  return nfail;
+}
+#endif
+
 /**
  * Dump FS debug information.
  * 
@@ -574,10 +602,13 @@ void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...))
       vtyout(vty, "fd#%d: free\r\n", fd);
   }
 
+
+  inode_dumppath_sorted(fs->fs_root);
+
   tarfs_unref(fs);
 }
 
-#if CONFIG_TARFS_INTEGRITY
+
 /**
  * Perform a deep filesystem integrity check.
  *
@@ -587,21 +618,107 @@ void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...))
  * @param label Filesystem label.
  * @return Number of entries that failed verification.
  */
-int tarfs_fsck(const char *label) {
+unsigned int tarfs_fsck(const char *label) {
 
-  size_t size;
+  size_t tar_length;
   void const *map;
   void *os_handle;
 
-  log("Checking filesystem '%s'..\r\n", label);
 
-  if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
+  printf("Checking filesystem '%s'..\r\n", label);
+
+  if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &tar_length))) {
     int num = 0;
-    logerr("not implemented\r\n");
-    tarfs_os_unmap_tarfile(os_handle, map, size);
+    do {
+
+      uintptr_t tar_start = (uintptr_t )map;
+      uint32_t size;
+      size_t off = 0;
+      int bad = 0, files = 0, dirs = 0, links = 0, bad_total = 0, hdr_no = 0, bad_files = 0;
+      uintptr_t tar_end = (uintptr_t )((const uint8_t *)map + tar_length);
+
+      while (off + sizeof(tarhdr_t) <= tar_length) {
+
+        const tarhdr_t *hdr = (const tarhdr_t *)(tar_start + off);
+
+        if (tar_badhdr(hdr)) {
+
+          if (!bad) {
+bad_header:
+            printf("Inode#%u : bad metadata, switching to scan\r\n", hdr_no);
+          }
+          bad++;
+
+          off += sizeof(tarhdr_t);
+          continue;
+        }
+
+        if (bad) {
+          bad_total += bad;
+          printf("Inode#%u : %u headers were skipped, continuing to mount..\r\n", hdr_no, bad);
+          bad = 0;
+        }
+
+        size = tar_octal(hdr->size, sizeof(hdr->size));
+
+        /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
+        if (((uintptr_t)(hdr + 1)) + size >= tar_end) {
+          printf("Inode#%u : element extends beyond the end of the archive\r\n", hdr_no);
+          goto bad_header;
+        }
+
+        switch(hdr->type) {
+          case TART_AFILE:
+          case TART_CONT:
+          case TART_FILE: files++; break;
+
+          case TART_SYMLINK:
+          case TART_HARDLINK: links++; break;
+
+          case TART_DIR: dirs++; break;
+          case TART_PAX:
+          case TART_PAX_G: break;
+
+          /* Unrecognized entry */
+          default:
+            printf("Unrecognized entry #%u, type=0x%02x\r\n",hdr_no, hdr->type);
+        };
+
+
+        if (tar_baddata(hdr, size)) {
+          printf("Inode#%u : bad data\r\n", hdr_no);
+          bad_files++;
+        }
+
+  
+        off += sizeof(tarhdr_t);
+
+
+        /* Real size is 512 bytes aligned */
+        off += ((size_t)size + 511) & ~511u;
+
+        hdr_no++;
+      }
+
+      bad_total += bad;
+
+      unsigned int total = files + links + dirs;
+
+      printf("Check finished.\r\n\r\n"
+             "Inodes processed: %u, number of bad metadata headers: %u\r\n\r\n", hdr_no, bad_total);
+      printf("Trailing garbage: %u blocks, ~%u bytes\r\n", bad, bad * 512);
+      printf("Damaged data: (%u files / pax headers)\r\n",bad_files);
+      printf("Available: %u entries (%u files, %u dirs, %u links)\r\n",total, files, dirs, links);
+
+      num = bad_total + bad_files;
+    } while (0);
+
+    tarfs_os_unmap_tarfile(os_handle, map, tar_length);
+
+    /* fsck() returns total number of unrecognized/bad headers */
     return num;
   }
 
+  /* all headers are bad */
   return -1;
 }
-#endif /* #if CONFIG_TARFS_INTEGRITY */

@@ -275,13 +275,12 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
 uint32_t tar_hdrsum(const tarhdr_t *hdr);
 
 
-#if CONFIG_TARFS_INTEGRITY
 /**
  *  Verify CRC64 checksums stored in a TAR archive, if present.
  *  hdr must pass tar_badhdr() check!!
  */
 bool tar_baddata(struct tarhdr const *hdr, size_t size);
-#endif /* CONFIG_TARFS_INTEGRITY */
+
 
 #ifdef TARSUM_BUILD
 /**

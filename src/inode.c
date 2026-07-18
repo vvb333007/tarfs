@@ -687,7 +687,7 @@ bad_header:
         }
 
         if (bad) {
-          logerr("Resuming at offset %u; (%u blocks/ %u bytes) were lost \n", (unsigned int)off, (unsigned int)(off - bad_start)/sizeof(struct tarhdr), (unsigned int)(off - bad_start));
+          logerr("Resuming at offset %u; (%u blocks/ %u bytes) were lost \n", (unsigned int)off, (unsigned int)((off - bad_start)/sizeof(struct tarhdr)), (unsigned int)(off - bad_start));
           total_bad += bad;
           bad = 0;
           
