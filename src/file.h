@@ -141,24 +141,6 @@ int tarf_close(void* ctx, int fd);
  */
 int tarf_open(void* ctx, const char * path, int flags, int mode);
 
-
-/**
- * @brief Write data to a TARFS file.
- *
- * TARFS is a read-only filesystem and does not support write operations.
- * This function always fails.
- *
- * @param ctx  Filesystem instance.
- * @param fd   TARFS file descriptor.
- * @param data Data to write (unused).
- * @param size Number of bytes to write (unused).
- *
- * @retval -1 Always. Possible @c errno values are:
- *         - @c EBADF  Invalid file descriptor.
- *         - @c EROFS  Filesystem is read-only.
- */
-ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size);
-
 /**
  * @brief Read data from an open TARFS file.
  *
@@ -268,89 +250,6 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args);
  * stat() system call
  */
 int tarf_stat(void* ctx, const char * path, struct stat * st);
-
-
-
-
-
-/**
- * Truncate a file to the specified length.
- *
- * TARFS is a read-only filesystem and does not support modifying files.
- * This function always fails with ::EROFS.
- *
- * @param ctx     Filesystem context.
- * @param path    Path to the file.
- * @param length  Requested file length.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
- */
-int tarf_truncate(void *ctx, const char *path, off_t length);
-
-/**
- * Truncate an open file to the specified length.
- *
- * TARFS is a read-only filesystem and does not support modifying files.
- * This function always fails with ::EROFS.
- *
- * @param ctx     Filesystem context.
- * @param fd      File descriptor.
- * @param length  Requested file length.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
- */
-int tarf_ftruncate(void* ctx, int fd, off_t length);
-
-/**
- * Create a hard link.
- *
- * TARFS is a read-only filesystem and does not support creating links.
- * This function always fails with ::EROFS.
- *
- * @param ctx  Filesystem context.
- * @param n1   Existing pathname.
- * @param n2   New pathname.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
- */
-int tarf_link(void* ctx, const char* n1, const char* n2);
-
-/**
- * Remove a directory entry.
- *
- * TARFS is a read-only filesystem and does not support deleting files.
- * This function always fails with ::EROFS.
- *
- * @param ctx   Filesystem context.
- * @param path  Path to the file.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
- */
-int tarf_unlink(void* ctx, const char *path);
-
-/**
- * Rename or move a file.
- *
- * TARFS is a read-only filesystem and does not support renaming files.
- * This function always fails with ::EROFS.
- *
- * @param ctx  Filesystem context.
- * @param src  Source pathname.
- * @param dst  Destination pathname.
- *
- * @return Always -1.
- *
- * @retval EROFS  Filesystem is read-only.
- */
-int tarf_rename(void* ctx, const char *src, const char *dst);
 
 
 /**

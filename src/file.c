@@ -393,23 +393,6 @@ int tarf_close(void* ctx, int fd) {
 
 
 /**
- * Write data to a TARFS file.
- *
- * TARFS is a read-only filesystem and does not support write operations.
- * This function always fails.
- */
-ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
-
-  
-  PROLOGUE( ssize_t );
-
-  errno = EROFS;
-
-  return (ssize_t)(-1);    
-}
-
-
-/**
  * Read data from an open TARFS file at a specified offset.
  * Copies up to @p size bytes starting at @p offset into @p dst.
  * Unlike read(), this function does not modify the current file position.
@@ -679,79 +662,6 @@ int tarf_stat(void* ctx, const char * path, struct stat * st) {
     tarf_close(ctx, fd);
 
     return rc;
-}
-
-
-
-
-/**
- * Truncate a file to the specified length.
- *
- * TARFS is a read-only filesystem and does not support modifying files.
- * This function always fails with ::EROFS.
- */
-int tarf_truncate(void *ctx, const char *path, off_t length) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-/**
- * Truncate an open file to the specified length.
- *
- * TARFS is a read-only filesystem and does not support modifying files.
- * This function always fails with ::EROFS.
- */
-int tarf_ftruncate(void* ctx, int fd, off_t length) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-/**
- * Create a hard link.
- *
- * TARFS is a read-only filesystem and does not support creating links.
- * This function always fails with ::EROFS.
- */
-int tarf_link(void* ctx, const char* n1, const char* n2) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-/**
- * Remove a directory entry.
- *
- * TARFS is a read-only filesystem and does not support deleting files.
- * This function always fails with ::EROFS.
- */
-int tarf_unlink(void* ctx, const char *path) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-/**
- * Rename or move a file.
- *
- * TARFS is a read-only filesystem and does not support renaming files.
- * This function always fails with ::EROFS.
- */
-int tarf_rename(void* ctx, const char *src, const char *dst) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
 }
 
 

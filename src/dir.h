@@ -157,31 +157,6 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset);
 int tard_dirfd(void* ctx, DIR *pdir);
 
 
-/**
- * @brief Create a directory.
- *
- * TARFS is a read-only filesystem; therefore this function always fails.
- *
- * @param ctx  TARFS filesystem context.
- * @param name Directory path.
- * @param mode Requested directory permissions (ignored).
- *
- * @return Always returns -1 and sets errno to EROFS.
- */
-int tard_mkdir(void* ctx, const char* name, mode_t mode);
-
-/**
- * @brief Remove a directory.
- *
- * TARFS is a read-only filesystem; therefore this function always fails.
- *
- * @param ctx  TARFS filesystem context.
- * @param name Directory path.
- *
- * @return Always returns -1 and sets errno to EROFS.
- */
-int tard_rmdir(void* ctx, const char* name);
-
 #ifdef __cplusplus
 };
 #endif

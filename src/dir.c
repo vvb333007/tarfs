@@ -366,27 +366,3 @@ int tard_dirfd(void* ctx, DIR *pdir) {
   return -1;
 }
 
-
-/**
- * @brief Create a directory.
- */
-int tard_mkdir(void* ctx, const char* name, mode_t mode) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-/**
- * @brief Remove a directory.
- */
-int tard_rmdir(void* ctx, const char* name) {
-
-  log("read-only file system\r\n");
-  errno = EROFS;
-
-  return -1;
-}
-
-

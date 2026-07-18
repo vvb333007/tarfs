@@ -51,9 +51,9 @@ enum {
 static const esp_vfs_dir_ops_t s_tarfs_dir = {
 
     .stat_p      = &tarf_stat,
-    .link_p      = &tarf_link,
-    .unlink_p    = &tarf_unlink,
-    .rename_p    = &tarf_rename,
+    .link_p      = NULL,
+    .unlink_p    = NULL,
+    .rename_p    = NULL,
 
     .opendir_p   = &tard_opendir,
     .closedir_p  = &tard_closedir,
@@ -61,16 +61,16 @@ static const esp_vfs_dir_ops_t s_tarfs_dir = {
     .seekdir_p   = &tard_seekdir,
     .telldir_p   = &tard_telldir,
 
-    .mkdir_p     = &tard_mkdir,
-    .rmdir_p     = &tard_rmdir,
+    .mkdir_p     = NULL,
+    .rmdir_p     = NULL,
 
-    .truncate_p  = &tarf_truncate,
-    .ftruncate_p = &tarf_ftruncate,
+    .truncate_p  = NULL,
+    .ftruncate_p = NULL,
 };
 
 static const esp_vfs_fs_ops_t s_tarfs_fs = {
 
-    .write_p = &tarf_write,
+    .write_p = NULL,
     .lseek_p = &tarf_lseek,
     .read_p  = &tarf_read,
     .pread_p = &tarf_pread,
