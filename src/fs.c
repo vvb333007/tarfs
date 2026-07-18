@@ -518,28 +518,35 @@ char *tarfs_strdup(char const *str) {
 
 /**
  * Get size information for TARFS
- * @param fs_idx the value returned by tarfs_mount(), a non-negative value
+ * @param mp mount point
  * @param[out] raw_size a pointer to a stored value. Can be NULL. TAR file size
  * @param[out] data_size a pointer to a stored value. Can be NULL. Real data (files)
  * @return
- *    true if filesystem is found, false otherwise
+ *    0 if success
  */
-bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size) {
+int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size) {
 
-  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+  int fs_idx = tarfs_fsindex(mp);
 
-  if (fs != NULL) {
+  if (fs_idx >= 0) {
 
-    if (raw_size)
-      *raw_size = fs->fs_size;
+    struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
 
-    if (data_size)
-      *data_size = fs->fs_dsize;
-    tarfs_unref(fs);
-    return true;
+    if (fs != NULL) {
+
+      if (raw_size)
+        *raw_size = fs->fs_size;
+
+      if (data_size)
+        *data_size = fs->fs_dsize;
+      tarfs_unref(fs);
+
+      return 0;
+    }
   }
 
-  return false;
+  errno = ENODEV;
+  return -1;
 }
 
 #if CONFIG_TARFS_COUNTERS
@@ -570,14 +577,21 @@ uint32_t tarfs_getcounters(int fs_idx, uint64_t *bread, uint64_t *bmmap ) {
 }
 #endif
 
+
+
+
+
 /**
  * Dump FS debug information.
  * 
  * @return
  */
-void tarfs_dump(int fs_idx, void *vty, int (*vtyout)(void *, const char *, ...)) {
+void tarfs_dump(int fs_idx) {
 
   struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+
+#define vtyout fprintf
+#define vty stdout
 
   if (fs == NULL) {
     vtyout(vty,"filesystem %d is not mounted\r\n");

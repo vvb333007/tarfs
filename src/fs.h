@@ -287,8 +287,8 @@ char *tarfs_strdup(char const *str);
 /**
  * Get filesystem size information.
  *
- * @param fs_idx
- *        Filesystem index returned by tarfs_mount().
+ * @param mp
+ *        Mount point
  *
  * @param[out] raw_size
  *        Receives the total TAR archive size in bytes.
@@ -299,9 +299,9 @@ char *tarfs_strdup(char const *str);
  *        May be NULL.
  *
  * @return
- *        true if the filesystem exists, false otherwise.
+ *        0 if success
  */
-bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size);
+int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size);
 
 /**
  * Dump internal filesystem information for debugging.
@@ -322,9 +322,7 @@ bool tarfs_info(int fs_idx, size_t *raw_size, size_t *data_size);
  * @param vtyout
  *        printf-compatible output callback.
  */
-void tarfs_dump(int fs_idx,
-                void *vty,
-                int (*vtyout)(void *, const char *, ...));
+void tarfs_dump(int fs_idx);
 
 #if CONFIG_TARFS_COUNTERS
 /**
