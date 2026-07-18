@@ -143,7 +143,7 @@ For directory iteration (`readdir()` and related functions), the inode table is 
 
 | Operation                                      | Complexity     | Notes                                         |
 | ---------------------------------------------- | -------------- | --------------------------------------------- |
-| `mount()`                                      | `O(3N) + O(k)` | Three archive passes plus link resolution     |
+| `mount()`                                      | `O(3N log N)`  | Three archive passes plus link resolution     |
 | `open()`, `opendir()`                          | `O(log N)`     | Binary search                                 |
 | `readlink()`                                   | `O(k)`         | *k* = total number of symbolic and hard links |
 | `read()`, `mmap()`, `close()`, `lseek()`, etc. | `O(1)`         | Direct access through precomputed pointers    |

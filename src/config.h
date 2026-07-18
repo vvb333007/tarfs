@@ -13,7 +13,7 @@
 
 #pragma once
 
-#define CONFIG_TARFS_LOG        1 /*!< Enable verbose logging, lots of text! for development or bug hunting */
+//#define CONFIG_TARFS_LOG        1 /*!< Enable verbose logging, lots of text! for development or bug hunting */
 
 #define CONFIG_TARFS_MAX_FS  4      /*!< Max number of mounted TARFS filesystems */
 #define CONFIG_TARFS_MAX_FDS 5      /*!< Max number of active opened files (per filesystem, must be < 33) */
