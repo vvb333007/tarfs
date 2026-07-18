@@ -253,6 +253,11 @@ The amount of RAM depends on the number of files stored in the archive.
 
 Typical example: 1000 files — around 24Kbytes;
 
+## Can I use TARFS to mount filesystem from .rodata section of the firmware?
+
+Yes, you can. On ESP32 you can use EMBED_FILES to embed a tar archive which can then be mounter
+using tarfs_mount_from_memory() API
+
 ---
 
 [1]: https://documentation.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html "Espressif Documentation"

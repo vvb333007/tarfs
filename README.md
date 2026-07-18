@@ -67,6 +67,10 @@ Potential targets include:
 
 The TAR archive may reside in external Flash, an internal Flash partition, or be linked directly into the firmware image using the linker or binary embedding mechanisms.
 
+In particular on ESP32, you can use the `EMBED_FILES` mechanism (see ESP-IDF docs) to embed a TAR archive into the firmware 
+image. The embedded archive can then be mounted using the `tarfs_mount_from_memory()` API.
+
+
 ---
 
 #### 3.2 Memory requirements
