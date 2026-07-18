@@ -200,10 +200,12 @@ int  tarfs_unmount(const char *mountpoint);
  * Perform a deep filesystem integrity check.
  *
  * Verifies the integrity of file contents if CRC64 checksums are present
- * in the archive.
+ * in the archive. If there are no CRC64 sums then this function only checks headers
  *
  * @param label Filesystem label.
- * @return Number of entries that failed verification.
+ * @return Number of entries that failed verification. If the actual TAR archive is smaller than 
+ *         size of a flash region where TAR file resides, then trailing garbage will be counted as
+ *         "failed etries"
  */
 unsigned int tarfs_fsck(const char *label);
 

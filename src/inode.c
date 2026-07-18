@@ -918,8 +918,6 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
     if (nino < 1)
       return -1;
 
-    // PASS2: guess TARFS root (will be the mountpoint)
-    log("PASS2, analyzing..\n");
     log("filesystem prefix '%s' \n", base_dir);
 
     struct tarfs_inode **index = inode_alloc( nino );
@@ -928,7 +926,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
     if (index != NULL) {
 
       // PASS3: populate inodes
-      log("PASS3, populating inodes..\n");
+      log("PASS2, populating inodes..\n");
       size_t dsize = inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
 
 
@@ -1000,8 +998,8 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
  */
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count) {
 
-  log("-- HASH SORTED INODES --\r\n");
 #if CONFIG_TARFS_LOG
+  printf("-- HASH SORTED INODES --\r\n");
 
   for (size_t i = 0; i < count; i++) {
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
@@ -1023,9 +1021,8 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
  */
 void inode_dumppath_sorted(struct tarfs_inode const * root) {
 
-  log("-- ALPHA SORTED INODES --\r\n");
-
 #if CONFIG_TARFS_LOG
+  printf("-- ALPHA SORTED INODES --\r\n");
 
   for (size_t i = 0; root != NULL; i++) {
 
