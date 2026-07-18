@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     processed = tar_addsum(buf, size);
 
     log("Done: %d entries were processed\r\n", processed);      
-#if 1
+#if 0
 /* for CRC64 integrity test, DO NOT UNCOMMENT! */
     memset(buf + 0, 0x5a, 200);
     memset(buf + size/2, 0x5a, 200);
