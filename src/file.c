@@ -267,16 +267,17 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
     if (idx < 0) {
-      log("file %s not found\r\n",path);
+      log("path '%s' not found\r\n",path);
       /* errno may be set by inode_lookup or may be not */
       if (errno == 0)
         errno = ENOENT;
       goto unref_and_exit;
     }
 
+    /* Check inode: if it has NULL data pointer then it means it was not correctly mounted
+     * i.e. archive was damaged
+     */
     struct tarfs_inode const *inode = fs->fs_ino[idx];
-
-    /* bad inode? */
     if (inode->in_dvaddr == 0) {
 
       ADD_STATS(fs->fs_nfail, 1);
@@ -309,6 +310,18 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
         errno = EISDIR;
         goto unref_and_exit;
       }
+      /* File was requested, file has been found.
+       * Perform CRC64 check if FS is configured to do so
+       */
+#if 0
+      if (fs->fs_opencrc) {
+        if (tar_baddata((struct tarhdr const *)inode->in_vaddr), size) {
+          log("CRC on open verification failed\r\n");
+          errno = EIO;
+          goto unref_and_exit;
+        }
+      }
+#endif      
     }
 
 
@@ -363,7 +376,7 @@ unref_and_exit:
 
 /* close()
  * FS has at least 1 extra ref, because of open()
- *
+ * double close() will fail at PROLOGUE() stage as it calls is_sanefd()
  */
 int tarf_close(void* ctx, int fd) {
 
@@ -395,41 +408,6 @@ ssize_t tarf_write(void* ctx, int fd, const void * data, size_t size) {
   return (ssize_t)(-1);    
 }
 
-/**
- * Read data from an open TARFS file.
- * TODO: refactor this function to use pread(). Now it is two identical functions
- */
-ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
-
-  
-  PROLOGUE( ssize_t );
-
-  struct tarfs_fp *fp = &fs->fs_fd[fd];
-
-  /* Compute the source address: file_base + current_position.
-   * In case of EOF this address will point 1 byte past the buffer. This is allowed by the C standart
-   * as long as we do not dereference that pointer
-   */
-  void const *src = (void const *)(fp->fp_vaddr + fp->fp_pos);
-
-  /* Clamp the read size so we never read past the end of the file.
-   * `size` can become zero after the clamp (happens for directories for example), it is normal
-   * We also expect fp_pos to be within the range [0..file_size] inclusive
-   */
-  if (fp->fp_size - fp->fp_pos < size)
-    size = fp->fp_size - fp->fp_pos;
-
-  /* Advance the file position and copy the requested data.
-   * Use an architecture-optimized memcpy() where available (e.g. ESP32-S3, P4, etc.). */
-  if (size > 0) {
-    fp->fp_pos += size;
-    tarfs_os_memcpy(dst, src, size);
-    ADD_STATS(fs->fs_bread, size);
-  }
-
-  /* Return number of data copied */
-  return size;
-}
 
 /**
  * Read data from an open TARFS file at a specified offset.
@@ -479,6 +457,27 @@ ssize_t tarf_pread(void* ctx, int fd, void *dst, size_t size, off_t offset) {
   /* Return number of data copied */
   return size;
 }
+
+
+/**
+ * Read data from an open TARFS file.
+ */
+ssize_t tarf_read(void* ctx, int fd, void *dst, size_t size) {
+
+  
+  PROLOGUE( ssize_t );
+
+  struct tarfs_fp *fp = &fs->fs_fd[fd];
+
+  ssize_t siz = tarf_pread(ctx, fd, dst, size, (off_t)fp->fp_pos);
+
+  if (siz > 0)
+    fp->fp_pos += (size_t)siz;
+  
+
+  return siz;
+}
+
 
 /**
  * lseek()
