@@ -727,7 +727,7 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
     st->f_files  = fs->fs_nino;
 
     /* Maximum filename length and flags */
-    st->f_namemax = sizeof(dir->di_ent.d_name) - 1;
+    st->f_namemax = 255; //sizeof(dir->di_ent.d_name) - 1;
     st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
 
     /* Counters */  
