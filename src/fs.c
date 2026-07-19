@@ -164,28 +164,6 @@ int tarfs_fsindex(const char *path) {
     return best;
 }
 
-/**
- * Find the filesystem responsible for a given path. This function is NOT lockless
- *
- * @return
- *        Filesystem slot index, or -1 if no mounted filesystem matches the
- *        specified path.
- */
-time_t tarfs_getmtime(int fs_idx) {
-
-  time_t t = 0;
-
-  tarfs_lock();
-
-  if (s_tarfs[fs_idx] != NULL)
-    t = s_tarfs[fs_idx]->fs_mtime;
-
-  tarfs_unlock();
-
-  return t;
-}
-
-
 
 
 /** Actual "unmount" procedure. Called by unref(). Finalizes unmount procedure, unmaps memory region,
@@ -549,37 +527,6 @@ int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size) {
   return -1;
 }
 
-#if CONFIG_TARFS_COUNTERS
-/**
- * Get filesystem stats
- *
- * @param fs_idx
- *        Filesystem index returned by tarfs_mount().
- *
- */
-uint32_t tarfs_getcounters(int fs_idx, uint64_t *bread, uint64_t *bmmap ) {
-
-  uint32_t nfail = (uint32_t)(-1);
-  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
-
-  if (fs != NULL) {
-
-    if (bread)
-      *bread = fs->fs_bread;
-
-    if (bmmap)
-      *bmmap = fs->fs_bmmap;
-
-    nfail = fs->fs_nfail;
-    tarfs_unref(fs);
-  }
-  return nfail;
-}
-#endif
-
-
-
-
 
 /**
  * Dump FS debug information.
@@ -748,12 +695,16 @@ bad_header:
 
 int tarfs_statvfs(void *ctx, struct statvfs *st) {
 
+    int fs_idx;
+    struct tarfs_fs *fs;
+
     if (!st) {
-        errno = EFAULT;
+        errno = EFAULT; /* Linux sets EFAULT instead of EINVAL so we do the same */
         return -1;
     }
 
-    struct tarfs_fs *fs = tarfs_getfs_addref((int)(uintptr_t)ctx);
+    fs_idx = (int)(uintptr_t)ctx;
+    fs = tarfs_getfs_addref( fs_idx );
 
     if (fs == NULL) {
       errno = EIO;
@@ -762,17 +713,29 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
 
     memset(st, 0, sizeof(*st));
 
+    /* FS ID*/
+    st->f_fsid = fs_idx;
+
     /* Logical block size and total filesystem size */
     st->f_bsize  = 512;
     st->f_frsize = 512;
     st->f_blocks = ((fs->fs_dsize + 511) & ~511) / 512;
     
-    /* Number of files (ROFS!) */
+    /* Number of files (ROFS!) 
+     * TODO: Number of files, not number of inodes
+     */
     st->f_files  = fs->fs_nino;
 
     /* Maximum filename length and flags */
-    st->f_namemax = 255;
+    st->f_namemax = sizeof(dir->di_ent.d_name) - 1;
     st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
+
+    /* Counters */  
+#if CONFIG_TARFS_COUNTERS
+    st->f_bread = fs->fs_bread;
+    st->f_bmmap = fs->fs_bmmap;
+    st->f_nfail = fs->fs_nfail;
+#endif
 
     tarfs_unref(fs);
 

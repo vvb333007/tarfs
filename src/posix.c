@@ -174,7 +174,37 @@ ssize_t readlink(const char *path, char *buf, size_t bufsiz) {
  */
 int statvfs(const char *path, struct statvfs *st) {
 
-  errno = ENOTSUP;
+  int fs_idx;
+
+  if ((fs_idx = tarfs_fsindex(path)) >= 0)
+    return tarfs_statvfs((void *)(intptr_t)fs_idx, st);
+  
+  errno = ENODEV;
   return -1;
 }
 #endif /* CONFIG_TARFS_HAVE_STATVFS */
+
+#if CONFIG_TARFS_HAVE_SENDFILE
+/**
+ * Copy data from one file descriptor to another.
+ *
+ * This function transfers data directly from @p in_fd to @p out_fd without
+ * requiring an intermediate user buffer.
+ *
+ * @param out_fd  Destination file descriptor. Must be either a socket or
+ *                a read/write filesystem file descriptor (e.g. FATFS or LITTLEFS or SPIFFS).
+ * @param in_fd   Source file descriptor. Any descriptor supporting read().
+ * @param offset  Optional starting offset in the input file. If NULL, the
+ *                current file position is used and advanced. Otherwise,
+ *                the value pointed to by @p offset is used and updated,
+ *                while the file position of @p in_fd remains unchanged.
+ * @param count   Maximum number of bytes to transfer.
+ *
+ * @return Number of bytes transferred on success, or -1 on error with errno set.
+ *
+ * @note The destination descriptor must be either a socket or a writable
+ *       file descriptor belonging to a read/write filesystem. Read-only
+ *       filesystems (such as TARFS) cannot be used as the destination.
+ */
+ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
+#endif /* #if CONFIG_TARFS_HAVE_SENDFILE */

@@ -23,7 +23,7 @@
 #define CONFIG_TARFS_HAVE_FDOPENDIR  1   /*!< Support for fdopendir() */
 #define CONFIG_TARFS_HAVE_MMAP  1        /*!< Support for mmap()/munmap() */
 #define CONFIG_TARFS_HAVE_DUPFD  1       /*!< Support for dupfd() */
-//#define CONFIG_TARFS_HAVE_STATVFS  1       /*!< Support for statvfs() */
+#define CONFIG_TARFS_HAVE_STATVFS  1     /*!< Support for statvfs() */
 
 
 #define CONFIG_TARFS_COUNTERS 1        /*!< Support runtime stats */

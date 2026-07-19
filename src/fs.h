@@ -124,17 +124,22 @@ enum {
 };
 
 struct statvfs {
-  size_t  f_bsize;    /* Filesystem block size */
-  size_t  f_frsize;   /* Fragment size */
-  size_t  f_blocks;   /* Size of fs in f_frsize units */
-  size_t  f_bfree;    /* Number of free blocks */
-  size_t  f_bavail;   /* Number of free blocks for unprivileged users */
-  size_t  f_files;    /* Number of inodes */
-  size_t  f_ffree;    /* Number of free inodes */
-  size_t  f_favail;   /* Number of free inodes for unprivileged users */
-  size_t  f_fsid;     /* Filesystem ID */
-  int     f_flag;     /* Mount flags */
-  size_t  f_namemax;  /* Maximum filename length */
+  size_t   f_bsize;    /* Filesystem block size */
+  size_t   f_frsize;   /* Fragment size */
+  size_t   f_blocks;   /* Size of fs in f_frsize units */
+  size_t   f_bfree;    /* Number of free blocks */
+  size_t   f_bavail;   /* Number of free blocks for unprivileged users */
+  size_t   f_files;    /* Number of inodes */
+  size_t   f_ffree;    /* Number of free inodes */
+  size_t   f_favail;   /* Number of free inodes for unprivileged users */
+  size_t   f_fsid;     /* Filesystem ID */
+  int      f_flag;     /* Mount flags */
+  size_t   f_namemax;  /* Maximum filename length */
+/* TARFS extensions: */
+  uint64_t f_bread;    /* Total bytes read()+pread() */
+  uint64_t f_bmmap;    /* Total bytes mmap() */
+  uint32_t f_nfail;    /* Total number of failures (e.g. out-of-memory, inode with NULL address etc) */
+
 };
 
 
@@ -296,37 +301,6 @@ int tarfs_fsindex(const char *path);
 
 
 /**
- * Find the filesystem responsible for a given path. This function is NOT lockless
- *
- * @return
- *        Filesystem slot index, or -1 if no mounted filesystem matches the
- *        specified path.
- */
-time_t tarfs_getmtime(int fs_idx);
-
-/**
- * Obtain filesystem statistics.
- *
- * Fills a POSIX statvfs structure with information about the mounted
- * filesystem. Since TARFS is a read-only filesystem, the number of
- * available blocks and inodes is always reported as zero.
- *
- * @param ctx Filesystem context.
- * @param st  Pointer to the statvfs structure to fill.
- *
- * @return 0 on success, or -1 on error with errno set appropriately.
- */
-
-int tarfs_statvfs(void *ctx, struct statvfs *st);
-
-
-/* Implementation of a calloc() and a strdup() via memory backend
- *
- */
-void *tarfs_calloc(size_t count, size_t size);
-char *tarfs_strdup(char const *str);
-
-/**
  * Get filesystem size information.
  *
  * @param mp
@@ -341,9 +315,34 @@ char *tarfs_strdup(char const *str);
  *        May be NULL.
  *
  * @return
- *        0 if success
+ *        0 if success, -1 otherwise
+ * @note This function may be used to check if FS is mounted by checking if
+ *       tarfs_info(mountpoint, NULL, NULL) == 0
  */
 int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size);
+
+
+/**
+ * Obtain filesystem statistics.
+ *
+ * Fills a POSIX statvfs structure with information about the mounted
+ * filesystem. Since TARFS is a read-only filesystem, the number of
+ * available blocks and inodes is always reported as zero.
+ *
+ * @param ctx Filesystem context.
+ * @param st  Pointer to the statvfs structure to fill.
+ *
+ * @return 0 on success, or -1 on error with errno set appropriately.
+ */
+int tarfs_statvfs(void *ctx, struct statvfs *st);
+
+
+/* Implementation of a calloc() and a strdup() via memory backend
+ *
+ */
+void *tarfs_calloc(size_t count, size_t size);
+char *tarfs_strdup(char const *str);
+
 
 /**
  * Dump internal filesystem information for debugging.
@@ -354,17 +353,6 @@ int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size);
  */
 void tarfs_dump(int fs_idx);
 
-#if CONFIG_TARFS_COUNTERS
-/**
- * Get filesystem stats
- *
- * @param fs_idx
- *        Filesystem index returned by tarfs_mount().
- *
- */
-uint32_t tarfs_getcounters(int fs_idx, uint64_t *bread, uint64_t *bmmap );
-
-#endif
 
 #ifdef __cplusplus
 };
