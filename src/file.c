@@ -243,14 +243,12 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
      * Internally , 'directory' and 'directory/' are two different paths so we have
      * to take this into account
      * TODO: this is ugly. May be we should just double link inodes, creating artificial inodes with explicit / at the end
+     * TODO: links to directories dont have slash at the end so right now open("symlink",O_DIRECTORY) is broken: the logic below will add '/'
      */
     if (flags & O_DIRECTORY) {
       int i = strlen(path);
       if (i > 0) {
-        /* TODO: links to directories dont have slash at the end
-                so right now open("symlink",O_DIRECTORY) is broken: the logic below will add '/'
-                to the "symlink", resulting in non-existent name. This should be fixed somehow
-        */
+
         if (path[i - 1] != '/') {
           log("O_DIRECTORY, appending a slash (strdup)\r\n");
           char *p = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
@@ -276,13 +274,14 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     }
 
     /* Check inode: if it has NULL data pointer then it means it was not correctly mounted
-     * i.e. archive was damaged
+     * i.e. archive was damaged or may be it was a symlink which was not correctly resolved.
+     * NULL in_dvaddr == BAD INODE
      */
     struct tarfs_inode const *inode = fs->fs_ino[idx];
     if (inode->in_dvaddr == 0) {
 
       ADD_STATS(fs->fs_nfail, 1);
-      logerr("inode '%s' was found but has NULL DVADDR\r\n", path);
+      logerr("floating inode '%s', no data\r\n", path);
       errno = EIO;
       goto unref_and_exit;
     }
@@ -300,7 +299,8 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
         errno = ENOTDIR;
         goto unref_and_exit;
       }
-      /* Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
+      /* Success: A directory was requested, a directory has been found.
+       * Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
        * is that read() must fail when reading any fd associated with a directory
        */
       size = 0;
@@ -311,19 +311,19 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
         errno = EISDIR;
         goto unref_and_exit;
       }
-      /* File was requested, file has been found.
+      /* Success: a file was requested, file has been found.
        * Perform CRC64 check if FS is configured to do so
        */
-#if 0
+#if CONFIG_TARFS_INTEGRITY
       if (fs->fs_opencrc) {
-        if (tar_baddata((struct tarhdr const *)inode->in_vaddr), size) {
-          log("CRC on open verification failed\r\n");
+        if (tar_baddata((struct tarhdr const *)inode->in_dvaddr, size)) {
+          log("data integrity check failed for '%s'\r\n", path);
           errno = EIO;
           goto unref_and_exit;
         }
       }
-#endif      
-    }
+#endif /* #if CONFIG_TARFS_INTEGRITY */
+    } /* File or Directory? */
 
 
     /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
@@ -558,7 +558,7 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
 
 /**
  * Synchronize file contents.
- *
+ * TODO: reuse this syscall for something useful
  */
 int tarf_fsync(void* ctx, int fd) {
   

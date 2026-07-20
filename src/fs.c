@@ -55,7 +55,6 @@ struct tarfs_fs *tarfs_getfs(int i) {
 /**
  * Thread safe, increases refcounter, uses mutex!
  * Must be used when filesystem #i is in unknown state (e.g. is being unmounted)
- * Right now tarf_open() uses it, as well as POSIXs mmap() and readlink()
  *
  */
 struct tarfs_fs *tarfs_getfs_addref(int i) {
@@ -323,7 +322,7 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
   len = strlen(mountpoint);
 
 #if CONFIG_TARFS_INTEGRITY
-  logerr("TAR-CRC64 filesystem is expected\r\n");
+  log("TAR-CRC64 filesystem is expected\r\n");
 #endif
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
@@ -551,7 +550,15 @@ void tarfs_dump(int fs_idx) {
              "size  : %u\r\n"
              "dsize : %u\r\n"
              "nino  : %u\r\n"
-             "usedfd: %08x\r\n", fs->fs_ref - 1, fs->fs_vaddr, (unsigned int)fs->fs_size, (unsigned int)fs->fs_dsize, fs->fs_nino, fs->fs_usedfd);
+             "usedfd: %08x\r\n", 
+              fs->fs_ref - 1,
+              fs->fs_vaddr,
+              (unsigned int)fs->fs_size,    /* TODO: use crossplatform printf formatters PRu32 and friends*/
+              (unsigned int)fs->fs_dsize,
+              (unsigned int)fs->fs_nino,
+              (unsigned int)fs->fs_usedfd);
+
+  vtyout(vty," --- File descriptrors ---\r\n");
 
   for (int fd = 0; fd < TARFS_MAX_FDS; fd++) {
     
@@ -740,4 +747,39 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
     tarfs_unref(fs);
 
     return 0;
+}
+
+/**
+ * Enable/Disable/Get fs_opencrc flag for a filesystem with index fs_idx
+ * This flag enable optinal CRC64 checking on every open() call
+ *
+ * @param fs_idx A filesystem index as returned by the tarfs_mount() or by the tarfs_fsindex()
+ * @param en 0 - diable, 1 - enable, -1 - do not change (to get current value see below)
+ * @return previous value, before applying `en`
+ */
+int tarfs_integrity_on_open(int fs_idx, int en) {
+
+#if CONFIG_TARFS_INTEGRITY
+  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
+
+  if (fs == NULL) {
+
+    log("no such filesystem: %d\r\n", fs_idx);
+    errno = ENODEV;
+
+    return -1;
+  }
+
+  int ret = fs->fs_opencrc;
+
+  if (en >= 0)
+    fs->fs_opencrc = (int)(bool)en;
+  tarfs_unref(fs);
+
+  log(" CRC64 on each open() : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow open)" : "disabled"));
+  return ret;
+#else
+  logerr("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
+  return 0;
+#endif
 }

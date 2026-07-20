@@ -21,7 +21,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdatomic.h>
 
 #include <unistd.h>
 #include <dirent.h>
@@ -36,3 +35,4 @@
 #include "file.h"
 #include "inode.h"
 #include "posix.h"
+

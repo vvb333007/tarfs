@@ -20,12 +20,6 @@
 #include <sys/stat.h>
 
 #include "config.h"
-
-/* Explicit logging enable */
-#ifndef CONFIG_TARFS_LOG
-#  define CONFIG_TARFS_LOG 1
-#endif
-
 #include "fs.h"
 #include "tar.h"
 #include "hash.h"

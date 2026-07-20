@@ -30,11 +30,11 @@
 #define TARFS_MAX_FDS CONFIG_TARFS_MAX_FDS
 
 #if CONFIG_TARFS_LOG
-#  define log( Format_, ... ) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ )
+#  define log( Format_, ... ) do { printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ ); } while(0)
 #else
 #  define log( Format_, ... ) do {} while(0)
 #endif
-#define logerr( Format_, ... ) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ )
+#define logerr( Format_, ... ) do { printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ ); } while(0)
 
 #include "refc.h"
 #include "file.h"
@@ -69,10 +69,6 @@ struct ioctl_req {
 };
 
 
-#if CONFIG_HAVE_READLINK
-struct tarfs_link;
-#endif
-
 /**
  * This descriptor holds all file descriptors opened. Created by tarfs_mount()
  * destroyed by a refcounter mechanism
@@ -95,13 +91,10 @@ struct tarfs_fs {
   struct tarfs_inode const *    fs_root;              /*!< First record of alphasorted (in_path) list of entries (linked via in_next) */
   _Atomic(uint32_t)             fs_usedfd;            /*!< A bitmask for fs_fd[] array: 0100 means FD #2 is 
                                                            used. Indicates which elements of fs_fd[] array are used */
-#if CONFIG_HAVE_READLINK
-  struct tarfs_link const      *fs_lin;               /*!< Sorted array of link->target associations, used exclusively by the readlink() */
-  uint32_t                      fs_nlin;              /*!< Number of entries in fs_lin array */
-#endif
-
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
   time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS) */
+  uint16_t                      fs_opencrc:1;         /*!< A flag to enable/disable CRC64 verification on open() */
+  uint16_t                      fs_reserved:15;       /*!< Reserved for future extensions */
 
 #if CONFIG_TARFS_COUNTERS
   uint64_t                      fs_bmmap;             /*!< Number of bytes mmaped through mmap() (sum active mmapings only) */
@@ -112,7 +105,12 @@ struct tarfs_fs {
   char                          fs_mountpoint[];      /*!< Mount point */
 };
 
+
+/**
+ * enum for statvfs
+ */
 enum {
+
   ST_NOATIME     = 1,
   ST_NODEV       = 2,
   ST_NODIRATIME  = 4,
@@ -121,9 +119,14 @@ enum {
   ST_RDONLY      = 32,
   ST_RELATIME    = 64,
   ST_SYNCHRONOUS = 128,
+
 };
 
+/**
+ * The statvfs structure for systems without it (e.g. newlib)
+ */
 struct statvfs {
+
   size_t   f_bsize;    /* Filesystem block size */
   size_t   f_frsize;   /* Fragment size */
   size_t   f_blocks;   /* Size of fs in f_frsize units */
@@ -240,43 +243,17 @@ int  tarfs_unmount(const char *mountpoint);
  */
 unsigned int tarfs_fsck(const char *label);
 
+
 /**
- * Filesystem reference counting.
+ * @brief Enable/Disable/Get integrity check status for a filesystem with index fs_idx
+ * This flag enables optinal CRC64 checking on every open() call. It slows open() down.
  *
- * tarfs_addref() acquires a reference to the filesystem, while
- * tarfs_unref() releases it. When the reference count reaches zero,
- * the filesystem will be destroyed/unmounted.
- */
-int tarfs_addref(struct tarfs_fs *fs);
-int tarfs_unref(struct tarfs_fs *fs);
-
-/**
- * Platform abstraction helpers.
+ * @param fs_idx A filesystem index as returned by the tarfs_mount() or by the tarfs_fsindex()
+ * @param en 0 - diable, 1 - enable, -1 - do not change (to get current value see below)
  *
- * tarfs_lock() and tarfs_unlock() protect access to the s_tarfs[] table
- * and the s_numfs counter. tarfs_init() initializes the platform layer.
+ * @return previous value, before applying `en`
  */
-static inline void tarfs_lock()   { tarfs_os_acquire_mutex(); }
-static inline void tarfs_unlock() { tarfs_os_release_mutex(); }
-static inline void tarfs_init()   { tarfs_os_init(); }
-
-
-
-
-
-/**
- * Obtain raw pointer to the filesystem descriptor by filesystem slot
- * (value returned by tarfs_mount())
- * Platforms without VFS support will require user to pass FS descriptor manually to
- * tarfs_read()/tarfs_open()/etc. Pointer returned by this function can not be stored
- */
-struct tarfs_fs *tarfs_getfs(int i);
-
-/**
- * Obtain raw pointer to the filesystem descriptor by filesystem slot
- * Increment FS refcounter. 
- */
-struct tarfs_fs *tarfs_getfs_addref(int i);
+int tarfs_integrity_on_open(int fs_idx, int en);
 
 /**
  * @brief Find the filesystem responsible for a given path.
@@ -337,12 +314,6 @@ int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size);
 int tarfs_statvfs(void *ctx, struct statvfs *st);
 
 
-/* Implementation of a calloc() and a strdup() via memory backend
- *
- */
-void *tarfs_calloc(size_t count, size_t size);
-char *tarfs_strdup(char const *str);
-
 
 /**
  * Dump internal filesystem information for debugging.
@@ -352,6 +323,55 @@ char *tarfs_strdup(char const *str);
  *
  */
 void tarfs_dump(int fs_idx);
+
+
+
+/******************************************************************
+ * Internal API, not to be used by user program
+ * 
+ *******************************************************************/
+
+
+
+/**
+ * Filesystem reference counting.
+ *
+ * tarfs_addref() acquires a reference to the filesystem, while
+ * tarfs_unref() releases it. When the reference count reaches zero,
+ * the filesystem will be destroyed/unmounted.
+ */
+int tarfs_addref(struct tarfs_fs *fs);
+int tarfs_unref(struct tarfs_fs *fs);
+
+/**
+ * Obtain raw pointer to the filesystem descriptor by filesystem slot
+ * (value returned by tarfs_mount())
+ * Used internally
+ * Platforms without VFS support will require user to pass FS descriptor manually to
+ * tarfs_read()/tarfs_open()/etc. Pointer returned by this function can not be stored
+ */
+struct tarfs_fs *tarfs_getfs(int i);
+
+/**
+ * Obtain raw pointer to the filesystem descriptor by filesystem slot
+ * Increment FS refcounter, used internally
+ */
+struct tarfs_fs *tarfs_getfs_addref(int i);
+
+/* Implementation of a calloc() and a strdup() via memory backend
+ *
+ */
+void *tarfs_calloc(size_t count, size_t size);
+char *tarfs_strdup(char const *str);
+/**
+ * Platform abstraction helpers.
+ *
+ * tarfs_lock() and tarfs_unlock() protect access to the s_tarfs[] table
+ * and the s_numfs counter. tarfs_init() initializes the platform layer.
+ */
+static inline void tarfs_lock()   { tarfs_os_acquire_mutex(); }
+static inline void tarfs_unlock() { tarfs_os_release_mutex(); }
+static inline void tarfs_init()   { tarfs_os_init(); }
 
 
 #ifdef __cplusplus

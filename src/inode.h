@@ -75,18 +75,6 @@ struct tarfs_inode  {
 };
 
 
-#if CONFIG_TARFS_HAVE_READLINK
-/**
- * Helper structure for posix readlink(). There is an array of these structures
- * holding information about symlinks and hardlinks. 
- */
-struct tarfs_link {
-  uint32_t   li_hash; /*!< Hash of li_path */
-  uintptr_t  li_path; /*!< Full path of link */
-  uintptr_t  li_dest; /*!< Full path of the destination */
-};
-#endif
-
 struct tarfs_fs;
 
 
