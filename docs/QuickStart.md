@@ -170,6 +170,14 @@ When mounting an archive processed by `tarsum`, TARFS automatically detects the 
 
 Integrity verification can be disabled if minimizing mount time is more important. A typical workflow is to run tarsum on each newly created TAR archive immediately before flashing it to the device with `esptool.py`.
 
+**IMPORTANT!** After flashing the CRC64-enabled TAR archive to flash, make sure to uncomment
+`#define CONFIG_TARFS_INTEGRITY 1` in `src/config.h`.
+
+If this option is left disabled, no integrity verification will be performed.
+
+**IMPORTANT!** When `CONFIG_TARFS_INTEGRITY` is enabled, TARFS expects the filesystem image to
+contain embedded CRC64 checksums. Images without checksums will be treated as corrupted.
+
 
 Integrity verification can also be started manually using the `tarfs_fsck()` API:
 
