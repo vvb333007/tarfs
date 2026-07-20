@@ -21,7 +21,7 @@ and others.
 
 ---
 
-## Why TAR format was choosen?
+## Why TAR?
 
 TAR is a sequential archive format with a simple on-disk layout and no central allocation tables or 
 metadata structures. Each file header stores the complete pathname, making every archive entry 
@@ -57,33 +57,51 @@ tarsum www.tar
 
 ```c
 tarfs_init();
-tarfs_mount();
+tarfs_mount(Flash_Partition_Name, Mount_Point, NULL, NULL);
 ```
 
 After that, your files are available through TARFS.
 
 ---
 
-## How do I create a TARFS filesystem?
+## How do I add CRC64 protection to my `.tar` file?
 
-TARFS uses regular TAR archives.
-
-For example:
-
-```bash
-mkdir data
-echo "Hello" > data/test.txt
-
-tar cf filesystem.tar data/
-```
-
-The resulting `filesystem.tar` file can be used as a TARFS filesystem image.
-
-To add CRC64 protection:
+Run the `tarsum` utility:
 
 ```bash
 tarsum filesystem.tar output.tar
 ```
+
+Then enable integrity checking by uncommenting the following line in `src/config.h`:
+
+```c
+#define CONFIG_TARFS_INTEGRITY 1
+```
+
+If `CONFIG_TARFS_INTEGRITY` is disabled, embedded CRC64 checksums will be ignored during mount.
+
+If `CONFIG_TARFS_INTEGRITY` is enabled, TARFS expects CRC64 to present and treats files with no CRC64 as damaged.
+
+The `tarsum` utility can be built on Linux and Windows (Cygwin) by running `make` in the `tarsum` directory.
+
+---
+
+## I ran `tarsum` twice on the same file. Will it still mount?
+
+Yes.
+
+`tarsum` detects existing CRC64 records and updates them instead of creating duplicates.
+
+---
+
+## Is there a simple way to tell whether a TAR archive contains CRC64 checksums?
+
+Yes.
+
+Open the archive in a hex or text editor and search for the ASCII string `"C64"`. A TAR archive processed by `tarsum` will contain multiple `C64` signatures.
+
+> **Note:** The `C64` signature is intended for diagnostic purposes only. TARFS ignores it during mounting and always reads the embedded CRC64 field when `CONFIG_TARFS_INTEGRITY` is enabled.
+
 
 ---
 
