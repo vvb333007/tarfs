@@ -1,7 +1,8 @@
-
 #### [ README.md (этот файл) на русском языке находится здесь](docs/README_RU.md).
 
-#### [ QuickStart.md на русском языке находится здесь](docs/QuickStart_RU.md).
+#### [ Creating and flashing your filesystem step by step guide](docs/QuickStart.md).
+#### [ Frequently Asked Questions](docs/FAQ.md).
+
 
 ## TARFS — Read-only mmap-oriented filesystem over TAR images for firmware assets and runtime resources
 
@@ -36,12 +37,9 @@ a fully writable filesystem to store such data is often unnecessary.
 
    Since TARFS implements `mmap()` as true zero-copy mapping, applications can work with files of virtually any size without consuming additional RAM.
 
-3. **Improved robustness for field devices.**
+3. **Robustness for field devices.**
 
    Even after filesystem corruption, TARFS can usually still mount the archive and recover access to the remaining valid files.
-
-4. **Per-file integrity verification.**
-
    Every filesystem object can be individually verified using embedded CRC checksums.
 
 ---
@@ -57,7 +55,6 @@ It is written in C, requires only a single platform-dependent source file, and i
 Potential targets include:
 
 * STM32
-* ESP32
 * RP2040
 * SAMD21/SAMD51
 * nRF52
@@ -83,9 +80,10 @@ The number of active `mmap()` mappings is unlimited because `mmap()` does not al
 
 The filesystem index stores direct pointers to file names already present inside the TAR archive. No additional memory is allocated for file names.
 
-During normal operation TARFS performs **no dynamic memory allocation at all**. Memory allocation only occurs during `mount()` and `unmount()`.
+During normal operation TARFS performs **no dynamic memory allocation at all**. 
+Memory allocation only occurs during `mount()` , `unmount()` and `fdopendir()`.
 
-Because only two heap allocations are performed during mounting, heap fragmentation is practically eliminated.
+Because only few heap allocations are performed during mounting, heap fragmentation is practically eliminated.
 
 ---
 
@@ -95,12 +93,14 @@ TARFS supports true zero-copy `mmap()`. Files become directly accessible through
 
 List of supported features include:
 
-* `readlink()`
+* `statvfs()`
+* `dupfd()`
 * `fdopendir()`
 * `mmap()`
 * symbolic links, hard links and Windows directory junctions (when present in TAR archives created on Windows)
 * UTF-8 file, directory, and link names
-* opening directories with `open()`
+* opening directories with `open( , O_DIRECTORY)`
+* CRC64 check of every file on mount
 
 
 ---
@@ -145,6 +145,5 @@ For directory iteration (`readdir()` and related functions), the inode table is 
 | ---------------------------------------------- | -------------- | --------------------------------------------- |
 | `mount()`                                      | `O(3N log N)`  | Three archive passes plus link resolution     |
 | `open()`, `opendir()`                          | `O(log N)`     | Binary search                                 |
-| `readlink()`                                   | `O(k)`         | *k* = total number of symbolic and hard links |
 | `read()`, `mmap()`, `close()`, `lseek()`, etc. | `O(1)`         | Direct access through precomputed pointers    |
-| `readdir()`, `telldir()`, etc.                 | `O(1)`         | Sequential traversal using precomputed links  |
+| `readdir()`, `telldir()`  etc.                 | `O(1)`         | Sequential traversal using precomputed links  |

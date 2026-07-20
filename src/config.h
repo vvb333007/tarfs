@@ -23,19 +23,22 @@
 #define CONFIG_TARFS_HAVE_FDOPENDIR  1   /*!< Support for fdopendir() */
 #define CONFIG_TARFS_HAVE_MMAP  1        /*!< Support for mmap()/munmap() */
 #define CONFIG_TARFS_HAVE_DUPFD  1       /*!< Support for dupfd() */
-#define CONFIG_TARFS_HAVE_STATVFS  1     /*!< Support for statvfs() */
+#define CONFIG_TARFS_HAVE_STATVFS  1     /*!< @TOTEST: Support for statvfs() */
+//#define CONFIG_TARFS_HAVE_READLINK  1  /*!< Not yet! */
 
 
-#define CONFIG_TARFS_COUNTERS 1        /*!< Support runtime stats */
+#define CONFIG_TARFS_COUNTERS 1        /*!< @TOTEST: Support runtime stats */
 //#define CONFIG_TARFS_BIG_ENDIAN 1      /*!< Set to 1 on bige-endian architectures */
 
-                                         /*!< Set to 1 to use a .S version of tarfs_os_memcpy().
-                                          *   Currently only available on ESP32-S3 and P4:
-                                          *   Select an appropriate .S file from doc/ folder and copy it to the src/ folder
-                                          *   Uncomment CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 
-                                          */
 
-//#define CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 1  
+//#define CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 1 
+
+/*!< Set to 1 to use a .S version of tarfs_os_memcpy().
+ *   Currently only available on ESP32-S3 and P4:
+ *   Select an appropriate .S file from doc/ folder and copy it to the src/ folder
+ *   Uncomment CONFIG_TARFS_HAVE_OPTIMIZED_MEMCPY 
+ */
+
 
 #ifdef TARSUM_BUILD
 #  undef CONFIG_TARFS_HAVE_FDOPENDIR  /* Incompatible with glibc targets (e.g. Linux or Cygwin)*/

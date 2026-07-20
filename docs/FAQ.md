@@ -21,6 +21,22 @@ and others.
 
 ---
 
+## Why TAR format was choosen?
+
+TAR is a sequential archive format with a simple on-disk layout and no central allocation tables or 
+metadata structures. Each file header stores the complete pathname, making every archive entry 
+self-contained and independently discoverable. 
+
+As a result, corruption of one directory entry or metadata record does not affect access to 
+other files, since directory hierarchy is reconstructed from pathnames rather than explicit 
+parent-child links. 
+
+TAR archives can also be created and manipulated using standard tools, eliminating the need 
+for custom image builders or conversion utilities
+
+All TAR headers are aligned to 512-byte boundaries, making damaged archives straightforward to 
+analyze and allowing file headers to be located by scanning the image for valid TAR records..
+
 ## How do I start using TARFS?
 
 1. Create a TAR archive with your files (in this example, files are stored in the `www` directory):

@@ -242,6 +242,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     /* If directory is opened - fix up the directory name
      * Internally , 'directory' and 'directory/' are two different paths so we have
      * to take this into account
+     * TODO: this is ugly. May be we should just double link inodes, creating artificial inodes with explicit / at the end
      */
     if (flags & O_DIRECTORY) {
       int i = strlen(path);
