@@ -1,3 +1,5 @@
+#### [ этот же самый текст, но на русском языке находится здесь](QuickStart_RU.md).
+
 # Creating a TARFS Filesystem Image, Setp by step guide.
 
 TARFS stores the filesystem as a standard POSIX TAR archive.
