@@ -247,9 +247,31 @@ int tarf_fcntl(void *ctx, int fd, int cmd, int arg);
 int tarf_ioctl(void *ctx, int fd, int cmd, va_list args);
 
 /**
- * stat() system call
+ * Retrieve file status information.
+ *
+ * This function retrieves information about the file specified by @p path
+ * and stores it in the @p struct stat structure pointed to by @p st.
+ *
+ * TARFS is a read-only filesystem, therefore the returned status information
+ * describes the file as a regular file or directory without any write-related
+ * filesystem semantics.
+ *
+ * @param[in]  ctx
+ *     TARFS filesystem context.
+ *
+ * @param[in]  path
+ *     Path to the file or directory whose status is to be retrieved.
+ *
+ * @param[out] st
+ *     Pointer to a @p struct stat structure that receives the file status
+ *     information.
+ *
+ * @return 0 on success, <0 on error, with @c errno set to indicate the error.
+ *
+ * @see stat()
  */
-int tarf_stat(void* ctx, const char * path, struct stat * st);
+int tarf_stat(void* ctx, const char *path, struct stat *st);
+
 
 
 /**

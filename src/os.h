@@ -116,6 +116,9 @@ size_t tarfs_os_mp_maxlen();
  * By default, these functions map directly to malloc() and free().
  * Platform-specific implementations may override them to use a custom
  * allocator.
+ *
+ * Note that default implementation sets `errno` to ENOMEM if allocation fails
+ * The same behavior is expected for a custom allocator 
  */
 void *tarfs_os_malloc(size_t size);
 void  tarfs_os_free(void *buffer);

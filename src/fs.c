@@ -458,7 +458,8 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 }
 
 /**
- * calloc() based on a memory backend
+ * calloc() based on a memory backend; 
+ * Memory backend must set `errno` if there were errors
  */
 void *tarfs_calloc(size_t count, size_t size) {
 
@@ -733,8 +734,10 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
      */
     st->f_files  = fs->fs_nino;
 
-    /* Maximum filename length and flags */
-    st->f_namemax = 255; //sizeof(dir->di_ent.d_name) - 1;
+    /* Maximum filename length and flags 
+     * We do support longer filenames but we are limited to the size of dirent's d_name
+     */
+    st->f_namemax = sizeof(((struct dirent *) 0)->d_name) - 1;
     st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
 
     /* Counters */  

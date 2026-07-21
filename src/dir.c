@@ -80,6 +80,7 @@ struct tarfs_dir {
 
 };
 
+/* remove subpath component of the path */
 static const char *remove_subpath(const char *path, const char *subpath) {
 
   const char *text = path;
@@ -96,6 +97,19 @@ static const char *remove_subpath(const char *path, const char *subpath) {
 
   return text;
 }
+
+
+/* fd sanity check. 
+ * we check fds which are passed to us by VFS layer
+ * for being in our range [0 .. TARFS_MAX_FDS]. Check if that fd is alive (file is opened)
+ */
+static bool is_sanefd(struct tarfs_fs *fs, int fd) {
+
+    return  (fd >= 0) &&
+            (fd < TARFS_MAX_FDS) &&
+            ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0);
+}
+
 
 
 /**
@@ -152,43 +166,58 @@ static int is_direct_child(const char *path, const char *prefix) {
 DIR* tard_fdopendir(void* ctx, int fd) {
 
   struct tarfs_dir *dir;
-  dir = tarfs_calloc(1, sizeof(struct tarfs_dir));
 
+  /* opendir(), fdopendir() and open() all increase the refcounter  */
+  struct tarfs_fs *fs = tarfs_getfs_addref((int)(uintptr_t)ctx);
+  if (fs == NULL) {
+
+    log("filesystem %d has gone, fd == %d is dead\r\n", (int)(uintptr_t)ctx, fd);
+
+    errno = ENODEV;
+    return NULL;
+  }
+
+  /* Check if fd is still alive */
+  if (!is_sanefd(fs, fd)) {
+
+    log("fd == %d is dead\r\n", fd);
+    
+    tarfs_unref(fs);
+    errno = EBADF;
+    return NULL;
+  }
+
+  /* Allocate DIR and populate it*/
+  dir = tarfs_calloc(1, sizeof(struct tarfs_dir));
   if (dir != NULL) {
 
-    struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
+    struct tarfs_fp *fp = &fs->fs_fd[fd];
 
-    if (fs != NULL) {
+    dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
+    dir->di_fd   = fd;          /* Underlying directory file descriptor */
+    dir->di_ino  = fs->fs_ino[fp->fp_idx]; /* Directory inode */
+    dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
 
-      struct tarfs_fp *fp = &fs->fs_fd[fd];
+    dir->di_prefix = tar_strdup1((const char *)dir->di_ino->in_path, NULL);
+    if (dir->di_prefix != NULL) {
 
-      dir->di_off  = 0;           /* Current directory position (0 = before first entry) */
-      dir->di_fd   = fd;          /* Underlying directory file descriptor */
-      dir->di_ino  = fs->fs_ino[fp->fp_idx]; /* Directory inode */
-      dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
+      int nlen = strlen(dir->di_prefix);
 
-      dir->di_prefix = tar_strdup1((const char *)dir->di_ino->in_path, NULL);
-      if (dir->di_prefix != NULL) {
+      if (dir->di_prefix[nlen - 1] == '/')
+        dir->di_prefix[nlen - 1] = '\0';
 
-        int nlen = strlen(dir->di_prefix);
-
-        if (dir->di_prefix[nlen - 1] == '/')
-           dir->di_prefix[nlen - 1] = '\0';
-
-        log("prefix: '%s' opened, fd=%d\r\n", dir->di_prefix, fd);
-        return (DIR*)dir;
-      }
-      errno = ENOMEM;
-      return NULL;
+      log("prefix: '%s' opened, fd=%d\r\n", dir->di_prefix, fd);
+      /* Success! */
+      return (DIR*)dir;
     }
-    /* Abnormal - print it*/
-    logerr("NULL fs index %d\r\n", (int)(uintptr_t)ctx);
     tarfs_os_free(dir);
+  }
 
-  } else
-    errno = ENOMEM;
+  logerr("out of memory\r\n");
 
-  log("failed for fd=%d\r\n", fd);
+  tarfs_unref(fs);
+  errno = ENOMEM;
+
   return NULL;
 }
 
@@ -198,7 +227,7 @@ DIR* tard_fdopendir(void* ctx, int fd) {
  *
  * Opens an existing directory and returns a directory stream that can be
  * used with tard_readdir(), tard_telldir(), tard_seekdir() and
- * tard_closedir().
+ * tard_closedir(). Increases FS refcounter
  */
 
 DIR* tard_opendir(void* ctx, const char* name) {
@@ -230,11 +259,13 @@ DIR* tard_opendir(void* ctx, const char* name) {
  */
 int tard_closedir(void* ctx, DIR* pdir) {
 
+  struct tarfs_fs *fs = tarfs_getfs((int)(uintptr_t)ctx);
+
   if (pdir) {
 
     struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
 
-    log("closing dir, fd=%d\r\n", dir->di_fd);
+    log("closing dir fd=%d\r\n", dir->di_fd);
 
     tarf_close(ctx, dir->di_fd);
 
@@ -242,6 +273,7 @@ int tard_closedir(void* ctx, DIR* pdir) {
       tarfs_os_free((void *)dir->di_prefix);
 
     tarfs_os_free(dir);
+    tarfs_unref(fs);
 
     return 0;
   }
@@ -277,7 +309,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
     }
 
     if (x > 0) {
-//      log("next entry '%s' read\r\n", (char const *)cur->in_path);
+
       const char *p = remove_subpath((char const *)cur->in_path, dir->di_prefix);
 
       if (*p == '/') /* normally yes */

@@ -127,7 +127,12 @@ size_t tarfs_os_mp_maxlen() {
  */
 void *tarfs_os_malloc(size_t size) {
 
-  return malloc(size);
+  void *ptr = malloc(size);
+
+  if (ptr == NULL)
+    errno = ENOMEM;
+
+  return ptr;
 }
 
 /* Default free() 
