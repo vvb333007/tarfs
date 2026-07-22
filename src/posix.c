@@ -28,6 +28,9 @@
 #include <dirent.h>
 #include <sys/errno.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
 
 #include "config.h"
 #include "os.h"
@@ -53,9 +56,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     return tarf_mmap((void *)(uintptr_t)io.fs_idx, addr, length, prot, flags, io.fd, offset);
 
   /*errno should be set by the ioctl() */
-  if (errno == 0)
-    errno = ENOSYS;
-
   return MAP_FAILED;
 
 }
@@ -109,9 +109,6 @@ int dupfd(int fd) {
     return tarf_dupfd((void *)(uintptr_t)io.fs_idx, io.fd);
 
   /*errno should be set by the ioctl() */
-  if (errno == 0)
-    errno = ENOSYS;
-
   return -1;
 }
 #endif /* CONFIG_TARFS_HAVE_DUPFD */
@@ -134,10 +131,9 @@ DIR *fdopendir(int fd) {
   /* Convert our global fd to local fd number so tarf_ and tard_ functions can be used 
    * FIOGETFD returns the FS index and local fd 
    */
-  if ((ioctl(fd, FIOGETFD, &io) >= 0))
+  if (ioctl(fd, FIOGETFD, &io) >= 0)
     return tard_fdopendir((void *)(uintptr_t)io.fs_idx, io.fd);
 
-  errno = ENOSYS;
   return NULL;
 }
 #endif /* CONFIG_TARFS_HAVE_FDOPENDIR */
@@ -171,15 +167,37 @@ int statvfs(const char *path, struct statvfs *st) {
 
 
 #if CONFIG_TARFS_HAVE_SENDFILE
+
 /**
- * Copy data from one file descriptor to another.
- *
+ * Zero-overhead, no-buffer file-to-socket tranfer. File descriptor must be a TARFS file descriptor
+ * 
  * This function transfers data directly from @p in_fd to @p out_fd without
- * requiring an intermediate user buffer.
+ * requiring an intermediate user buffer, without read()/pread()
+ *
+ * @param out_fd  Destination file descriptor. Must be a socket.
+ *
+ * @param in_fd   Source file descriptor. A tarfs descriptor
+ * @param offset  Optional starting offset in the input file. If NULL, the
+ *                current file position is used and advanced. Otherwise,
+ *                the value pointed to by @p offset is used and updated,
+ *                while the file position of @p in_fd remains unchanged.
+ * @param count   Maximum number of bytes to transfer.
+ *
+ * @return Number of bytes transferred on success, or -1 on error with errno set.
+ *
  */
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count) {
-    /* TODO: implement */
-    errno ENOSYS;
-    return -1;
+
+  struct ioctl_req io;
+
+  /* Convert our global fd to local fd number so tarf_ and tard_ functions can be used 
+   * FIOGETFD returns the FS index and local fd 
+   */
+  if (ioctl(in_fd, FIOGETFD, &io) >= 0)
+    return tarf_sendfile((void *)(uintptr_t)io.fs_idx, out_fd, io.fd, offset, count);
+
+  /*errno should be set by the ioctl() */
+  return -1;
 }
 #endif /* #if CONFIG_TARFS_HAVE_SENDFILE */
+
