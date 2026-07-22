@@ -53,6 +53,11 @@
 #include <time.h>
 
 #include "config.h"
+    
+#if CONFIG_TARFS_HAVE_SENDFILE
+#  include <sys/socket.h>
+#endif
+
 #include "os.h"
 #include "tar.h"
 #include "fs.h"
@@ -773,6 +778,103 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
   tarfs_unref(fs);
   return 0;
 }
+
+#if CONFIG_TARFS_HAVE_SENDFILE
+/**
+ * Copy data from a TARFS file descriptor to a socket.
+ *
+ * This function transfers data directly from @p in_fd to @p sock without
+ * requiring an intermediate user buffer; 
+ */
+ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) {
+
+    uint8_t         *data;
+    off_t            pos;
+    struct tarfs_fp *fp;
+    size_t           total = 0;
+
+    if (count == 0)
+      return 0;
+
+    PROLOGUE( ssize_t );
+
+    /* obtain the file pointer and check if it is not NULL */
+    fp = &fs->fs_fd[fd];
+
+    /* Extra paranoia: normally open() filters out bad inodes with NULL data so there are no chances for
+     * zero fp_vaddr. But just in case 
+     */
+    if (fp->fp_vaddr == 0) {
+
+      log("bad virtual address, fd=%d\r\n", fd);
+      errno = EIO;
+      return -1;
+    }
+
+    /* obtain the file position: either use current pos or use user-supplied pos 
+     */
+    if (offset != NULL ) {
+
+      pos = *offset;
+
+      /* sanity checks: we don't trust user-supplied position */
+      if (pos   <  0 || pos   >  fp->fp_size) {
+        log("bad user-supplied pos=%d\r\n",(int)pos);
+        errno = EINVAL;
+        return -1;
+      }
+
+    } else
+      pos = fp->fp_pos;
+
+    /* clamp count if needed */
+    if (count > (fp->fp_size - pos))
+      count = fp->fp_size - pos;
+
+    /* obtain direct pointer to the file data */
+    data = (void *)(fp->fp_vaddr + pos);
+
+    /* Send. We are trying to send everything at once. If send() transmits less than
+     * was requested - we just continue to send the rest 
+     */
+    while (total < count) {
+
+      ssize_t n = send(sock, data + total, count - total, 0);
+
+      if (n < 0) {
+        if (errno == EINTR)
+          continue;
+
+        log("send failed\r\n");
+        break;
+      }
+
+      if (n == 0) {
+          log("eof\r\n");
+          break;
+      }
+
+      log("sent %u\r\n", (unsigned int)n);
+      total += n;
+    }
+
+    /* Update offset: either user-supplied or real file offset */
+    if (total) {
+      if (offset)
+        *offset += total;
+      else {
+        fp->fp_pos += total;
+
+        /* Extra paranoia */
+        if (fp->fp_pos > fp->fp_size)
+          fp->fp_pos = fp->fp_size;
+      }
+    }
+  
+    /* Done */
+    return total;
+}
+#endif
 
 /* Compile-time sanity checks */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "TARFS_MAX_FD must be in range [1..32]");

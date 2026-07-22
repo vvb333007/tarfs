@@ -351,6 +351,27 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
  */
 int tarf_munmap(void *ctx, void *addr, size_t length);
 
+/**
+ * Send TARFS file to a socket
+ *
+ * This function transfers data directly from @p in_fd to @p out_fd without
+ * requiring an intermediate user buffer.
+ *
+ * @param ctx  Filesystem context.
+ * @param out_fd  Destination file descriptor. Must be a socket.
+ *
+ * @param in_fd   Source file descriptor. A tarfs descriptor
+ * @param offset  Optional starting offset in the input file. If NULL, the
+ *                current file position is used and advanced. Otherwise,
+ *                the value pointed to by @p offset is used and updated,
+ *                while the file position of @p in_fd remains unchanged.
+ * @param count   Maximum number of bytes to transfer.
+ *
+ * @return Number of bytes transferred on success, or -1 on error with errno set.
+ *
+ */
+ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count);
+
 #ifdef __cplusplus
 };
 #endif
