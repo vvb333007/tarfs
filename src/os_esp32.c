@@ -122,12 +122,24 @@ size_t tarfs_os_mp_maxlen() {
   return 16;
 }
 
-/* Default allocator 
- * TODO: use heap_caps_malloc(SPIRAM) where available
+/*
+ * Default allocator.
+ *
+ * Allocations of 1 KiB or larger are attempted from SPIRAM first
+ * when external memory support is enabled. If SPIRAM is unavailable
+ * or the allocation fails, the default heap is used as a fallback.
  */
 void *tarfs_os_malloc(size_t size) {
 
-  void *ptr = malloc(size);
+  void *ptr = NULL;
+
+#if CONFIG_TARFS_EXTMEM
+  if (size > 1023)
+    ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+
+  if (ptr == NULL)
+#endif
+    ptr = heap_caps_malloc(size, MALLOC_CAP_DEFAULT);
 
   if (ptr == NULL)
     errno = ENOMEM;
@@ -139,8 +151,10 @@ void *tarfs_os_malloc(size_t size) {
  * TODO: use heap_caps_free() where available
  */
 void  tarfs_os_free(void *buffer) {
- 
-  free(buffer);
+
+  if (buffer != NULL)
+    heap_caps_free(buffer);
+
 }
 
 
