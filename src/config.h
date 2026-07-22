@@ -13,17 +13,19 @@
 
 #pragma once
 
-//#define CONFIG_TARFS_LOG        1 /*!< Enable verbose logging, lots of text! for development or bug hunting */
+//#define CONFIG_TARFS_LOG        1       /*!< Enable verbose logging, lots of text! for development or bug hunting */
 
-#define CONFIG_TARFS_MAX_FS  4      /*!< Max number of mounted TARFS filesystems */
-#define CONFIG_TARFS_MAX_FDS 5      /*!< Max number of active opened files (per filesystem, must be < 33) */
+#define CONFIG_TARFS_MAX_FS  4          /*!< Max number of mounted TARFS filesystems */
+#define CONFIG_TARFS_MAX_FDS 5          /*!< Max number of active opened files (per filesystem, must be < 33) */
 
-#define CONFIG_TARFS_INTEGRITY  1   /*!< Check data integrity records. FS must be processed with tarsum utility or mount will fail */
+#define CONFIG_TARFS_INTEGRITY  1       /*!< Check data integrity records. FS must be processed with tarsum utility or mount will fail */
+#define CONFIG_TARFS_EXTMEM 1           /*!< Use external memory where available (e.g. PSRAM on ESP32) */
 
-#define CONFIG_TARFS_HAVE_FDOPENDIR  1   /*!< Support for fdopendir() */
-#define CONFIG_TARFS_HAVE_MMAP  1        /*!< Support for mmap()/munmap() */
-#define CONFIG_TARFS_HAVE_DUPFD  1       /*!< Support for dupfd() */
-#define CONFIG_TARFS_HAVE_STATVFS  1     /*!< @TOTEST: Support for statvfs() */
+#define CONFIG_TARFS_HAVE_FDOPENDIR  1  /*!< Support for fdopendir() */
+#define CONFIG_TARFS_HAVE_MMAP  1       /*!< Support for mmap()/munmap() */
+#define CONFIG_TARFS_HAVE_DUPFD  1      /*!< Support for dupfd() */
+#define CONFIG_TARFS_HAVE_STATVFS  1    /*!< Support for statvfs() */
+#define CONFIG_TARFS_HAVE_SENDFILE 1    /*!< Support for zero-overhead sendfile() */
 
 
 
