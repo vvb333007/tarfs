@@ -46,7 +46,16 @@ bool tarfs_os_unregister_fs(const char *prefix) { return true; }
 bool tarfs_os_register_fs(const char *prefix, void *context) { return true; }
 
 /* Memory backend */
-void *tarfs_os_malloc(size_t size) { return malloc(size); }
+void *tarfs_os_malloc(size_t size) {
+
+  void *ptr = malloc(size);
+
+  if (ptr == NULL)
+    errno = ENOMEM;
+
+  return ptr;
+}
+
 void  tarfs_os_free(void *buffer) { free(buffer); }
 
 
