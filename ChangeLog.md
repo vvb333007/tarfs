@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+- sendfile() (faster than read()/send() approach)
+- More examples (see examples/)
+- open() is refactored a bit to handle symlinks to directories better
+- Memory backend on ESP32 now tries SPIRAM allocations for buffers >1023 bytes
+
 ## 0.1.3
 
 - Initial STM32 port.
