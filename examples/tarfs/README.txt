@@ -1,2 +1,2 @@
-Example filesystem: filesystem.tar must be flashed to prior to running this sketch
-See docs/QuickStart.md 
+Example filesystem: filesystem.tar must be flashed to the "tarfs" partition before running this sketch.
+See docs/QuickStart.md for instructions.

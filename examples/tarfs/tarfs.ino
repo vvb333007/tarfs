@@ -1,21 +1,45 @@
+/*
+ * TARFS Example Sketch
+ *
+ * This sketch demonstrates basic usage of the TARFS filesystem library
+ * on an Arduino-compatible platform.
+ *
+ * The example initializes TARFS, mounts a TAR filesystem stored in the
+ * "tarfs" flash partition at the "/My_FS" mount point, and then reads
+ * a file from the mounted filesystem using the standard POSIX file API.
+ *
+ * The TARFS image must be stored in a flash partition named "tarfs".
+ * The partition table should therefore contain a partition with this name
+ * and a size large enough to hold the TAR archive.
+ *
+ * The example demonstrates the following basic operations:
+ *
+ *   - Initialize the TARFS library with tarfs_init().
+ *   - Mount a TAR filesystem with tarfs_mount().
+ *   - Open a file using open().
+ *   - Read file contents using read().
+ *   - Close the file using close().
+ *
+ * TARFS provides a read-only, POSIX-like filesystem interface for files
+ * stored in a TAR archive. Once mounted, files can be accessed using
+ * standard file-descriptor-based APIs.
+ */
+
 #include <Arduino.h>
 #include "tarfs.h"
 
 const char *partition_name = "tarfs";
+const char *link_rebase = NULL;
 
 void setup() {
 
   Serial.begin(115200);
 
-
   // Initialize TARFS library
   tarfs_init();
 
   // Mount the filesystem. Partition name="tarfs". Mountpoint is "/My_FS"
-  //
-  // The mount point may be NULL, in which case TARFS will determine
-  // it automatically from the archive contents.
-  int fs_idx = tarfs_mount(partition_name, "/My_FS", NULL, NULL);
+  int fs_idx = tarfs_mount(partition_name, "/My_FS", link_rebase, NULL);
 
   if (fs_idx < 0)
     Serial.printf("TARFS: partition '%s' NOT mounted\r\n", partition_name);
@@ -33,7 +57,8 @@ void loop() {
   //
   puts("\n--- TEST1: Reading file ---");
 
-  int fd = open("/My_FS/list/example.c", O_RDONLY);
+  int fd = open("/My_FS/untar/src1/tarfs.h", O_RDONLY);
+
   if (fd < 0) {
     puts("open() failed");
     return;
@@ -47,52 +72,4 @@ void loop() {
 
   close(fd);
 
-  //
-  // List directory contents.
-  //
-  puts("\n\n--- TEST2: Directory listing ---");
-
-  DIR *dir = opendir("/My_FS/list");
-  if (dir) {
-
-    struct dirent *de;
-
-    while ((de = readdir(dir)) != NULL)
-      printf("%s\n", de->d_name);
-
-    closedir(dir);
-  }
-
-  //
-  // Access a file using mmap().
-  //
-  puts("\n--- TEST3: mmap() example ---");
-
-  fd = open("/My_FS/list/example.c", O_RDONLY);
-
-  if (fd >= 0) {
-
-    struct stat st;
-
-    if (fstat(fd, &st) == 0) {
-
-      void *ptr = mmap(NULL,
-                       st.st_size,
-                       PROT_READ,
-                       MAP_SHARED,
-                       fd,
-                       0);
-
-      if (ptr != MAP_FAILED) {
-
-        printf("mmap() succeeded\r\n");
-
-        munmap(ptr, st.st_size);
-      }
-    }
-
-    close(fd);
-  }
-
 }
-
