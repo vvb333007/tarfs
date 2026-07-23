@@ -45,6 +45,6 @@
 #ifdef TARSUM_BUILD
 #  undef CONFIG_TARFS_LOG
 #  undef CONFIG_TARFS_HAVE_FDOPENDIR  /* Incompatible with glibc targets (e.g. Linux or Cygwin)*/
-#  define CONFIG_TARFS_INTEGRITY  1   /* Explicit integrity */
+//#  define CONFIG_TARFS_INTEGRITY  1   /* Explicit integrity */
 #  define CONFIG_TARFS_LOG 1          /* Explicit logging if building tarsum utility */
 #endif
