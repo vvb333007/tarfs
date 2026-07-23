@@ -105,8 +105,11 @@ int dupfd(int fd) {
   struct ioctl_req io;
 
   /* FIOGETFD returns the FS index and local fd, suitable for tarf_ , tard_ functions */
-  if ((ioctl(fd, FIOGETFD, &io) >= 0))
-    return tarf_dupfd((void *)(uintptr_t)io.fs_idx, io.fd);
+  if ((ioctl(fd, FIOGETFD, &io) >= 0)) {
+    /* TODO: this is bad, but ESP-IDF has no mechanism to convert local to global */
+    int fd_offset = fd - io.fd; 
+    return fd_offset + tarf_dupfd((void *)(uintptr_t)io.fs_idx, io.fd);
+  }
 
   /*errno should be set by the ioctl() */
   return -1;
