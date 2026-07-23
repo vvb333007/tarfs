@@ -210,18 +210,21 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   time_t mtime;
   int    fd = 0;
   const char *path = path0;
+  char *alt_path = NULL;
 
   
   struct tarfs_fs *fs = NULL; 
-
   int const fs_idx = (int )(intptr_t )ctx; 
 
   /* Quick reject */
+  if (path == NULL) {
+    ADD_STATS(fs->fs_nfail, 1);
+    errno = EINVAL;
+    return -1;
+  }
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
       ADD_STATS(fs->fs_nfail, 1);
-
-      log("file %s bad flags %08x, read-only filesystem!\r\n",path, flags);
       errno = EROFS;
 
       return -1;
@@ -240,131 +243,137 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     return -1; 
   } 
 
-  
-  if (path != NULL) {
+  /* Find corresponding inode.
+   * If user asks for a directory, we try to open what was asked and, if it fails, we
+   * are trying to open() an alternative path (with a trailing / added or removed)
+   */
+  int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
-    
-    /* If directory is opened - fix up the directory name
-     * Internally , 'directory' and 'directory/' are two different paths so we have
-     * to take this into account
-     * TODO: this is ugly. May be we should just double link inodes, creating artificial inodes with explicit / at the end
-     * TODO: links to directories dont have slash at the end so right now open("symlink",O_DIRECTORY) is broken: the logic below will add '/'
-     */
+  if (idx < 0) {
     if (flags & O_DIRECTORY) {
+    /*
+     * Create an alternative path by adding or removing the trailing '/'.
+     *
+     * If the initial inode_lookup() fails and O_DIRECTORY is specified,
+     * try the alternative path as well. POSIX requires directory names
+     * with and without a trailing '/' (e.g. "dirname" and "dirname/")
+     * to be treated equivalently.
+     *
+     * Our filesystem metadata may contain both forms: for example,
+     * hard links may have an explicit trailing '/', while PAX symlink
+     * targets may not.
+     */
+
       int i = strlen(path);
       if (i > 0) {
-
         if (path[i - 1] != '/') {
-          log("O_DIRECTORY, appending a slash (strdup)\r\n");
-          char *p = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
-          if (p != NULL) {
-            p[i] = '/';
-            path = (const char *)p;
-            log("path has been changed to '%s'\r\n", path);
-          } else
+          alt_path = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
+          if (alt_path != NULL)
+            alt_path[i] = '/';
+          else
+            ADD_STATS(fs->fs_nfail, 1);
+        } else {
+          alt_path = tar_strdup1(path, NULL);
+          if (alt_path != NULL)
+            alt_path[i - 1] = '\0';
+          else
             ADD_STATS(fs->fs_nfail, 1);
         }
       }
-    }
 
-    /* Find corresponding inode */
-    int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
-
-    if (idx < 0) {
-      log("path '%s' not found\r\n",path);
-      /* errno may be set by inode_lookup or may be not */
-      if (errno == 0)
-        errno = ENOENT;
-      goto unref_and_exit;
-    }
-
-    /* Check inode: if it has NULL data pointer then it means it was not correctly mounted
-     * i.e. archive was damaged or may be it was a symlink which was not correctly resolved.
-     * NULL in_dvaddr == BAD INODE
-     */
-    struct tarfs_inode const *inode = fs->fs_ino[idx];
-    if (inode->in_dvaddr == 0) {
-
-      ADD_STATS(fs->fs_nfail, 1);
-      logerr("floating inode '%s', no data\r\n", path);
-      errno = EIO;
-      goto unref_and_exit;
-    }
-
-
-    /* Determine object type and size. */
-    type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
-
-    /* O_DIRECTORY requires the target to be a directory. 
-     * Absence of O_DIRECTORY requires the target NOT to be a directory. 
-     */
-    if ((flags & O_DIRECTORY) != 0) {
-      if (type != TART_DIR) {
-        log("O_DIRECTORY specified for a non-directory object\r\n");
-        errno = ENOTDIR;
-        goto unref_and_exit;
+      if (alt_path != NULL) {
+        log("trying '%s' instead..\r\n",alt_path);
+        idx = inode_lookup(fs->fs_ino, fs->fs_nino,alt_path);
+        tarfs_os_free(alt_path);
       }
-      /* Success: A directory was requested, a directory has been found.
-       * Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
-       * is that read() must fail when reading any fd associated with a directory
-       */
-      size = 0;
-
-    } else {
-      if (type == TART_DIR) {
-        log("target is a directory, O_DIRECTORY flag is required\r\n");
-        errno = EISDIR;
-        goto unref_and_exit;
-      }
-      /* Success: a file was requested, file has been found.
-       * Perform CRC64 check if FS is configured to do so
-       */
-#if CONFIG_TARFS_INTEGRITY
-      if (fs->fs_opencrc) {
-        if (tar_baddata((struct tarhdr const *)inode->in_dvaddr, size)) {
-          log("data integrity check failed for '%s'\r\n", path);
-          errno = EIO;
-          goto unref_and_exit;
-        }
-      }
-#endif /* #if CONFIG_TARFS_INTEGRITY */
-    } /* File or Directory? */
-
-
-    /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
-     * Instead we rely on that fact that fd becomes available only upon open() return, so publishing is done by
-     * function return
-     */
-    if ((fd = allocfd(fs)) >= 0) {
-
-      struct tarfs_fp *fp = &fs->fs_fd[fd];
-      log("fd=%d allocated\r\n", fd);
-
-
-      fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
-      fp->fp_pos   = 0;
-      fp->fp_size  = size;
-      fp->fp_idx   = idx; /* inode index, used by opendir()/readdir() */
-
-      log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
-
-      /* free strduped path */
-      if (path != path0) {
-        log("free strduped path\r\n");
-        tarfs_os_free((void *)path);
-      }
-
-      return fd;
-    }
-
-    log("allocfd failed for path=%s\r\n",path);
-    errno = EMFILE;
-
-  } else {
-
-    log("fs='%s' bad path\r\n",fs->fs_mountpoint);
-    errno = EINVAL;
+    } /* if O_DIRECTORY */
   }
+
+  if (idx < 0) {
+    log("path '%s' not found\r\n",path);
+    if (errno == 0)
+      errno = ENOENT;
+    goto unref_and_exit;
+  }
+
+  /* Check inode: if it has NULL data pointer then it means it was not correctly mounted
+   * i.e. archive was damaged or may be it was a symlink which was not correctly resolved.
+   * NULL in_dvaddr == BAD INODE
+   */
+  struct tarfs_inode const *inode = fs->fs_ino[idx];
+  if (inode->in_dvaddr == 0) {
+    ADD_STATS(fs->fs_nfail, 1);
+    logerr("floating inode '%s', no data\r\n", path);
+    errno = EIO;
+    goto unref_and_exit;
+  }
+
+
+  /* Determine object type and size. */
+  type = inode_getinfo(fs->fs_ino, idx, &size, &mtime);
+
+  /* O_DIRECTORY requires the target to be a directory. 
+   * Absence of O_DIRECTORY requires the target NOT to be a directory. 
+   */
+  if ((flags & O_DIRECTORY) != 0) {
+    if (type != TART_DIR) {
+      log("O_DIRECTORY specified for a non-directory object\r\n");
+      errno = ENOTDIR;
+      goto unref_and_exit;
+    }
+    /* Success: A directory was requested, a directory has been found.
+     * Set size to 0 for directories. It must be zero by default but just to be sure. Th reason for that
+     * is that read() must fail when reading any fd associated with a directory
+     */
+    size = 0;
+  } else {
+    if (type == TART_DIR) {
+      log("target is a directory, O_DIRECTORY flag is required\r\n");
+      errno = EISDIR;
+      goto unref_and_exit;
+    }
+    /* Success: a file was requested, file has been found.
+     * Perform CRC64 check if FS is configured to do so
+     */
+#if CONFIG_TARFS_INTEGRITY
+    if (fs->fs_opencrc) {
+      if (tar_baddata((struct tarhdr const *)inode->in_dvaddr, size)) {
+        log("data integrity check failed for '%s'\r\n", path);
+        errno = EIO;
+        goto unref_and_exit;
+      }
+    }
+#endif /* #if CONFIG_TARFS_INTEGRITY */
+  } /* File or Directory? */
+
+
+  /* Allocate a file descriptor. It is atomic bitmap but we do not use publish/consume semantics.
+   * Instead we rely on that fact that fd becomes available only upon open() return, so publishing is done by
+   * function return
+   */
+  if ((fd = allocfd(fs)) >= 0) {
+    struct tarfs_fp *fp = &fs->fs_fd[fd];
+    log("fd=%d allocated\r\n", fd);
+
+
+    fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
+    fp->fp_pos   = 0;
+    fp->fp_size  = size;
+    fp->fp_idx   = idx; /* inode index, used by opendir()/readdir() */
+
+    log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
+
+    /* free strduped path */
+    if (path != path0) {
+      log("free strduped path\r\n");
+      tarfs_os_free((void *)path);
+    }
+
+    return fd;
+  }
+
+  log("allocfd failed for path=%s\r\n",path);
+  errno = EMFILE;
 
   ADD_STATS(fs->fs_nfail, 1);
 
