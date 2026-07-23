@@ -68,6 +68,19 @@ struct ioctl_req {
   int fd;     /*!< fd number */
 };
 
+/* Useful runtime stats on mounted filesystem. This one is required by statvfs() API
+ * unlike counters, this structure is populated once at mount and never changed
+ */
+struct tarfs_stats {
+
+  unsigned int badblocks; /*!< Number of bad/unrecognized 512-byte blocks */
+  unsigned int files;    /*!< Number of files */
+  unsigned int links;    /*!< Number of links */
+  unsigned int dirs;     /*!< Number of directories */
+  unsigned int ram;      /*!< Total RAM used by the FS */
+
+};
+
 
 /**
  * This descriptor holds all file descriptors opened. Created by tarfs_mount()
@@ -95,8 +108,8 @@ struct tarfs_fs {
   time_t                        fs_mtime;             /*!< time() at mount. Used by stat()/fstat() to populate mtime field (mtime does not change on ROFS) */
   uint16_t                      fs_opencrc:1;         /*!< A flag to enable/disable CRC64 verification on open() */
   uint16_t                      fs_reserved:15;       /*!< Reserved for future extensions */
-
-#if CONFIG_TARFS_COUNTERS
+  struct tarfs_stats            fs_stats;             /*!< FS immutable statistics */
+#if CONFIG_TARFS_COUNTERS                             /*!< Mutable statistics: */
   uint64_t                      fs_bmmap;             /*!< Number of bytes mmaped through mmap() (sum active mmapings only) */
   uint64_t                      fs_bread;             /*!< Number of bytes read by read() (sum of all read() and pread() ) */
   uint32_t                      fs_nfail;             /*!< Number of failed open() calls */
@@ -127,6 +140,8 @@ enum {
  */
 struct statvfs {
 
+/* TODO: review types below. Right now it is a mess */
+
   size_t   f_bsize;    /* Filesystem block size */
   size_t   f_frsize;   /* Fragment size */
   size_t   f_blocks;   /* Size of fs in f_frsize units */
@@ -138,11 +153,16 @@ struct statvfs {
   size_t   f_fsid;     /* Filesystem ID */
   int      f_flag;     /* Mount flags */
   size_t   f_namemax;  /* Maximum filename length */
+
 /* TARFS extensions: */
+
   uint64_t f_bread;    /* Total bytes read()+pread() */
   uint64_t f_bmmap;    /* Total bytes mmap() */
   uint32_t f_nfail;    /* Total number of failures (e.g. out-of-memory, inode with NULL address etc) */
-
+  size_t   f_badblocks; /*!< Number of bad/unrecognized 512-byte blocks */
+  size_t   f_links;     /*!< Number of links */
+  size_t   f_dirs;      /*!< Number of directories */
+  size_t   f_ram;       /*!< Total RAM used by the FS */
 };
 
 
@@ -245,14 +265,22 @@ unsigned int tarfs_fsck(const char *label);
 
 
 /**
- * @brief Enable/Disable/Get integrity check status for a filesystem with index fs_idx
- * This flag enables optinal CRC64 checking on every open() call. It slows open() down.
+ * @brief Enable, disable, or query per-open filesystem integrity checking.
  *
- * @param fs_idx A filesystem index as returned by the tarfs_mount() or by the tarfs_fsindex()
- * @param en 0 - diable, 1 - enable, -1 - do not change (to get current value see below)
+ * Enables or disables CRC64 integrity checking on every open() call for the
+ * filesystem identified by @p fs_idx. This provides additional protection
+ * against data corruption, but increases the time required to open a file.
  *
- * @return previous value, before applying `en`
- */
+ * By default, CRC64 integrity is checked when the filesystem is mounted.
+ * For systems with long uptimes, however, checking integrity only at mount
+ * time may not be sufficient.
+ *
+ * @param fs_idx Filesystem index as returned by tarfs_mount() or tarfs_fsindex().
+ * @param en     0 to disable checking, 1 to enable checking, or -1 to leave the current setting unchanged
+*
+* @return The previous setting before applying @p en.
+*/
+
 int tarfs_integrity_on_open(int fs_idx, int en);
 
 /**
@@ -322,7 +350,7 @@ int tarfs_statvfs(void *ctx, struct statvfs *st);
  *        Filesystem index returned by tarfs_mount().
  *
  */
-void tarfs_dump(int fs_idx);
+int tarfs_dump(int fs_idx);
 
 
 

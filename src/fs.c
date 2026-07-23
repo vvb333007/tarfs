@@ -398,17 +398,31 @@ unmap_and_return_error:
       logerr("WARN: running in degraded mode\r\n");
     }
 
-  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, (unsigned int)fs->fs_nino);
+//  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, (unsigned int)fs->fs_nino);
 
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
   if (tarfs_os_register_fs(mountpoint, (void *)(intptr_t)slot) == false) {
     logerr("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
   } else {
-    log("registered. (prefix '%s' in VFS)\r\n", mountpoint);
+    log("VFS registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
 
   log("mount is done. filesystem slot is %d\r\n", slot);
+
+  log("-----------\r\n%u blocks (%u bytes) were skipped as BAD\n"
+      "TAR archive has %u files, %u links and %u dirs\r\n"
+      "TAR data/headers ratio: %u data bytes, %u header bytes\r\n"
+      "RAM overhead (total RAM used by the FS): %u bytes\r\n-----------\r\n", 
+       fs->fs_stats.badblocks, 
+       fs->fs_stats.badblocks * 512,
+       fs->fs_stats.files,
+       fs->fs_stats.links,
+       fs->fs_stats.dirs,
+       (unsigned int)fs->fs_dsize,
+       (unsigned int)(fs->fs_size - fs->fs_dsize),
+       fs->fs_stats.ram);
+
   return slot;
 }
 
@@ -527,55 +541,6 @@ int tarfs_info(const char *mp, size_t *raw_size, size_t *data_size) {
   return -1;
 }
 
-
-/**
- * Dump FS debug information.
- * 
- * @return
- */
-void tarfs_dump(int fs_idx) {
-
-  struct tarfs_fs *fs = tarfs_getfs_addref(fs_idx);
-
-#define vtyout fprintf
-#define vty stdout
-
-  if (fs == NULL) {
-    vtyout(vty,"filesystem %d is not mounted\r\n", fs_idx);
-    return ;
-  }
-
-  vtyout(vty," --- TARFS '%s' ---\r\n", fs->fs_mountpoint);
-  vtyout(vty,"ref   : %u\r\n"
-             "vaddr : %p\r\n"
-             "size  : %u\r\n"
-             "dsize : %u\r\n"
-             "nino  : %u\r\n"
-             "usedfd: %08x\r\n", 
-              fs->fs_ref - 1,
-              fs->fs_vaddr,
-              (unsigned int)fs->fs_size,    /* TODO: use crossplatform printf formatters PRu32 and friends*/
-              (unsigned int)fs->fs_dsize,
-              (unsigned int)fs->fs_nino,
-              (unsigned int)fs->fs_usedfd);
-
-  vtyout(vty," --- File descriptrors ---\r\n");
-
-  for (int fd = 0; fd < TARFS_MAX_FDS; fd++) {
-    
-    if ((atomic_load_explicit(&fs->fs_usedfd, memory_order_relaxed) & (1u << fd)) != 0) {
-      vtyout(vty, "fd#%d: allocated: ", fd);
-      struct tarfs_fp  *fp = &fs->fs_fd[fd];
-      vtyout(vty,"vaddr=%p, pos=%u, size=%u, inode=%d\r\n", (void *)fp->fp_vaddr, (unsigned int)fp->fp_pos, (unsigned int)fp->fp_size, fp->fp_idx);
-    } else
-      vtyout(vty, "fd#%d: free\r\n", fd);
-  }
-
-
-  inode_dumppath_sorted(fs->fs_root);
-
-  tarfs_unref(fs);
-}
 
 
 /**
@@ -700,7 +665,6 @@ bad_header:
  * filesystem. Since TARFS is a read-only filesystem, the number of
  * available blocks and inodes is always reported as zero.
  */
-
 int tarfs_statvfs(void *ctx, struct statvfs *st) {
 
     int fs_idx;
@@ -729,10 +693,8 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
     st->f_frsize = 512;
     st->f_blocks = ((fs->fs_dsize + 511) & ~511) / 512;
     
-    /* Number of files (ROFS!) 
-     * TODO: Number of files, not number of inodes
-     */
-    st->f_files  = fs->fs_nino;
+    /* Number of files (ROFS!) */
+    st->f_files  = fs->fs_stats.files;
 
     /* Maximum filename length and flags 
      * We do support longer filenames but we are limited to the size of dirent's d_name
@@ -740,12 +702,16 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
     st->f_namemax = sizeof(((struct dirent *) 0)->d_name) - 1;
     st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
 
-    /* Counters */  
+    /* TARFS extensions. These are not part of the standart */  
 #if CONFIG_TARFS_COUNTERS
     st->f_bread = fs->fs_bread;
     st->f_bmmap = fs->fs_bmmap;
     st->f_nfail = fs->fs_nfail;
 #endif
+    st->f_dirs  = fs->fs_stats.dirs;
+    st->f_links  = fs->fs_stats.links;
+    st->f_badblocks  = fs->fs_stats.badblocks;
+    st->f_ram  = fs->fs_stats.ram;
 
     tarfs_unref(fs);
 
@@ -785,4 +751,39 @@ int tarfs_integrity_on_open(int fs_idx, int en) {
   logerr("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
   return 0;
 #endif
+}
+
+
+/**
+ * Dump FS statistics and content
+ * This functions is for debugging only and MUST NOT be used in production
+ */
+int tarfs_dump(int fs_idx) {
+
+  struct statvfs st;
+
+  if (tarfs_statvfs((void *)(intptr_t)fs_idx, &st) == 0) {
+
+    printf(" Filesystem ID: %u\r\n",(unsigned int)st.f_fsid); 
+    printf("----------------\r\n"); 
+    printf(" Filesystem block size: %u\r\n",(unsigned int)st.f_bsize);
+    printf(" Fragment size: %u\r\n",(unsigned int)st.f_frsize);   
+    printf(" Number of blocks: %u\r\n",(unsigned int)st.f_blocks);   
+    printf(" Maximum filename length: %u\r\n",(unsigned int)st.f_namemax);  
+
+    printf(" Number of bad/unrecognized 512-byte blocks: %u\r\n",(unsigned int)st.f_badblocks); 
+
+    printf(" Number of files: %u\r\n",(unsigned int)st.f_files);
+    printf(" Number of links: %u\r\n",(unsigned int)st.f_links); 
+    printf(" Number of directories: %u\r\n",(unsigned int)st.f_dirs);  
+
+    printf(" Total bytes read()+pread(): %llu\r\n",(unsigned long long)st.f_bread);
+    printf(" Total bytes mmap(): %llu\r\n",(unsigned long long)st.f_bmmap);
+    printf(" Total number of failures: %u\r\n",(unsigned int)st.f_nfail);
+
+    printf("   Total RAM used by the FS: %u \r\n",(unsigned int)st.f_ram);   
+  } else
+    logerr("failed to statvfs()\r\n");
+
+  return -1;
 }
