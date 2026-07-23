@@ -441,7 +441,7 @@ void tar_print(const char *buf, const char *end) {
 #endif
 
 
-#ifdef TARSUM_BUILD
+#if TARSUM_BUILD && CONFIG_TARFS_INTEGRITY
 /**
  * Insert CRC64 file checksums into tar archive. This function is used by `tarsum.c` utility
  * only
