@@ -560,10 +560,13 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           
         if (type != TART_HARDLINK && type != TART_SYMLINK) {
 #if CONFIG_TARFS_LOG
-          log("%d->%d, final destination ", i, dest);
+          puts("Linked: ");
+          tar_print((const char *)index[i]->in_path, NULL);
+          printf(" --> ");
           tar_print((const char *)index[dest]->in_path, NULL);
           puts("");
 #endif
+
           index[i]->in_dvaddr = index[dest]->in_dvaddr;
           resolved++;
           break;
@@ -605,7 +608,13 @@ static char const * s_bad_path = "<bad path>";
  *
  * @return Total size of all files containing data
  */
-size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *tar_start, size_t tar_length, const char *link_rebase, const char *root_folder) {
+size_t inode_populate(struct tarfs_inode *inodes, 
+                      size_t nino, 
+                      const uint8_t *tar_start,
+                      size_t tar_length,
+                      const char *link_rebase,
+                      const char *root_folder,
+                      struct tarfs_stats *st) {
 
 
     size_t bad_start;
@@ -622,7 +631,10 @@ size_t inode_populate(struct tarfs_inode *inodes, size_t nino, const uint8_t *ta
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
 
 
-    /* Basic overhead created by inodes and the inode index + FS descriptor */
+    /* Basic overhead created by inodes and the inode index + FS descriptor 
+     * We use sizeof(struct tarfs_fs) which is a bit smaller than actual 
+     * FS: we do not count the size of the fs->mountpoint
+     */
     overhead = sizeof(struct tarfs_fs) + nino * (sizeof(struct tarfs_inode *) + sizeof(struct tarfs_inode));
 
     while (off + sizeof(tarhdr_t) <= tar_length) {
@@ -774,14 +786,17 @@ bad_header:
             else
               pax_entry_link = remove_subpath(pax_entry_link, pax_entry_end, root_folder);
 
+            /* Create a duplictate with 1 extra byte at the end. This extra byte MAY be used to add an explicit /
+             * for symlinks pointing to directories
+             */
             inodes[idx].in_next = (void *)tar_strdup1(pax_entry_link, pax_entry_end);
 
             pax_entry_link = NULL;
           
           } else {
             const char *t =  remove_subpath(hdr->link_name, (char *)(hdr->link_name) + sizeof(hdr->link_name), hdr->type == TART_SYMLINK ? link_rebase : root_folder); //XXX: ugly hack
+            /* this memory allocation is temporary. memory will be released in inode_resolve() */
             inodes[idx].in_next = (void *)tar_strdup1(t, (char *)(hdr->link_name) + sizeof(hdr->link_name));
-    //        tar_print(t, (char *)(hdr->link_name) + sizeof(hdr->link_name)); 
           }
         }
 
@@ -804,6 +819,7 @@ bad_header:
         inodes[idx].in_vaddr = (uintptr_t)hdr;
 #if CONFIG_TARFS_INTEGRITY
         if (bad_crc) {
+          /* TODO: add this counter to fs_stats */
           inodes[idx].in_dvaddr = 0;
           logerr("Inode %d, dropped, hash sum mismatch\r\n", idx);
         } else
@@ -830,14 +846,18 @@ skip_header_and_data:
         hdr_no++;
     }
 
-    log("end of file reached\r\n");
-    if (total_bad)
-      logerr("%u blocks (%u bytes) were skipped as BAD\n", total_bad, total_bad * 512);
-      
+    /* NOTE: We are not adding bad to the total_bad on the very last step for a reason:
 
-  log("TAR archive has %u files, %u links and %u dirs (%u PaxHeaders)\r\n", files, links, dirs, pax_headers);  
-  log("TAR data/headers ratio: %u data bytes, %u header bytes\r\n", (unsigned int)total_data_size, (unsigned int)total_headers_size);  
-  log("RAM overhead (total RAM used by the FS): %u bytes\r\n", (unsigned int)overhead);
+     * The last two blocks of the TAR archive are NUL-headers. These are treated as BAD DATA
+     * however, it does bit add to total_bad: while() finishes 
+     */
+    log("end of file reached\r\n");
+
+    st->badblocks = total_bad;
+    st->files     = files;
+    st->links     = links;
+    st->dirs      = dirs;
+    st->ram       = overhead;
 
   return total_data_size;
 }
@@ -882,12 +902,12 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 
     struct tarfs_inode **index = inode_alloc( nino );
     struct tarfs_inode *inodes = (struct tarfs_inode *)(index + nino);
-
+    
     if (index != NULL) {
 
       // PASS3: populate inodes
       log("PASS2, populating inodes..\n");
-      size_t dsize = inode_populate(inodes, nino, buf, size, rebase_link, base_dir);
+      size_t dsize = inode_populate(inodes, nino, buf, size, rebase_link, base_dir, &fs->fs_stats);
 
 
       /* Sort inode index table (pointers to inodes are sorted by inode's hash value)
@@ -941,6 +961,9 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
         } else {
           logerr("CRITICAL: root->in_vaddr is NULL, this must not happen!\r\n");
         }
+
+        /* Success! */
+        //inode_dumppath_sorted(root);
         return 0;
       }
 
@@ -959,7 +982,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
 void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t count) {
 
 
-  printf("-- HASH SORTED INODES --\r\n");
+  puts("-- HASH SORTED INODES --");
 #if CONFIG_TARFS_LOG
   for (size_t i = 0; i < count; i++) {
     struct tarfs_inode const *inode = (struct tarfs_inode const *)index[i];
@@ -984,7 +1007,7 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
 void inode_dumppath_sorted(struct tarfs_inode const * root) {
 
 
-  printf("-- ALPHA SORTED INODES --\r\n");
+  puts("-- ALPHA SORTED INODES --");
 #if CONFIG_TARFS_LOG
   puts("<  HASH  > *X Absolute path:");
   for (size_t i = 0; root != NULL; i++) {

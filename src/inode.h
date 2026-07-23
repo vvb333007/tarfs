@@ -62,17 +62,14 @@
 struct tarfs_inode  {
 
   uint32_t   in_hash;    /*!< Hash of full path of the entry */
-
-  uintptr_t  in_path;    /*!< Pointer to the full pathname.
-                              The pathname is not guaranteed to be NUL-terminated. It may end
-                              at '\0', '\r' or '\n', therefore tar_strcmp() must be used. */
-
-  uintptr_t  in_vaddr;  /*!< Virtual address of the original tarhdr entry */
-  uintptr_t  in_dvaddr; /*!< final resolved target after link resolution, i.e. a file or a directory */
+  uintptr_t  in_path;    /*!< Pointer to the full pathname. The pathname is not guaranteed to be NUL-terminated. It may end at '\0', '\r' or '\n', therefore tar_strcmp() must be used. */
+  uintptr_t  in_vaddr;   /*!< Virtual address of the original tarhdr entry */
+  uintptr_t  in_dvaddr;  /*!< final resolved target after link resolution, i.e. a file or a directory */
   struct tarfs_inode *in_next;   /*!< Next inode in lexicographical pathname order.
-                             The original inode array is never reordered. Sorting is achieved
-                             solely by relinking inodes through this field. */
+                                      The original inode array is never reordered. Sorting is achieved
+                                      solely by relinking inodes through this field. */
 };
+
 
 
 struct tarfs_fs;
@@ -188,7 +185,11 @@ void inode_unmount(struct tarfs_fs *fs,
  * @param fs          Filesystem instance.
  * @param buf         Start address of the TAR image.
  * @param size        TAR image size in bytes.
- * @param rebase_link Optional path prefix applied to symbolic links.
+ * @param rebase_link Optional path prefix substracted from symbolic links.
+ * @param path_rebase Optional path prefix substracted from every TAR entry.
+ *                    Normally this one is autodetected (the very first directory in the archive becomes the
+ *                    'path_rebase' parameter) and then substracted from every path in the archive, so archive gets "/" entry
+ *                    
  *
  * @retval 0  Success.
  * @retval -1 Mount failed.
@@ -196,7 +197,8 @@ void inode_unmount(struct tarfs_fs *fs,
 int inode_mount(struct tarfs_fs *fs,
                 const unsigned char *buf,
                 size_t size,
-                const char *rebase_link, const char *path_rebase);
+                const char *rebase_link,
+                const char *path_rebase);
 
 
 /**
