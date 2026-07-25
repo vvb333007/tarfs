@@ -29,7 +29,7 @@ a fully writable filesystem to store such data is often unnecessary.
 
    Typical examples include firmware/UI assets, icons, embedded HTTP server content, fonts, certificates, and similar resources.
 
-   TARFS is optimized for a large number of read-only files and fast lookup.
+   TARFS is optimized for a **large number** of read-only files and **fast lookup** (a filesystem with 640 objects has `open()` of 21..92 usec on average, mount() is 66 msec)
 
 2. **A porting layer for software originally written for Linux.**
 
