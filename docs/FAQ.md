@@ -37,6 +37,37 @@ for custom image builders or conversion utilities
 All TAR headers are aligned to 512-byte boundaries, making damaged archives straightforward to 
 analyze and allowing file headers to be located by scanning the image for valid TAR records..
 
+
+---
+## How fast it is comparing to other filesystems on ESP32?
+
+| File system     |    Read speed |   Write speed |                `open()` |     Mount |
+| --------------- | ------------: | ------------: | ----------------------: | --------: |
+| **TarFS**       | **26 MiB/s**¹ | **Read-only** | **21 µs**² / **92 µs**³ | **66 ms** |
+| **FAT / FatFS** |   ~3.62 MiB/s |  ~0.069 MiB/s |                       — |         — |
+| **LittleFS**    |   ~2.24 MiB/s |  ~0.061 MiB/s |                       — |         — |
+| **SPIFFS**      |   ~1.30 MiB/s |  ~0.015 MiB/s |                       — |         — |
+
+### TarFS Test Configuration
+
+* **Hardware:** ESP32-S3
+* **CPU:** 240 MHz
+* **Flash:** 32 MiB, Quad SPI
+* **PSRAM:** 16 MiB OPI
+* **Filesystem:** 12 MiB TAR archive
+* **Entries:** 640 total
+
+  * ~20 directories
+  * ~620 HTML files
+
+¹ TarFS sequential read using **1 KiB chunks**.
+
+² TarFS `open()` with the filesystem index stored in **IRAM/cache**.
+
+³ TarFS `open()` with the filesystem index stored in **PSRAM**. Approximately **16 KiB of PSRAM** is used by the index.
+
+---
+
 ## How do I start using TARFS?
 
 1. Create a TAR archive with your files (in this example, files are stored in the `www` directory):
