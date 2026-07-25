@@ -44,8 +44,8 @@ analyze and allowing file headers to be located by scanning the image for valid 
 | File system     |    Read speed |   Write speed |                `open()` |     Mount |
 | --------------- | ------------: | ------------: | ----------------------: | --------: |
 | **TarFS**       | **26 MiB/s**¹ | **Read-only** | **21 µs**² / **92 µs**³ | **66 ms** |
+| **LittleFS**    |   ~2.24 MiB/s |  ~0.061 MiB/s | 5740 µs               — |  1600ms — |
 | **FAT / FatFS** |   ~3.62 MiB/s |  ~0.069 MiB/s |                       — |         — |
-| **LittleFS**    |   ~2.24 MiB/s |  ~0.061 MiB/s |                       — |         — |
 | **SPIFFS**      |   ~1.30 MiB/s |  ~0.015 MiB/s |                       — |         — |
 
 ### TarFS Test Configuration
