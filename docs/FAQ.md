@@ -41,12 +41,18 @@ analyze and allowing file headers to be located by scanning the image for valid 
 ---
 ## How fast it is comparing to other filesystems on ESP32?
 
-| File system     |    Read speed |   Write speed |                `open()` |     Mount |
-| --------------- | ------------: | ------------: | ----------------------: | --------: |
-| **TarFS**       | **26 MiB/s**¹ | **Read-only** | **21 µs**² / **92 µs**³ | **66 ms** |
-| **LittleFS**    |   ~2.24 MiB/s |  ~0.061 MiB/s | 5740 µs               — |  1600ms — |
-| **FAT / FatFS** |   ~3.62 MiB/s |  ~0.069 MiB/s |                       — |         — |
-| **SPIFFS**      |   ~1.30 MiB/s |  ~0.015 MiB/s |                       — |         — |
+| File system     | read()¹       |  open()    | opendir() | readdir() | mount time  |
+|-----------------|---------------|------------|-----------|-----------|-------------|
+| **TarFS**       | **26 MiB/s**¹ | 21..92 µs² | 27..102µs²|   49 µs³  |       66 ms |
+| **LittleFS**    |   ~2.24 MiB/s |   5740 µs  | 3182 µs   | 1688 µs   |     1600 ms |
+
+¹ Tested by read()ing from a 4MB file to 1KB buffer in a tight loop
+
+² Smaller numbers were obtained when using DRAM for file index. Larger is for PSRAM. 
+  Second call to open() while using PSRAM is as fast as no-PSRAM code.
+
+³ Does not depend on RAM type (DRAM or PSRAM) : the opendir() causes CPU to cache our 
+  region of intereset, so subsequent readdir() hits the cache
 
 ### TarFS Test Configuration
 
