@@ -134,10 +134,11 @@ void *tarfs_os_malloc(size_t size) {
   void *ptr = NULL;
 
 #if CONFIG_TARFS_EXTMEM
-  if (size > 1023)
+  if (size > 1023)  /* TODO: no magic numbers! */
     ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
 
   if (ptr == NULL)
+    /* fallback to the default allocator */
 #endif
     ptr = heap_caps_malloc(size, MALLOC_CAP_DEFAULT);
 
@@ -147,9 +148,7 @@ void *tarfs_os_malloc(size_t size) {
   return ptr;
 }
 
-/* Default free() 
- * TODO: use heap_caps_free() where available
- */
+/* Default free() */
 void  tarfs_os_free(void *buffer) {
 
   if (buffer != NULL)

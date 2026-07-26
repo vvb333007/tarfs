@@ -231,14 +231,18 @@ static struct tarfs_inode *merge(struct tarfs_inode *a, struct tarfs_inode *b) {
     return head;
 }
 
-/*--------------------------------------------------------------------------*/
+/**
+ * Classic merge-sort
+ * It is recursive but recursion depth log N, i.e. for 65536 files it will be 16 stack frames. Not too bad.
+ * TODO: add a hard limit for the recursion depth? 32 seems reasonable
+ */
 
 static struct tarfs_inode *merge_sort(struct tarfs_inode *head) {
 
     if (!head || !head->in_next)
         return head;
 
-    /* найти середину списка */
+    /* Find the middle of the list */
     struct tarfs_inode *slow = head;
     struct tarfs_inode *fast = head->in_next;
 
@@ -256,18 +260,25 @@ static struct tarfs_inode *merge_sort(struct tarfs_inode *head) {
     return merge(left, right);
 }
 
-/*--------------------------------------------------------------------------*/
+/**
+ * Sort inodes alphabetically: we do not move inodes. we do not move inode's indices. Instead we use
+ * inode's in_next field to link all inodes in alphabetical order. This way we can have our inodes 
+ * sorted by a hash AND sorted by its path
+ *
+ */
 struct tarfs_inode *inode_alphasort(struct tarfs_inode *array, size_t count) {
 
-    if (count == 0)
+    if (count == 0 || array == NULL)
         return NULL;
 
-    /* превращаем массив в список */
+    /* Turn our array to a linked list */
     for (size_t i = 0; i + 1 < count; i++)
         array[i].in_next = &array[i + 1];
 
+    /* final node points to NULL */
     array[count - 1].in_next = NULL;
 
+    /* Sort */
     return merge_sort(array);
 }
 
@@ -294,11 +305,10 @@ struct tarfs_inode **inode_alloc(size_t count) {
     index_size = count * sizeof(struct tarfs_inode *);
     nodes_size = count * sizeof(struct tarfs_inode);
 
-    if (NULL == (ptr = tarfs_calloc(1, index_size + nodes_size))) {
-      errno = ENOMEM;
+    /* Allocate two arrays as a single chunk of memory, better cache locality */
+    if (NULL == (ptr = tarfs_calloc(1, index_size + nodes_size)))
       return NULL;
-
-    }
+    
 
     index = (struct tarfs_inode **)ptr;
     nodes = (struct tarfs_inode *)(ptr + index_size);
@@ -647,9 +657,9 @@ size_t inode_populate(struct tarfs_inode *inodes,
           pax_entry_link = NULL;
 
           if (!bad) {
-            logerr("Header #%u is invalid (or NUL-header)\r\n", hdr_no);
+            logerr("Header #%u is ignored (or NUL-header)\r\n", hdr_no);
 bad_header:
-            logerr("Skipping blocks starting from offset %u..\r\n", (unsigned int)off);
+            logerr("Scanning from offset %u..\r\n", (unsigned int)off);
             bad++;
             bad_start = off;
           }

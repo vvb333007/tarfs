@@ -79,7 +79,7 @@ refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (* dtor)(void *
       
       if ((prev = atomic_fetch_sub_explicit(r, 1, memory_order_release)) == 1) { 
         atomic_thread_fence(memory_order_acquire);
-        /* call either dtor() or free() with either /object/ or /r/ as its argument */
+        /* call dtor() with either /object/ or /r/ as its argument */
         if (dtor != NULL)
           dtor(object ? object : r);
         break;

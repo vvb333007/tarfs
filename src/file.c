@@ -246,34 +246,44 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   /* Find corresponding inode.
    * If user asks for a directory, we try to open what was asked and, if it fails, we
    * are trying to open() an alternative path (with a trailing / added or removed)
+   * This is where we DO allocations in open(). Normally this should not happen because user
+   * can supply paths with / at the end so they can be found from the first ttry
    */
   int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
   if (idx < 0) {
     if (flags & O_DIRECTORY) {
-    /*
-     * Create an alternative path by adding or removing the trailing '/'.
-     *
-     * If the initial inode_lookup() fails and O_DIRECTORY is specified,
-     * try the alternative path as well. POSIX requires directory names
-     * with and without a trailing '/' (e.g. "dirname" and "dirname/")
-     * to be treated equivalently.
-     *
-     * Our filesystem metadata may contain both forms: for example,
-     * hard links may have an explicit trailing '/', while PAX symlink
-     * targets may not.
-     */
 
       int i = strlen(path);
+
+     /*
+      * Create an alternative path by adding or removing the trailing '/'.
+      *
+      * If the initial inode_lookup() fails and O_DIRECTORY is specified,
+      * try the alternative path as well. POSIX requires directory names
+      * with and without a trailing '/' (e.g. "dirname" and "dirname/")
+      * to be treated equivalently.
+      *
+      * Our filesystem metadata may contain both forms: for example,
+      * hard links may have an explicit trailing '/', while PAX symlink
+      * targets may not.
+      */
+
       if (i > 0) {
+
         if (path[i - 1] != '/') {
+
           alt_path = tar_strdup1(path, NULL); /* NUL+NUL terminated string */
+
           if (alt_path != NULL)
             alt_path[i] = '/';
           else
             ADD_STATS(fs->fs_nfail, 1);
+
         } else {
+
           alt_path = tar_strdup1(path, NULL);
+
           if (alt_path != NULL)
             alt_path[i - 1] = '\0';
           else
@@ -285,9 +295,10 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
         log("trying '%s' instead..\r\n",alt_path);
         idx = inode_lookup(fs->fs_ino, fs->fs_nino,alt_path);
         tarfs_os_free(alt_path);
+        alt_path = NULL;
       }
     } /* if O_DIRECTORY */
-  }
+  } /* Seconf attempt */
 
   if (idx < 0) {
     log("path '%s' not found\r\n",path);
@@ -363,12 +374,6 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
     log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
 
-    /* free strduped path */
-    if (path != path0) {
-      log("free strduped path\r\n");
-      tarfs_os_free((void *)path);
-    }
-
     return fd;
   }
 
@@ -378,12 +383,6 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   ADD_STATS(fs->fs_nfail, 1);
 
 unref_and_exit:
-
-  /* free strduped path */
-  if (path != path0) {
-    log("free strduped path\r\n");
-    tarfs_os_free((void *)path);
-  }
 
   tarfs_unref(fs);
   return -1;

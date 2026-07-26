@@ -350,7 +350,6 @@ unmap_and_return_error:
     /* Allocate FS descriptor */
     if ( NULL == (fs = tarfs_calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
       logerr("ERR: out of memory\r\n");
-      errno = ENOMEM;
       goto unmap_and_return_error;
     }
 

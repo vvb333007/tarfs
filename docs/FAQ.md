@@ -329,6 +329,22 @@ Typical example: 1000 files — around 24Kbytes;
 Yes, you can. On ESP32 you can use EMBED_FILES to embed a tar archive which can then be mounter
 using tarfs_mount_from_memory() API
 
+
+## Is TARFS multithread-safe?
+
+Yes,  it is. 
+
+
+## Is TARFS portable?
+
+Yes. TARFS is written in standard C11, does not use any GCC-specific language extensions, and compiles without modifications in a Cygwin environment.
+
+To port TARFS to another architecture, you need to implement the `os_<arch>.c` file. Examples for ESP32 and STM32 are provided as `os_esp32.c` and `os_stm32.c`. The STM32 implementation is provided primarily to illustrate the porting concept.
+
+The main function that must be implemented is `tarfs_os_map_tarfile()`. This function must return the address where the TAR archive resides. Additionally, it may perform flash-to-RAM address space mapping, as implemented in `os_esp32.c`.
+
+This abstraction allows TARFS to access TAR archives regardless of where the underlying data is physically stored.
+
 ---
 
 [1]: https://documentation.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html "Espressif Documentation"

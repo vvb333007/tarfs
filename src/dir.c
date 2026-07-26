@@ -198,6 +198,8 @@ DIR* tard_fdopendir(void* ctx, int fd) {
     dir->di_ino  = fs->fs_ino[fp->fp_idx]; /* Directory inode */
     dir->di_cino = dir->di_ino;                      /* Current inode used by readdir()/seekdir() */
 
+
+    /* Root directory prefix. We need it to find direct children */
     dir->di_prefix = tar_strdup1((const char *)dir->di_ino->in_path, NULL);
     if (dir->di_prefix != NULL) {
 
