@@ -88,12 +88,12 @@
                 fs_idx < TARFS_MAX_FS && \
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
 \
-    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); \
+    log("FS#%d is not mounted\r\n",fs_idx); \
     errno = EIO; \
     return (TYPE)(-1); \
   } \
   if (!is_sanefd(fs, fd)) { \
-    logerr("bad fd=%d, fs_idx=%d\r\n", fd, fs_idx); \
+    log("FS#%d, fd#%d is not open\r\n", fs_idx, fd); \
     errno = EBADF; \
     return (TYPE)(-1); \
   }
@@ -116,6 +116,9 @@ static const uint32_t    s_valid_mask   = (TARFS_MAX_FDS == 32) ? 0xffffffffUL :
 
 
 /**
+ * Allocate a file descriptor slot. File descriptors are preallocated in tarfs_fs instance;
+ * This function marks slots as used or unused
+ *
  * This function must be called under addref() protocol:
  * if (tarfs_addref(fs)) {
  *   allocfd(fs);
@@ -150,8 +153,8 @@ static int allocfd(struct tarfs_fs *fs) {
 }
 
 /**
- * Marks previously allocated index as free. Function is tolerant to double free()
-*/
+ * Marks previously allocated index as free. Function is tolerant to double free
+ */
 static void freefd(struct tarfs_fs *fs, int index) {
 
     uint32_t used_indices, new_value;
@@ -212,6 +215,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   const char *path = path0;
   char *alt_path = NULL;
 
+  mode = mode; /* UNUSED */
   
   struct tarfs_fs *fs = NULL; 
   int const fs_idx = (int )(intptr_t )ctx; 
@@ -219,7 +223,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   /* Quick reject */
   if (path == NULL) {
     ADD_STATS(fs->fs_nfail, 1);
-    errno = EINVAL;
+    errno = EFAULT;
     return -1;
   }
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
@@ -252,6 +256,9 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   int idx = inode_lookup(fs->fs_ino, fs->fs_nino,path);
 
   if (idx < 0) {
+
+    errno = -idx;
+
     if (flags & O_DIRECTORY) {
 
       int i = strlen(path);
@@ -303,7 +310,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   if (idx < 0) {
     log("path '%s' not found\r\n",path);
     if (errno == 0)
-      errno = ENOENT;
+      errno = -idx;
     goto unref_and_exit;
   }
 
@@ -314,7 +321,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   struct tarfs_inode const *inode = fs->fs_ino[idx];
   if (inode->in_dvaddr == 0) {
     ADD_STATS(fs->fs_nfail, 1);
-    logerr("floating inode '%s', no data\r\n", path);
+    log("floating inode '%s', no data\r\n", path);
     errno = EIO;
     goto unref_and_exit;
   }
@@ -344,7 +351,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       goto unref_and_exit;
     }
     /* Success: a file was requested, file has been found.
-     * Perform CRC64 check if FS is configured to do so
+     * Perform CRC64 check if FS is configured to do so (CRC64 on open() is off by default.)
      */
 #if CONFIG_TARFS_INTEGRITY
     if (fs->fs_opencrc) {
@@ -569,6 +576,82 @@ int tarf_fstat(void* ctx, int fd, struct stat * st) {
   return 0;
 }
 
+#if CONFIG_TARFS_HAVE_LSTAT
+/**
+ * lstat() : same as stat() but for links
+ *
+ */
+int tarf_lstat(void* ctx, const char *path, struct stat * st) {
+
+  tart_t type;
+  struct tarfs_fp *fp;
+  struct tarfs_fs *fs = NULL;
+  struct tarfs_inode const *ino;
+  size_t size;
+  int fd, fs_idx = (int)(intptr_t )ctx;
+  unsigned int in_idx;
+  uint32_t perm;
+  time_t tim;
+
+  /* Locate the inode, by open()ing it*/
+  if ((fd = tarf_open(ctx, path, 0, 0)) < 0) {
+    if ((fd = tarf_open(ctx, path, O_DIRECTORY, 0)) < 0) {
+      log("path not found: %s\r\n", path);
+      return -1;
+    }
+  }
+
+  /* open() succeeded == fs_idx is sane; get the FS pointer by its index
+   * no tarfs_getfs_addref() here, open() did it for us
+   */
+  if ((fs = tarfs_getfs(fs_idx)) == NULL) { 
+
+    log("bad filesystem context: %d\r\n",fs_idx); 
+    errno = EIO; 
+    return -1; 
+  }
+
+  /* Fetch all required information and close the file/directory/link ASAP */
+  tim    = fs->fs_mtime;
+  fp     = &fs->fs_fd[fd];
+  in_idx = fp->fp_idx;
+  ino    = fs->fs_ino[in_idx];
+  type   = inode_rawtype( ino );
+  size   = fp->fp_size;
+
+  /* Can be closed now */
+  tarf_close(ctx, fd);
+
+  memset(st, 0, sizeof(struct stat));
+
+  perm = S_IRUSR|S_IRGRP|S_IROTH; /* default read-only permissions */
+        
+  /* Adjust permissions, and size */
+  if (type == TART_DIR) {
+    perm |= S_IXUSR|S_IXGRP|S_IXOTH|S_IFDIR;
+    size = 0;
+  } else if (type == TART_HARDLINK || type == TART_SYMLINK) {
+    perm |= S_IFLNK;
+    size = 0;
+  } else {
+    perm |= S_IFREG;
+  }
+
+  st->st_dev     = (dev_t)fs_idx;         /* Filesystem index [0..TARFS_MAX_FS) */
+  st->st_ino     = (ino_t)in_idx;     /* Inode index */
+  st->st_blksize = 512;
+  st->st_blocks  = ((size + 511) & ~511) / 512;
+  st->st_size    = size;
+  st->st_mode    = perm;
+  st->st_mtime   = fs->fs_mtime;
+  st->st_atime   = fs->fs_mtime;
+  st->st_ctime   = fs->fs_mtime;
+
+  return 0;
+}
+#endif 
+
+
 /**
  * Synchronize file contents.
  * TODO: reuse this syscall for something useful
@@ -590,6 +673,8 @@ int tarf_fsync(void* ctx, int fd) {
 int tarf_fcntl(void *ctx, int fd, int cmd, int arg) {
 
   PROLOGUE( int );
+
+  arg = arg;
 
   switch (cmd) {
 
@@ -622,7 +707,7 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
       int *o;  
       o = va_arg(args, int *);
       if (o == NULL) {
-        errno = EINVAL;
+        errno = EFAULT;
         return -1;
       }
       *o = fs->fs_fd[fd].fp_size - fs->fs_fd[fd].fp_pos;
@@ -645,7 +730,7 @@ int tarf_ioctl(void *ctx, int fd, int cmd, va_list args) {
 
           return 0;
       }
-      errno = EINVAL;
+      errno = EFAULT;
       return -1;
     }
     default:
@@ -727,7 +812,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       ((flags & MAP_ANONYMOUS) && fd < 0) ||
       ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
 
-    logerr("MAP_FIXED, MAP_ANONYMOUS, PROT_WRITE and PROT_EXEC make no sense for RO TARFS\r\n");
+    log("Unsupported combination of flags/protection\r\n");
     errno = EINVAL; 
     return MAP_FAILED;
   }
@@ -777,15 +862,16 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
                 fs_idx < TARFS_MAX_FS && 
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
 
-    logerr("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
+    log("filesystem #%d is not mounted\r\n",fs_idx); 
     errno = EIO; 
     return -1; 
   }
 
-  log("unmapping %p (%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
+  log("unmapping ptr=%p (len=%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
   tarfs_unref(fs);
   return 0;
 }
+
 
 #if CONFIG_TARFS_HAVE_SENDFILE
 /**
@@ -882,7 +968,7 @@ ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) 
     /* Done */
     return total;
 }
-#endif
+#endif /* #if CONFIG_TARFS_HAVE_SENDFILE */
 
 /* Compile-time sanity checks */
 _Static_assert(TARFS_MAX_FDS > 0 && TARFS_MAX_FDS <= 32, "TARFS_MAX_FD must be in range [1..32]");
