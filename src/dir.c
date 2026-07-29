@@ -215,8 +215,6 @@ DIR* tard_fdopendir(void* ctx, int fd) {
     tarfs_os_free(dir);
   }
 
-  logerr("out of memory\r\n");
-
   tarfs_unref(fs);
   errno = ENOMEM;
 
@@ -234,7 +232,7 @@ DIR* tard_fdopendir(void* ctx, int fd) {
 
 DIR* tard_opendir(void* ctx, const char* name) {
 
-  if (name && *name) {
+  if (name != NULL) {
 
     int fd;
     DIR *d;
@@ -247,7 +245,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
     /* tarf_open() sets errno */
     log("failed to open()/fdopendir() '%s'\r\n", name);
   } else
-    errno = EINVAL;
+    errno = EFAULT;
 
   return NULL;
 }
@@ -280,7 +278,7 @@ int tard_closedir(void* ctx, DIR* pdir) {
     return 0;
   }
 
-  errno = EINVAL;
+  errno = EFAULT;
   return -1;
 }
 
@@ -297,6 +295,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
   struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
   struct tarfs_inode const *cur;
 
+  ctx = ctx;
   cur = dir->di_cino;
 
   while (cur->in_next != NULL) {
@@ -323,7 +322,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
         memcpy(dir->di_ent.d_name, p, len);
         dir->di_ent.d_name[len] = '\0';
         
-        switch(inode_rawtype(cur)) {
+        switch(inode_type(cur)) {
           case TART_DIR:  dir->di_ent.d_type = DT_DIR; break;
           case TART_FILE:
           case TART_AFILE:
@@ -358,6 +357,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
 long tard_telldir(void* ctx, DIR* pdir) {
 
   struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
+  ctx = ctx;
   return dir->di_off;
 }
 
@@ -389,14 +389,21 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 }
 
 /**
- * The function dirfd() returns the file descriptor associated with the directory stream pdir.
+ * The function tard_dirfd() returns the file descriptor associated with the directory stream pdir.
+ * TODO: right now we can implement posix's dirfd() on ESP32 for number of reasons:
+ * TODO: 1. there is a no-op implementation of dirfd() in ESP-IDF/newlib      
+ * TODO: 2. there is no mechanism to convert local FD to a global FD except for ugly hack with offsets
 */
 int tard_dirfd(void* ctx, DIR *pdir) {
+
+  ctx = ctx;
+
   if (pdir != NULL) {
+
     struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
     return dir->di_fd;
   }
-  errno = EINVAL;
+  errno = EFAULT;
   return -1;
 }
 

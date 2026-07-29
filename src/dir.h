@@ -68,6 +68,7 @@ extern "C" {
  * @return
  *   A pointer to a directory stream on success, or NULL on failure with
  *   errno set appropriately.
+ *
  */
 DIR* tard_fdopendir(void* ctx, int fd);
 
