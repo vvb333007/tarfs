@@ -1,5 +1,3 @@
-#### [ этот же самый текст, но на русском языке находится здесь](FAQ_RU.md).
-
 # TARFS FAQ
 
 ## What is TARFS?
@@ -147,7 +145,7 @@ Open the archive in a hex or text editor and search for the ASCII string `"C64"`
 ### Windows:
 
 ```sh
-esptool.py --chip esp32 --port COM5 --baud 921600 write_flash 0x310000 tarfile.tar
+esptool.exe --chip esp32 --port COM5 --baud 921600 write_flash 0x310000 tarfile.tar
 ```
 
 ### Linux:

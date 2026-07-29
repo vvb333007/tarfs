@@ -134,7 +134,7 @@ tarsum filesystem.tar output.tar
 На Windows:
 
 ```sh
-esptool.py --chip esp32 --port COM5 --baud 921600 write_flash 0x310000 tarfile.tar
+esptool.exe --chip esp32 --port COM5 --baud 921600 write_flash 0x310000 tarfile.tar
 ```
 
 На Linux
@@ -272,7 +272,7 @@ TARFS использует небольшой индекс файлов.
 
 Например:
 
-* несколько сотен файлов - обычно десятки килобайт RAM;
+* несколько сотен файлов - обычно несколько килобайт RAM;
 * тысячи файлов - порядка десятков килобайт.
 
 ---
