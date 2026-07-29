@@ -4,7 +4,11 @@
 - sendfile() (faster than read()/send() approach)
 - More examples (see examples/)
 - open() is refactored a bit to handle symlinks to directories better
+- Initial dirfd() and lstat() implementation 
 - Memory backend on ESP32 now tries SPIRAM allocations for buffers >1023 bytes
+- Logging can be turned on/off in runtime: tarfs_logging()
+- Integrity checking can be turned on/off in runtime for: mount and open() calls
+- statvfs() returns extended FS statistics in addition to the standart one
 
 ## 0.1.3
 
