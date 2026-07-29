@@ -39,17 +39,27 @@
 static _Atomic int       s_numfs = 0;                    /*!< Number of mounted TARFS filesystems */
 static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesystem descriptors */
 
+#if CONFIG_TARFS_LOG
+bool g_tarfs_log = true; /*!< Enable/disable logging via log() macro */
+#endif
 
+#if CONFIG_TARFS_INTEGRITY
+static bool s_tarfs_crc64 = true; /*!< Enable/disable CRC64 check on mount */
+#endif
 
 /**
  * Lockless, not thread safe, does not increase refcounters.
  * Must be only used when FS's refcounter is guaranteed > 1
  */
 struct tarfs_fs *tarfs_getfs(int i) {
+
   if (i>=0 && i < TARFS_MAX_FS)
     return s_tarfs[i];
-  logerr("filesystem #%d does not exist!\r\n",i);
+
+  log("filesystem #%d does not exist!\r\n",i);
+
   return NULL;
+
 }
 
 /**
@@ -72,6 +82,10 @@ struct tarfs_fs *tarfs_getfs_addref(int i) {
     fs = NULL;
 
   tarfs_unlock();
+
+  if (fs == NULL)
+    log("filesystem #%d does not exist!\r\n",i);
+
   return fs;
 }
 
@@ -191,7 +205,7 @@ static void commit_unmount(void *ctx) {
    */  
   if (!tarfs_os_unregister_fs(fs->fs_mountpoint)) {
 
-    logerr(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
+    log(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
     /* This will create a memory leak, but prevents crashes */
     return ;
   }
@@ -260,7 +274,7 @@ int tarfs_unmount(const char *mountpoint) {
   refc_type_t prev_refc;
 
   if (mountpoint == NULL) {
-    errno = EINVAL;
+    errno = EFAULT;
     return -1;
   }
 
@@ -273,7 +287,7 @@ int tarfs_unmount(const char *mountpoint) {
     prev_refc = tarfs_unref(fs);
 
     if (prev_refc > 1) {
-      logerr("Filesystem %s is in use (%u open fds), unmount delayed\r\n", mountpoint, prev_refc - 1);
+      log("Filesystem %s is in use (%u open fds), unmount delayed\r\n", mountpoint, prev_refc - 1);
       err = EAGAIN;
     }
 
@@ -326,7 +340,7 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
 #endif
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
-      logerr("mountpoint is too short or invalid '%s'\r\n", mountpoint);
+      log("mountpoint is too short or invalid '%s'\r\n", mountpoint);
       errno = EINVAL;
 unmap_and_return_error:
       
@@ -336,7 +350,7 @@ unmap_and_return_error:
     log("mountpoint: '%s'\r\n", mountpoint);
 
     if (base_dir[1] == '\0') {
-      logerr("WARN: tarfile has no root directory\r\n");
+      log("WARN: tarfile has no root directory\r\n");
     } else {
       log("common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
     }
@@ -349,7 +363,7 @@ unmap_and_return_error:
 
     /* Allocate FS descriptor */
     if ( NULL == (fs = tarfs_calloc(1, sizeof(struct tarfs_fs) + len + 1))) {
-      logerr("ERR: out of memory\r\n");
+      /* errno is set in memory backend */
       goto unmap_and_return_error;
     }
 
@@ -359,7 +373,7 @@ unmap_and_return_error:
     if (0 > (slot = findfs( NULL ))) {
       tarfs_unlock();
       tarfs_os_free(fs);
-      logerr("too many mounted filesystems (%u)\r\n",s_numfs);
+      log("too many mounted filesystems (%u)\r\n",s_numfs);
       errno = EBUSY;
       goto unmap_and_return_error;
     }
@@ -386,7 +400,7 @@ unmap_and_return_error:
     log("mounting..\r\n");
     if (inode_mount(fs, map, size, link_rebase, &base_dir[1]) < 0) {
       if (fs->fs_ino == NULL) {
-        logerr("filesystem is unusable, no valid inodes were found\r\n");
+        log("filesystem is unusable, no valid inodes were found\r\n");
         tarfs_lock();
         s_tarfs[slot] = NULL;
         s_numfs--;
@@ -394,7 +408,7 @@ unmap_and_return_error:
         /* errno must be set in inode_mount() */
         goto unmap_and_return_error;
       } 
-      logerr("WARN: running in degraded mode\r\n");
+      log("WARN: running in degraded mode\r\n");
     }
 
 //  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, (unsigned int)fs->fs_nino);
@@ -402,7 +416,7 @@ unmap_and_return_error:
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
   if (tarfs_os_register_fs(mountpoint, (void *)(intptr_t)slot) == false) {
-    logerr("WARN: can not register POSIX handlers, only native tarfs API is available\r\n");
+    log("Can not register POSIX handlers, only native tarfs API is available\r\n");
   } else {
     log("VFS registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
@@ -465,7 +479,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
   if (errno == 0)
     errno = EIO;
 
-  logerr("tarfile map failed: errno=%d, label=%s\r\n", errno, label);
+  log("failed to mmap() the FS image (errno=%d, label=%s)\r\n", errno, label);
 
   return -1;
 }
@@ -663,6 +677,10 @@ bad_header:
  * Fills a POSIX statvfs structure with information about the mounted
  * filesystem. Since TARFS is a read-only filesystem, the number of
  * available blocks and inodes is always reported as zero.
+ *
+ * The struct statvfs is either provided by a platform (see src/config.h , CONFIG_TARFS_HAVE_STATVFS_H) or
+ * internal definition is used (struct statvfs is declared in src/fs.h). Latter provides additional fields
+ * which are not a part of the standart
  */
 int tarfs_statvfs(void *ctx, struct statvfs *st) {
 
@@ -699,18 +717,41 @@ int tarfs_statvfs(void *ctx, struct statvfs *st) {
      * We do support longer filenames but we are limited to the size of dirent's d_name
      */
     st->f_namemax = sizeof(((struct dirent *) 0)->d_name) - 1;
-    st->f_flag = ST_RDONLY|ST_NOATIME|ST_NODEV|ST_NODIRATIME|ST_NOEXEC|ST_NOSUID;
+    st->f_flag = ST_RDONLY|ST_NOSUID;
 
-    /* TARFS extensions. These are not part of the standart */  
-#if CONFIG_TARFS_COUNTERS
+    /* Cygwin does not have these: */
+#ifdef ST_NOATIME
+    st->f_flag |= ST_NOATIME;
+#endif
+#ifdef ST_NODIRATIME
+    st->f_flag |= ST_NODIRATIME;
+#endif
+#ifdef ST_NODEV
+    st->f_flag |= ST_NODEV;
+#endif
+
+    /* TARFS extensions. These are not part of the standart, and only can be
+     * added to statvfs structure when platform lacks statvfs.h; 
+     */  
+#if CONFIG_TARFS_HAVE_STATVFS_H
+/* For systems with their own sys/statvfs.h file, we stop here */
+#else
+#  if CONFIG_TARFS_COUNTERS
+    /* Runtime counters */
     st->f_bread = fs->fs_bread;
     st->f_bmmap = fs->fs_bmmap;
     st->f_nfail = fs->fs_nfail;
-#endif
+#  endif
+#  if CONFIG_TARFS_INTEGRITY
+    /* Number of bad files (if CRC64 is enabled at compile tiem)*/
+    st->f_badcrc  = fs->fs_stats.badcrc;
+#  endif
+    /* Mount-time statistics, immutable */
     st->f_dirs  = fs->fs_stats.dirs;
     st->f_links  = fs->fs_stats.links;
     st->f_badblocks  = fs->fs_stats.badblocks;
     st->f_ram  = fs->fs_stats.ram;
+#endif /* #if CONFIG_TARFS_HAVE_STATVFS_H */
 
     tarfs_unref(fs);
 
@@ -747,10 +788,40 @@ int tarfs_integrity_on_open(int fs_idx, int en) {
   log(" CRC64 on each open() : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow open)" : "disabled"));
   return ret;
 #else
-  logerr("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
+  log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
   return 0;
 #endif
 }
+
+
+
+/**
+ * Enables or disables CRC64 integrity verification for TARFS archives.
+ * Must be called before mount
+ */
+int tarfs_integrity(int en) {
+
+#if CONFIG_TARFS_INTEGRITY
+
+  int ret = s_tarfs_crc64;
+
+  if (en >= 0) {
+    log(" CRC64 on mount : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow mount)" : "disabled"));
+    s_tarfs_crc64 = en;
+  }
+
+  return ret;
+
+#else
+
+  if (en >= 0)
+    log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
+
+  return 0;
+
+#endif
+}
+
 
 
 /**
@@ -770,7 +841,13 @@ int tarfs_dump(int fs_idx) {
     printf(" Number of blocks: %u\r\n",(unsigned int)st.f_blocks);   
     printf(" Maximum filename length: %u\r\n",(unsigned int)st.f_namemax);  
 
+#if CONFIG_TARFS_HAVE_STATVFS_H
+    /* Platform provides its own statvfs.h so we can not add TARFS-specific information
+     * Instead, direct lookup into tarfs_fs.fs_stats should be made 
+     */
+#else
     printf(" Number of bad/unrecognized 512-byte blocks: %u\r\n",(unsigned int)st.f_badblocks); 
+    printf(" Number of bad CRC64 files: %u\r\n",(unsigned int)st.f_badcrc); 
 
     printf(" Number of files: %u\r\n",(unsigned int)st.f_files);
     printf(" Number of links: %u\r\n",(unsigned int)st.f_links); 
@@ -781,8 +858,9 @@ int tarfs_dump(int fs_idx) {
     printf(" Total number of failures: %u\r\n",(unsigned int)st.f_nfail);
 
     printf("   Total RAM used by the FS: %u \r\n",(unsigned int)st.f_ram);   
+#endif
   } else
-    logerr("failed to statvfs()\r\n");
+    printf("failed to statvfs()\r\n");
 
   return -1;
 }
