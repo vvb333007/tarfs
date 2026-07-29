@@ -42,6 +42,8 @@ int main(int argc, char **argv) {
     const char *filename     = argv[1];
     const char *filename2    = argc > 2 ? argv[2] : "output.tar";
 
+    tarfs_logging(true);
+
 
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
 

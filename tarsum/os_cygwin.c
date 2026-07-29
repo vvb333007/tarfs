@@ -36,12 +36,14 @@ size_t tarfs_os_mp_maxlen() {
 }
 
 bool tarfs_os_unregister_fs(const char *prefix) {
-
+  prefix = prefix;
   return true;
 }
 
 bool tarfs_os_register_fs(const char *prefix, void *context) {
 
+  prefix = prefix;
+  context = context;
   return true;
 }
 

@@ -9,7 +9,7 @@ CC      := gcc
 OBJDIR  := .
 
 # Flags
-CFLAGS  := -Wall -Os -pedantic -I../src
+CFLAGS  := -Wall -Wextra -Wno-sign-compare -Os -pedantic -I../src
 CFLAGS  += -DTARSUM_BUILD=1
 CFLAGS += -MMD -MP 
 
