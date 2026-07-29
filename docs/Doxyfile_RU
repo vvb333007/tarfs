@@ -3,7 +3,7 @@
 #-------------------------------------------------
 
 PROJECT_NAME           = "TARFS"
-PROJECT_NUMBER         = "0.1.4"
+PROJECT_NUMBER         = "0.1.2"
 PROJECT_BRIEF          = "Read-only TAR filesystem for ESP32"
 
 OUTPUT_DIRECTORY       = .
@@ -12,16 +12,16 @@ OUTPUT_DIRECTORY       = .
 # Input
 #-------------------------------------------------
 
-INPUT                  = ../src README.md QuickStart.md Native_API.md FAQ.md
-FILE_PATTERNS          = *.h *.c README.md QuickStart.md Native_API.md FAQ.md
-RECURSIVE              = YES
+INPUT                  = ../src README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md
+FILE_PATTERNS          = *.h *.c README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md
+RECURSIVE              = NO
 
 #-------------------------------------------------
 # Extraction
 #-------------------------------------------------
 
 EXTRACT_ALL            = YES
-EXTRACT_STATIC         = YES
+EXTRACT_STATIC         = NO
 EXTRACT_PRIVATE        = YES
 EXTRACT_LOCAL_CLASSES  = NO
 
@@ -85,6 +85,6 @@ WARN_NO_PARAMDOC       = YES
 ENABLE_PREPROCESSING = YES
 MACRO_EXPANSION      = YES
 EXPAND_ONLY_PREDEF   = NO
-SKIP_FUNCTION_MACROS = NO
+SKIP_FUNCTION_MACROS = YES
 
 QUIET                  = NO
