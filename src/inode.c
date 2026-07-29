@@ -22,13 +22,29 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "inode.h"
-#include "hash.h"
-#include "fs.h"
+#include "config.h"
+#include "os.h"
 #include "tar.h"
+#include "fs.h"
 #include "hash.h"
 #include "inode.h"
 
+/**
+ * Inode is represented by struct tarfs_inode; Every inode contains a pointer to a corresponding tarfile entry
+ * and a hashed filename (32bit FNV1a hash). Sorted inodes reside in the fs->fs_ino array and are the primary
+ * indexing mechanism. Binary array search is used for paths lookup (i.e. 16 lookups at worst for 65535 files)
+ *
+ * hotpath is inode_lookup()
+ */
+
+
+
+
+/**
+ * For the given UTS remove the leading subpath if it is there:
+ *
+ *  "subpath/path"  --> "/path"
+ */
 static const char *remove_subpath(const char *path, const char *path_end, const char *subpath) {
 
   const char *text = path;
@@ -48,17 +64,13 @@ static const char *remove_subpath(const char *path, const char *path_end, const 
 }
 
 
-
-
 /**
- * returns pointer inside buffer (zero-copy)
- * or NULL if not found
  * Used to parse PAX-Header data section which is key=value format:
  *
  * 20 path=/some/data
  * 20 linkpath=/some/data
  *
- * Here we depend on \n or \r at the end of every key=value pair. 
+ * Here we depend on \n or \r at the end of every key=value pair, which is guaranteed by the standart
  */
 static const char* path_from_pax_header(const char *buf, size_t size, const char *templ) {
 
@@ -68,10 +80,10 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
 
     while (i < size)
     {
-        // 1. parse length prefix
+        /* 1. parse length prefix */
         size_t len = 0;
 
-        // read until space
+        /* read until space */
         j = i;
         digi = 0; /* how many digits was in the number */
 
@@ -94,14 +106,14 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
         if (line_start + len > size)
             return NULL;
 
-        // line = buf[line_start .. line_start+len)
+        /* line = buf[line_start .. line_start+len) */
 
         line = buf + line_start;
 
-        // 2. check prefix "path="
+        /* 2. check prefix "path=" */
         if (len >= templ_len && memcmp(line, templ, templ_len) == 0)
         {
-            // Check if found key value ends with \r \n or NUL within the buf
+            /* Check if found key value ends with \r \n or NUL within the buf */
             bool good_line = false;
             for (int i=templ_len; i < (len - digi - 1); i++)
               if (line[i] == 0 || line[i] == '\r' || line[i] == '\n') {
@@ -110,12 +122,12 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
               }
   
             if (!good_line)
-                logerr("BAD/MALFORMED archive\r\n");
+                log("PAX header is\r\n");
   
-            return good_line ? line + templ_len : NULL; // value starts here
+            return good_line ? line + templ_len : NULL; /* value starts here */
         }
 
-        // 3. jump to next record
+        /* 3. jump to next record */
         i = line_start + len - digi - 1;
 
     }
@@ -123,11 +135,6 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
     return NULL;
 }
 
-/**
- * Inode is represented by struct tarfs_inode; Every inode contains a pointer to a corresponding tarfile entry
- * and a hashed filename (32bit FNV1a hash). Sorted inodes reside in the fs->fs_ino array and are the primary
- * indexing mechanism. Binary array search is used for paths lookup (i.e. 16 lookups at worst for 65535 files)
- */
 
 
 /** 
@@ -332,6 +339,7 @@ struct tarfs_inode **inode_alloc(size_t count) {
 void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, size_t tar_length) {
 
   if (index != NULL) {
+    /* free all paths if there were any */
     for (int i = 0; i < count; i++) {
       if (index[i]->in_path != 0) {
         /* address is from the tar file range or beyond? */
@@ -340,6 +348,7 @@ void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, s
         }
       }
     }
+    /* free inodes and index arrays (they sit together in one memory allocation )*/
     tarfs_os_free(index);
   }
 }
@@ -381,6 +390,8 @@ static bool inode_pathcmp(const struct tarfs_inode *inode, const char *src) {
  *
  * Inode pointer can be retrieved as `node_ptr = index[i]` where `i` is node index
  * as returned by inode_lookup()
+ *
+ * Returns inode index (>=0) or -errno
  */
 int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, const char *path) {
 
@@ -389,7 +400,10 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
   size_t   left,
            right;
 
-  if (index == NULL || path == NULL || num_inodes < 1)
+  if (index == NULL || path == NULL)
+    return -EFAULT;
+
+  if (num_inodes < 1)
     return -EINVAL;
   
   left = 0;
@@ -426,7 +440,7 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
         }
       }
 
-      logerr("unresolved collision, hash=%08x\r\n", (unsigned int)hash);
+      log("unresolved collision, hash=%08x\r\n", (unsigned int)hash);
       break;
     }
   } /* while left < right */
@@ -466,11 +480,11 @@ tart_t inode_getinfo(struct tarfs_inode const * const *index, int idx, size_t *s
   return TART_BAD;
 }
 
-/* Return raw inode type: TART_DIR, TART_FILE or TART_BAD. Links are resolved to their
+/* Return resolved inode type: TART_DIR, TART_FILE or TART_BAD. Links are resolved to their
  * final destination. To check if inode is a link, use inode_islink() function instead
  *
  */
-tart_t inode_rawtype(struct tarfs_inode const *ino) {
+tart_t inode_type(struct tarfs_inode const *ino) {
 
   if (ino != NULL) {
     struct tarhdr const *hdr;
@@ -480,6 +494,23 @@ tart_t inode_rawtype(struct tarfs_inode const *ino) {
   }
   return TART_BAD;
 }
+
+
+/**
+ * Return raw inode type: TART_HARDLINK, TART_SYMLINK, TART_DIR, TART_FILE or TART_BAD.
+ *
+ */
+tart_t inode_rawtype(struct tarfs_inode const *ino) {
+
+  if (ino != NULL) {
+    struct tarhdr const *hdr;
+
+    if (NULL != (hdr = (struct tarhdr const *)ino->in_vaddr))
+      return hdr->type;
+  }
+  return TART_BAD;
+}
+
 
 /* Check if inode ino is a link or not.
  *
@@ -558,13 +589,13 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           dest = inode_lookup((struct tarfs_inode const * const *)index, count, link_name);
           if (dest < 0) {
             
-            logerr("failed to resolve '%s' in two attempts\r\n", link_name);
+            log("failed to resolve '%s' in two attempts\r\n", link_name);
             break;
           }
         }
         tart_t type = inode_getinfo((struct tarfs_inode const * const *)index, dest, NULL, NULL);
         if (type == TART_BAD) {
-          logerr("can not get info on inode %d\r\n", dest);
+          log("can not get info on inode %d\r\n", dest);
           break;
         }
           
@@ -588,7 +619,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
       } while(--depth > 0);
 
       if (index[i]->in_dvaddr == 0) {
-        logerr("inode #%d is a floating link\r\n",i);
+        log("inode #%d is a floating link\r\n",i);
         floating++;
       }
 
@@ -627,7 +658,7 @@ size_t inode_populate(struct tarfs_inode *inodes,
                       struct tarfs_stats *st) {
 
 
-    size_t bad_start;
+
     uint32_t total_data_size = 0;
     uint32_t total_headers_size = 0;
     uint32_t overhead = 0;
@@ -636,7 +667,7 @@ size_t inode_populate(struct tarfs_inode *inodes,
     
     size_t off = 0;
     unsigned int hdr_no = 0;
-    unsigned int bad = 0, total_bad = 0;
+    unsigned int bad = 0, total_bad = 0, total_badcrc = 0;
     const char *pax_entry_path = NULL, *pax_entry_link = NULL, *pax_entry_end;
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
 
@@ -657,11 +688,11 @@ size_t inode_populate(struct tarfs_inode *inodes,
           pax_entry_link = NULL;
 
           if (!bad) {
-            logerr("Header #%u is ignored (or NUL-header)\r\n", hdr_no);
+            log("Header #%u is ignored (or NUL-header)\r\n", hdr_no);
 bad_header:
-            logerr("Scanning from offset %u..\r\n", (unsigned int)off);
+            log("Scanning from offset %u..\r\n", (unsigned int)off);
             bad++;
-            bad_start = off;
+            
           }
 
           off += sizeof(tarhdr_t);
@@ -669,7 +700,7 @@ bad_header:
         }
 
         if (bad) {
-          logerr("Resuming at offset %u; (%u blocks/ %u bytes) were lost \n", (unsigned int)off, (unsigned int)((off - bad_start)/sizeof(struct tarhdr)), (unsigned int)(off - bad_start));
+          log("Resuming at offset %u; %u blocks were lost \n", (unsigned int)off, bad);
           total_bad += bad;
           bad = 0;
           
@@ -679,16 +710,20 @@ bad_header:
 
         /* Check if size is sane: current pointer + 512 bytes + size must be < tar_end */
         if (((uintptr_t)(hdr + 1)) + size >= tar_end) {
-          logerr("Invalid entry size, sector marked as bad\r\n");
+          log("Invalid entry size, sector marked as bad\r\n");
           goto bad_header;
         }
 
         total_headers_size += 512;
 
 #if CONFIG_TARFS_INTEGRITY
-        bool bad_crc = tar_baddata(hdr, (size_t)size);
-        if (bad_crc)
-          total_bad++;
+        bool bad_crc = false;
+        /* Verify CRC64 only if configured to do so */
+        if (tarfs_integrity(-1) > 0) {
+          bad_crc = tar_baddata(hdr, (size_t)size);
+          if (bad_crc)
+            total_bad++;
+        }
 #endif
 
 
@@ -829,9 +864,10 @@ bad_header:
         inodes[idx].in_vaddr = (uintptr_t)hdr;
 #if CONFIG_TARFS_INTEGRITY
         if (bad_crc) {
-          /* TODO: add this counter to fs_stats */
+          total_badcrc++;
           inodes[idx].in_dvaddr = 0;
-          logerr("Inode %d, dropped, hash sum mismatch\r\n", idx);
+          log("Inode %d, dropped, hash sum mismatch\r\n", idx);
+      
         } else
 #endif
           inodes[idx].in_dvaddr = (uintptr_t)hdr;
@@ -868,6 +904,9 @@ skip_header_and_data:
     st->links     = links;
     st->dirs      = dirs;
     st->ram       = overhead;
+#if CONFIG_TARFS_INTEGRITY
+    st->badcrc = total_badcrc;
+#endif
 
   return total_data_size;
 }
@@ -956,7 +995,7 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
         /* Check if root node is '/' by checking its hash */
         if (root->in_hash != HASH32_SLASH) {
         /* inode_dumppath_sorted(root); */
-          logerr("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
+          log("WARN: root directory hash differs from expected %08x != 0x2a0c975e\r\n", (unsigned int )root->in_hash);
         }
         /* Read root's directory mtime from the tar header
          * in_vaddr can not be NULL
@@ -969,16 +1008,14 @@ int inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, cons
             log("mtime is taken from the root entry\r\n");
           }
         } else {
-          logerr("CRITICAL: root->in_vaddr is NULL, this must not happen!\r\n");
+          log("CRITICAL: root->in_vaddr is NULL, this must not happen!\r\n");
         }
 
         /* Success! */
-        //inode_dumppath_sorted(root);
         return 0;
       }
 
-      logerr("WARN: no root inode after alphasort, opendir() is disabled\r\n");
-      /* inode_dumphash_sorted((struct tarfs_inode const * const * )index, nino); */
+      log("WARN: no root inode after alphasort, opendir() is disabled\r\n");
     }      
     /* Return "we have some problems" */
     return -1;
