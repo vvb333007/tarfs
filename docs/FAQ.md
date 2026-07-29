@@ -58,8 +58,8 @@ analyze and allowing file headers to be located by scanning the image for valid 
 
 * **Hardware:** ESP32-S3
 * **CPU:** 240 MHz
-* **Flash:** 32 MiB, Quad SPI
-* **PSRAM:** 16 MiB OPI
+* **Flash:** 16 MiB, Quad SPI
+* **PSRAM:** 8 MiB OPI
 * **Filesystem:** 12 MiB TAR archive
 * **Entries:** 640 total
 
