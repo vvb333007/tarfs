@@ -36,7 +36,7 @@ TYPEDEF_HIDES_STRUCT   = YES
 #-------------------------------------------------
 
 GENERATE_HTML          = YES
-HTML_OUTPUT            = html
+HTML_OUTPUT            = html_ru
 HTML_COLORSTYLE_HUE    = 210
 HTML_DYNAMIC_SECTIONS  = NO
 
