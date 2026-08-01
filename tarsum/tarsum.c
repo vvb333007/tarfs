@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
     int processed = 0;
 
     if (argc < 2) {
+
       puts("Usage: tarsum INPUT.TAR [OUTPUT.TAR]");
       puts("\r\nEmbed CRC64 integrity values into a TAR file");
       return 0;
