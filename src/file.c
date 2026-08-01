@@ -187,6 +187,7 @@ static bool is_sanefd(struct tarfs_fs *fs, int fd) {
 }
 
 
+
 /*
  * File operation handlers.
  *
@@ -199,6 +200,30 @@ static bool is_sanefd(struct tarfs_fs *fs, int fd) {
  * the range [0..TARFS_MAX_FS). This index is returned by tarfs_mount().
  */
 
+
+/**
+ * Check the accessibility of a file or directory in the TarFS filesystem.
+ *
+ * This function checks whether the specified path exists in the mounted TarFS
+ * filesystem and whether the requested access mode is permitted.
+ */
+int tarf_access(void* ctx, const char *path, int amode) {
+
+  if (amode & X_OK)
+    errno = EPERM;
+  else if (amode & W_OK)
+    errno = EROFS;
+  else {
+    /* F_OK and R_OK are the same on TARFS: if entry can 
+     * be stat'ed then it can be read and it is defenitely exists. 
+     * `errno` is set by tarf_stat() if needed
+     */
+    struct stat st;
+    return tarf_stat(ctx, path, &st);
+  }
+
+  return -1;
+}
 
 /**
  * Open a TARFS file or directory.

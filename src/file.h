@@ -93,6 +93,22 @@ struct tarfs_fp {
 
 
 
+/**
+ * @brief Check the accessibility of a file or directory in the TarFS filesystem.
+ *
+ * This function checks whether the specified path exists in the mounted TarFS
+ * filesystem and whether the requested access mode is permitted.
+ *
+ * @param[in] ctx   TarFS filesystem context.
+ * @param[in] path  Path to the file or directory to check.
+ * @param[in] amode Access mode to check. May be F_OK to check for existence,
+ *                  or a combination of R_OK, W_OK, and X_OK.
+ *
+ * @return 0 on success, if the requested access is permitted.
+ * @return -1 on failure, with errno set to indicate the error.
+ */
+int tarf_access(void* ctx, const char *path, int amode);
+
 
 /* close()
  * FS has at least 1 extra ref, because of open()
