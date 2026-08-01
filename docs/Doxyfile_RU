@@ -3,7 +3,7 @@
 #-------------------------------------------------
 
 PROJECT_NAME           = "TARFS"
-PROJECT_NUMBER         = "0.1.2"
+PROJECT_NUMBER         = "0.1.5"
 PROJECT_BRIEF          = "Read-only TAR filesystem for ESP32"
 
 OUTPUT_DIRECTORY       = .
@@ -44,7 +44,7 @@ HTML_DYNAMIC_SECTIONS  = NO
 # Other formats
 #-------------------------------------------------
 
-GENERATE_LATEX         = YES
+GENERATE_LATEX         = NO
 GENERATE_XML           = NO
 GENERATE_MAN           = NO
 GENERATE_RTF           = NO
