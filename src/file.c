@@ -233,7 +233,7 @@ int tarf_access(void* ctx, const char *path, int amode) {
           return -1;
         }
         /* Yes, directory do exist */
-        if (amode & F_OK)
+        if ((amode & F_OK) || (amode == F_OK))
           return 0;
       }
       errno = ENOSYS;
