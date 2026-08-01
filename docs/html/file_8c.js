@@ -5,6 +5,7 @@ var file_8c =
     [ "allocfd", "file_8c.html#afb10953803b401a3714635ca70e1dc0f", null ],
     [ "freefd", "file_8c.html#aa7e756ab0dd6e741a7f5a0facc115c8c", null ],
     [ "is_sanefd", "file_8c.html#a0ca3cd02c96e336b478ebb34e3354f80", null ],
+    [ "tarf_access", "file_8c.html#a2619ddf9a530d144f0fe76b1c459bc72", null ],
     [ "tarf_close", "file_8c.html#a2530605d098be8046424eb5d1322ac76", null ],
     [ "tarf_dupfd", "file_8c.html#a5a033b4b3da3a8d2910e8c2dc1e59caa", null ],
     [ "tarf_fcntl", "file_8c.html#a93253a88c1c98519a518289d1f7b6b18", null ],

@@ -2,6 +2,7 @@ var file_8c =
 [
     [ "ADD_STATS", "file_8c.html#af648c0cae6b6e101fb34e8f5e8348117", null ],
     [ "PROLOGUE", "file_8c.html#a728c5ac3a2cefd7c91d12fa1975bd58c", null ],
+    [ "tarf_access", "file_8c.html#a2619ddf9a530d144f0fe76b1c459bc72", null ],
     [ "tarf_close", "file_8c.html#a2530605d098be8046424eb5d1322ac76", null ],
     [ "tarf_dupfd", "file_8c.html#a5a033b4b3da3a8d2910e8c2dc1e59caa", null ],
     [ "tarf_fcntl", "file_8c.html#a93253a88c1c98519a518289d1f7b6b18", null ],

@@ -1,6 +1,7 @@
 var file_8h =
 [
     [ "tarfs_fp", "structtarfs__fp.html", "structtarfs__fp" ],
+    [ "tarf_access", "file_8h.html#a2619ddf9a530d144f0fe76b1c459bc72", null ],
     [ "tarf_close", "file_8h.html#a2530605d098be8046424eb5d1322ac76", null ],
     [ "tarf_dupfd", "file_8h.html#a5a033b4b3da3a8d2910e8c2dc1e59caa", null ],
     [ "tarf_fcntl", "file_8h.html#a93253a88c1c98519a518289d1f7b6b18", null ],

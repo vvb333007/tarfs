@@ -136,6 +136,8 @@ Data Structures</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:a2619ddf9a530d144f0fe76b1c459bc72" id="r_a2619ddf9a530d144f0fe76b1c459bc72"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#a2619ddf9a530d144f0fe76b1c459bc72">tarf_access</a> (void *ctx, const char *path, int amode)</td></tr>
+<tr class="memdesc:a2619ddf9a530d144f0fe76b1c459bc72"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check the accessibility of a file or directory in the TarFS filesystem.  <br /></td></tr>
 <tr class="memitem:a2530605d098be8046424eb5d1322ac76" id="r_a2530605d098be8046424eb5d1322ac76"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#a2530605d098be8046424eb5d1322ac76">tarf_close</a> (void *ctx, int fd)</td></tr>
 <tr class="memitem:a1a4de27c6e6088e7b7f1e26d26e46062" id="r_a1a4de27c6e6088e7b7f1e26d26e46062"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#a1a4de27c6e6088e7b7f1e26d26e46062">tarf_open</a> (void *ctx, const char *path, int flags, int mode)</td></tr>
 <tr class="memdesc:a1a4de27c6e6088e7b7f1e26d26e46062"><td class="mdescLeft">&#160;</td><td class="mdescRight">Open a TARFS file or directory.  <br /></td></tr>
@@ -165,6 +167,53 @@ Functions</h2></td></tr>
 <tr class="memdesc:a12392ab63dc79a5c84d41cdb55a20307"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send TARFS file to a socket.  <br /></td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
+<a id="a2619ddf9a530d144f0fe76b1c459bc72" name="a2619ddf9a530d144f0fe76b1c459bc72"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2619ddf9a530d144f0fe76b1c459bc72">&#9670;&#160;</a></span>tarf_access()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int tarf_access </td>
+          <td>(</td>
+          <td class="paramtype">void *</td>          <td class="paramname"><span class="paramname"><em>ctx</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *</td>          <td class="paramname"><span class="paramname"><em>path</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>amode</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Check the accessibility of a file or directory in the TarFS filesystem. </p>
+<p>This function checks whether the specified path exists in the mounted TarFS filesystem and whether the requested access mode is supported.</p>
+<p>TarFS is a read-only filesystem and does not support file execution. Therefore, requests containing X_OK always fail with EPERM, while requests containing W_OK always fail with EROFS.</p>
+<dl class="section note"><dt>Note</dt><dd>For regular files, F_OK and R_OK are supported. For directories, only F_OK is supported, as directories cannot be read using the regular read() interface.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>TarFS filesystem context. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">path</td><td>Path to the file or directory to check. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">amode</td><td>Access mode to check. May be F_OK, R_OK, W_OK, X_OK, or a combination of these flags.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>0 if the requested access is permitted. </dd>
+<dd>
+-1 if the requested access is not permitted or the path does not exist. In case of failure, errno is set accordingly.</dd></dl>
+<p>This function checks whether the specified path exists in the mounted TarFS filesystem and whether the requested access mode is permitted. </p>
+
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00210">210</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+
+<p class="reference">References <a class="el" href="file_8c_source.html#l00790">tarf_stat()</a>.</p>
+
+</div>
+</div>
 <a id="a2530605d098be8046424eb5d1322ac76" name="a2530605d098be8046424eb5d1322ac76"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2530605d098be8046424eb5d1322ac76">&#9670;&#160;</a></span>tarf_close()</h2>
 
@@ -185,11 +234,11 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00402">402</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00445">445</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00158">freefd()</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, and <a class="el" href="fs_8c_source.html#l00260">tarfs_unref()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="dir_8c_source.html#l00260">tard_closedir()</a>, <a class="el" href="dir_8c_source.html#l00233">tard_opendir()</a>, and <a class="el" href="file_8c_source.html#l00747">tarf_stat()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="dir_8c_source.html#l00260">tard_closedir()</a>, <a class="el" href="dir_8c_source.html#l00233">tard_opendir()</a>, and <a class="el" href="file_8c_source.html#l00790">tarf_stat()</a>.</p>
 
 </div>
 </div>
@@ -227,7 +276,7 @@ Functions</h2></td></tr>
 <p>This function is similar to POSIX dup(), but the file position is not shared. The new descriptor has its own independent file offset, initialized to the current position of the original descriptor. </p>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00774">774</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00817">817</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00129">allocfd()</a>, <a class="el" href="fs_8h_source.html#l00061">ioctl_req::fd</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, and <a class="el" href="fs_8c_source.html#l00253">tarfs_addref()</a>.</p>
 
@@ -284,7 +333,7 @@ Functions</h2></td></tr>
 </dl>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00673">673</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00716">716</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>.</p>
 
@@ -333,11 +382,11 @@ Functions</h2></td></tr>
 </dl>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00546">546</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00589">589</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8h_source.html#l00068">tarfs_fp::fp_idx</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="inode_8c_source.html#l00466">inode_getinfo()</a>, <a class="el" href="tar_8h_source.html#l00006">mtime</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, <a class="el" href="tar_8h_source.html#l00046">tart_t</a>, and <a class="el" href="tar_8h_source.html#l00008">type</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="file_8c_source.html#l00747">tarf_stat()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="file_8c_source.html#l00790">tarf_stat()</a>.</p>
 
 </div>
 </div>
@@ -379,7 +428,7 @@ Functions</h2></td></tr>
 <p>TODO: reuse this syscall for something useful </p>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00659">659</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00702">702</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>.</p>
 
@@ -448,7 +497,7 @@ Functions</h2></td></tr>
 <p>&lt; Support FIONBIO (compatibility layer)</p>
 <p>&lt; Convert global fd number to local fd number. arg=&amp;int</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00697">697</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00740">740</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="fs_8h_source.html#l00061">ioctl_req::fd</a>, <a class="el" href="fs_8h_source.html#l00047">FIOGETFD</a>, <a class="el" href="fs_8h_source.html#l00053">FIONBIO</a>, <a class="el" href="fs_8h_source.html#l00050">FIONREAD</a>, <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00060">ioctl_req::fs_idx</a>, and <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>.</p>
 
@@ -495,7 +544,7 @@ Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>Number of bytes read, or -1 on error. </dd></dl>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00490">490</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00533">533</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, and <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>.</p>
 
@@ -579,7 +628,7 @@ Functions</h2></td></tr>
 <p>&lt; Ignored, if used together with PROT_READ. Alone causes <a class="el" href="posix_8c.html#a3fa07c484f2e670904fa92c94e4225da" title="Subset of POSIX functions.">mmap()</a> error (RO filesystem!)</p>
 <p>&lt; Ignored</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00803">803</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00846">846</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00104">ADD_STATS</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="file_8h_source.html#l00065">tarfs_fp::fp_vaddr</a>, <a class="el" href="fs_8h_source.html#l00112">tarfs_fs::fs_bmmap</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="posix_8h_source.html#l00037">MAP_ANONYMOUS</a>, <a class="el" href="posix_8h_source.html#l00041">MAP_FAILED</a>, <a class="el" href="posix_8h_source.html#l00036">MAP_FIXED</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, <a class="el" href="posix_8h_source.html#l00030">PROT_EXEC</a>, <a class="el" href="posix_8h_source.html#l00029">PROT_WRITE</a>, and <a class="el" href="fs_8c_source.html#l00253">tarfs_addref()</a>.</p>
 
@@ -627,7 +676,7 @@ Functions</h2></td></tr>
 <p>The address and length arguments are ignored and are not validated. Unmapping only affects the filesystem reference count, so the same filesystem context used with <a class="el" href="#a54e8a11f2a8e94fd9019b17c3c6a742a" title="Map a file into the process address space.">tarf_mmap()</a> must also be used with <a class="el" href="#a94772752415dd7fe4a1647d18b7fd53c" title="Remove a previously created memory mapping.">tarf_munmap()</a>. </p>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00855">855</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00898">898</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="fs_8c_source.html#l00054">tarfs_getfs()</a>, <a class="el" href="fs_8h_source.html#l00029">TARFS_MAX_FS</a>, and <a class="el" href="fs_8c_source.html#l00260">tarfs_unref()</a>.</p>
 
@@ -693,11 +742,11 @@ Functions</h2></td></tr>
 </dl>
 <p>Opens an existing TAR archive entry and returns a TARFS file descriptor. Both regular files and directories may be opened. </p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00209">209</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00252">252</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
-<p class="reference">References <a class="el" href="file_8c_source.html#l00104">ADD_STATS</a>, <a class="el" href="file_8c_source.html#l00129">allocfd()</a>, <a class="el" href="file_8h_source.html#l00068">tarfs_fp::fp_idx</a>, <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="file_8h_source.html#l00065">tarfs_fp::fp_vaddr</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00102">tarfs_fs::fs_ino</a>, <a class="el" href="fs_8h_source.html#l00114">tarfs_fs::fs_nfail</a>, <a class="el" href="fs_8h_source.html#l00101">tarfs_fs::fs_nino</a>, <a class="el" href="fs_8h_source.html#l00108">tarfs_fs::fs_opencrc</a>, <a class="el" href="inode_8c_source.html#l00466">inode_getinfo()</a>, <a class="el" href="inode_8c_source.html#l00399">inode_lookup()</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="tar_8h_source.html#l00002">mode</a>, <a class="el" href="tar_8h_source.html#l00006">mtime</a>, <a class="el" href="tar_8h_source.html#l00005">size</a>, <a class="el" href="tar_8c_source.html#l00529">tar_baddata()</a>, <a class="el" href="tar_8c_source.html#l00171">tar_strdup1()</a>, <a class="el" href="fs_8c_source.html#l00070">tarfs_getfs_addref()</a>, <a class="el" href="os__esp32_8c_source.html#l00206">tarfs_os_free()</a>, <a class="el" href="fs_8c_source.html#l00260">tarfs_unref()</a>, <a class="el" href="tar_8h_source.html#l00046">tart_t</a>, and <a class="el" href="tar_8h_source.html#l00008">type</a>.</p>
+<p class="reference">References <a class="el" href="file_8c_source.html#l00104">ADD_STATS</a>, <a class="el" href="file_8c_source.html#l00129">allocfd()</a>, <a class="el" href="file_8h_source.html#l00068">tarfs_fp::fp_idx</a>, <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="file_8h_source.html#l00065">tarfs_fp::fp_vaddr</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00102">tarfs_fs::fs_ino</a>, <a class="el" href="fs_8h_source.html#l00114">tarfs_fs::fs_nfail</a>, <a class="el" href="fs_8h_source.html#l00101">tarfs_fs::fs_nino</a>, <a class="el" href="fs_8h_source.html#l00108">tarfs_fs::fs_opencrc</a>, <a class="el" href="inode_8c_source.html#l00466">inode_getinfo()</a>, <a class="el" href="inode_8c_source.html#l00399">inode_lookup()</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="tar_8h_source.html#l00002">mode</a>, <a class="el" href="tar_8h_source.html#l00006">mtime</a>, <a class="el" href="tar_8h_source.html#l00005">size</a>, <a class="el" href="tar_8c_source.html#l00529">tar_baddata()</a>, <a class="el" href="tar_8c_source.html#l00171">tar_strdup1()</a>, <a class="el" href="fs_8c_source.html#l00070">tarfs_getfs_addref()</a>, <a class="el" href="os__esp32_8c_source.html#l00207">tarfs_os_free()</a>, <a class="el" href="fs_8c_source.html#l00260">tarfs_unref()</a>, <a class="el" href="tar_8h_source.html#l00046">tart_t</a>, and <a class="el" href="tar_8h_source.html#l00008">type</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="dir_8c_source.html#l00233">tard_opendir()</a>, and <a class="el" href="file_8c_source.html#l00747">tarf_stat()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="dir_8c_source.html#l00233">tard_opendir()</a>, and <a class="el" href="file_8c_source.html#l00790">tarf_stat()</a>.</p>
 
 </div>
 </div>
@@ -741,11 +790,11 @@ Functions</h2></td></tr>
 <p>Copies up to <code class="param">size</code> bytes starting at <code class="param">offset</code> into <code class="param">dst</code>. Unlike read(), this function does not modify the current file position. </p>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00421">421</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00464">464</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8c_source.html#l00104">ADD_STATS</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="file_8h_source.html#l00065">tarfs_fp::fp_vaddr</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, <a class="el" href="tar_8h_source.html#l00005">size</a>, and <a class="el" href="os_8h_source.html#l00133">tarfs_os_memcpy()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="file_8c_source.html#l00469">tarf_read()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="file_8c_source.html#l00512">tarf_read()</a>.</p>
 
 </div>
 </div>
@@ -783,9 +832,9 @@ Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>Number of bytes read, or -1 on error. </dd></dl>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00469">469</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00512">512</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
-<p class="reference">References <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, <a class="el" href="tar_8h_source.html#l00005">size</a>, and <a class="el" href="file_8c_source.html#l00421">tarf_pread()</a>.</p>
+<p class="reference">References <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>, <a class="el" href="tar_8h_source.html#l00005">size</a>, and <a class="el" href="file_8c_source.html#l00464">tarf_pread()</a>.</p>
 
 </div>
 </div>
@@ -841,7 +890,7 @@ Functions</h2></td></tr>
 <p>This function transfers data directly from <code class="param">in_fd</code> to <code class="param">sock</code> without requiring an intermediate user buffer; </p>
 <p>&lt; Max number of mounted TARFS filesystems</p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00883">883</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00926">926</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
 <p class="reference">References <a class="el" href="file_8h_source.html#l00066">tarfs_fp::fp_pos</a>, <a class="el" href="file_8h_source.html#l00067">tarfs_fp::fp_size</a>, <a class="el" href="file_8h_source.html#l00065">tarfs_fp::fp_vaddr</a>, <a class="el" href="fs_8h_source.html#l00106">tarfs_fs::fs_fd</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, and <a class="el" href="file_8c_source.html#l00082">PROLOGUE</a>.</p>
 
@@ -889,9 +938,11 @@ Functions</h2></td></tr>
 <dl class="section see"><dt>See also</dt><dd>stat()</dd></dl>
 <p>Retrieve file status information. </p>
 
-<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00747">747</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="file_8c_source.html#l00790">790</a> of file <a class="el" href="file_8c_source.html">file.c</a>.</p>
 
-<p class="reference">References <a class="el" href="fs_8h_source.html#l00061">ioctl_req::fd</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="file_8c_source.html#l00402">tarf_close()</a>, <a class="el" href="file_8c_source.html#l00546">tarf_fstat()</a>, and <a class="el" href="file_8c_source.html#l00209">tarf_open()</a>.</p>
+<p class="reference">References <a class="el" href="fs_8h_source.html#l00061">ioctl_req::fd</a>, <a class="el" href="fs_8h_source.html#l00445">log</a>, <a class="el" href="file_8c_source.html#l00445">tarf_close()</a>, <a class="el" href="file_8c_source.html#l00589">tarf_fstat()</a>, and <a class="el" href="file_8c_source.html#l00252">tarf_open()</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="file_8c_source.html#l00210">tarf_access()</a>.</p>
 
 </div>
 </div>

@@ -167,7 +167,7 @@ Functions</h2></td></tr>
 
 <p>Lock access to s_tarfs[] table and to the s_numfs counter only. </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00155">155</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00156">156</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 </div>
 </div>
@@ -186,9 +186,9 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00206">206</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00207">207</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="inode_8c_source.html#l00342">inode_free()</a>, <a class="el" href="inode_8c_source.html#l00561">inode_resolve()</a>, <a class="el" href="dir_8c_source.html#l00260">tard_closedir()</a>, <a class="el" href="dir_8c_source.html#l00166">tard_fdopendir()</a>, <a class="el" href="file_8c_source.html#l00209">tarf_open()</a>, and <a class="el" href="fs_8c_source.html#l00310">tarfs_mount_memory()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="inode_8c_source.html#l00342">inode_free()</a>, <a class="el" href="inode_8c_source.html#l00561">inode_resolve()</a>, <a class="el" href="dir_8c_source.html#l00260">tard_closedir()</a>, <a class="el" href="dir_8c_source.html#l00166">tard_fdopendir()</a>, <a class="el" href="file_8c_source.html#l00252">tarf_open()</a>, and <a class="el" href="fs_8c_source.html#l00310">tarfs_mount_memory()</a>.</p>
 
 </div>
 </div>
@@ -209,7 +209,7 @@ Functions</h2></td></tr>
 
 <p>Create a recursive sync object. </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00146">146</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00147">147</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 </div>
 </div>
@@ -232,7 +232,7 @@ Functions</h2></td></tr>
 <p>By default, these functions map directly to malloc() and free(). Platform-specific implementations may override them to use a custom allocator.</p>
 <p>Note that default implementation sets <span class="tt">errno</span> to ENOMEM if allocation fails The same behavior is expected for a custom allocator </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00186">186</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00187">187</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">References <a class="el" href="tar_8h_source.html#l00005">size</a>.</p>
 
@@ -275,7 +275,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>an address where resource named "label" is accessible </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00221">221</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00222">222</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">References <a class="el" href="fs_8h_source.html#l00445">log</a>.</p>
 
@@ -305,7 +305,7 @@ Functions</h2></td></tr>
 <li>ESP-IDF returns 16. </li>
 </ul>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00174">174</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00175">175</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">Referenced by <a class="el" href="tar_8c_source.html#l00372">tar_rootdir()</a>.</p>
 
@@ -333,7 +333,7 @@ Functions</h2></td></tr>
 <p>Tell the VFS that TARFS is now handle all the paths starting from 'prefix'. </p>
 <p>VFS in turn promises that it will pass the 'context' in every handler function later (e.g. tarf_open(context,) etc) </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00318">318</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00319">319</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">References <a class="el" href="tar_8h_source.html#l00016">prefix</a>.</p>
 
@@ -358,7 +358,7 @@ Functions</h2></td></tr>
 
 <p>Unlock access to s_tarfs[] table and to the s_numfs counter only. </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00165">165</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00166">166</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 </div>
 </div>
@@ -396,7 +396,7 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00278">278</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00279">279</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">References <a class="el" href="tar_8h_source.html#l00005">size</a>.</p>
 
@@ -422,7 +422,7 @@ Functions</h2></td></tr>
 <p>Tell the VFS that path 'prefix' is not handled by tarfs anymore. </p>
 <p>Called by commit_unmoount() </p>
 
-<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00305">305</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="os__esp32_8c_source.html#l00306">306</a> of file <a class="el" href="os__esp32_8c_source.html">os_esp32.c</a>.</p>
 
 <p class="reference">References <a class="el" href="tar_8h_source.html#l00016">prefix</a>.</p>
 

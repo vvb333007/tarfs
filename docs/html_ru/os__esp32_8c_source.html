@@ -183,221 +183,222 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('os__esp32_8c_s
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    .readdir_p   = &amp;<a class="code hl_function" href="dir_8c.html#a7499341f8c0eeeddffa6853e0d2b569d">tard_readdir</a>,</div>
 <div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>    .seekdir_p   = &amp;<a class="code hl_function" href="dir_8c.html#ac8cd71a57dc624ccc95297eb8eadd743">tard_seekdir</a>,</div>
 <div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>    .telldir_p   = &amp;<a class="code hl_function" href="dir_8c.html#a06ec07540eccaddb0d999b05f6b8ec9a">tard_telldir</a>,</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>};</div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#  warning &quot;Dir support is disabled in VFS&quot;</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span> </div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    .access_p    = &amp;<a class="code hl_function" href="file_8c.html#a2619ddf9a530d144f0fe76b1c459bc72">tarf_access</a>,</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>};</div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#  warning &quot;Dir support is disabled in VFS&quot;</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span> </div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="comment">/* VFS file operations</span></div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="comment"> */</span></div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="keyword">static</span> <span class="keyword">const</span> esp_vfs_fs_ops_t s_tarfs_fs = {</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>    .lseek_p = &amp;<a class="code hl_function" href="file_8c.html#a0e40910d250a8805a4575ba30451d49e">tarf_lseek</a>,</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>    .read_p  = &amp;<a class="code hl_function" href="file_8c.html#a43d50d8bdde2676c91d8cff937584a8a">tarf_read</a>,</div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    .pread_p = &amp;<a class="code hl_function" href="file_8c.html#a3c58296ab4b1da89ae4d9b09d4b20287">tarf_pread</a>,</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>    .open_p  = &amp;<a class="code hl_function" href="file_8c.html#ab42345115fef4cc333a41b9681061476">tarf_open</a>,</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    .close_p = &amp;<a class="code hl_function" href="file_8c.html#a2530605d098be8046424eb5d1322ac76">tarf_close</a>,</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>    .fstat_p = &amp;<a class="code hl_function" href="file_8c.html#a3945d4d0972159cad9c8e778e7577f8c">tarf_fstat</a>,</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>    .fcntl_p = &amp;<a class="code hl_function" href="file_8c.html#a93253a88c1c98519a518289d1f7b6b18">tarf_fcntl</a>,</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    .ioctl_p = &amp;<a class="code hl_function" href="file_8c.html#a3fb580485804a848a7428ad4e0e0b753">tarf_ioctl</a>,</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>    .fsync_p = &amp;<a class="code hl_function" href="file_8c.html#ade3a4e334d4c5a3bdcc7fa30235edfc1">tarf_fsync</a>,</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="preprocessor">#if CONFIG_VFS_SUPPORT_DIR</span></div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>    .dir     = &amp;s_tarfs_dir,</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>};</div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="comment">/*</span></div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="comment"> * TARFS uses a single recursive mutex, if one is available on the platform.</span></div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span><span class="comment"> * If recursive mutexes are not available, this is not a problem: TARFS can</span></div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span><span class="comment"> * still operate without a mutex, but with some limitations.</span></div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span><span class="comment"> * In particular, mount() and unmount() will no longer be protected by</span></div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span><span class="comment"> * the mutex, and this must be taken into account by the platform</span></div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="comment"> * implementation.</span></div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span> </div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="comment">/* VFS file operations</span></div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="comment"> */</span></div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="keyword">static</span> <span class="keyword">const</span> esp_vfs_fs_ops_t s_tarfs_fs = {</div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span> </div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>    .lseek_p = &amp;<a class="code hl_function" href="file_8c.html#a0e40910d250a8805a4575ba30451d49e">tarf_lseek</a>,</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    .read_p  = &amp;<a class="code hl_function" href="file_8c.html#a43d50d8bdde2676c91d8cff937584a8a">tarf_read</a>,</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>    .pread_p = &amp;<a class="code hl_function" href="file_8c.html#a3c58296ab4b1da89ae4d9b09d4b20287">tarf_pread</a>,</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    .open_p  = &amp;<a class="code hl_function" href="file_8c.html#ab42345115fef4cc333a41b9681061476">tarf_open</a>,</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>    .close_p = &amp;<a class="code hl_function" href="file_8c.html#a2530605d098be8046424eb5d1322ac76">tarf_close</a>,</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>    .fstat_p = &amp;<a class="code hl_function" href="file_8c.html#a3945d4d0972159cad9c8e778e7577f8c">tarf_fstat</a>,</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    .fcntl_p = &amp;<a class="code hl_function" href="file_8c.html#a93253a88c1c98519a518289d1f7b6b18">tarf_fcntl</a>,</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>    .ioctl_p = &amp;<a class="code hl_function" href="file_8c.html#a3fb580485804a848a7428ad4e0e0b753">tarf_ioctl</a>,</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>    .fsync_p = &amp;<a class="code hl_function" href="file_8c.html#ade3a4e334d4c5a3bdcc7fa30235edfc1">tarf_fsync</a>,</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span><span class="preprocessor">#if CONFIG_VFS_SUPPORT_DIR</span></div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>    .dir     = &amp;s_tarfs_dir,</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>};</div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span> </div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="comment">/*</span></div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span><span class="comment"> * TARFS uses a single recursive mutex, if one is available on the platform.</span></div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span><span class="comment"> * If recursive mutexes are not available, this is not a problem: TARFS can</span></div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="comment"> * still operate without a mutex, but with some limitations.</span></div>
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span><span class="comment"> * In particular, mount() and unmount() will no longer be protected by</span></div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="comment"> * the mutex, and this must be taken into account by the platform</span></div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span><span class="comment"> * implementation.</span></div>
 <div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="comment"> * void tarfs_os_init();            --&gt; create a recursive mutex (or no-op)</span></div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="comment"> * void tarfs_os_acquire_mutex();   --&gt; acquire the mutex (or no-op)</span></div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="comment"> * void tarfs_os_release_mutex();   --&gt; release the mutex (or no-op)</span></div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="comment"> * These functions take no arguments and return no values. The mutex itself</span></div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span><span class="comment"> * and its implementation must be completely hidden from the filesystem</span></div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span><span class="comment"> * through this interface.</span></div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="comment"> */</span></div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span><span class="keyword">static</span> SemaphoreHandle_t s_lock = NULL;</div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span> </div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span></div>
-<div class="foldopen" id="foldopen00146" data-start="{" data-end="}">
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno"><a class="line" href="os_8h.html#ab5608af14341e87e00fae2849cf3d56b">  146</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#ab5608af14341e87e00fae2849cf3d56b">tarfs_os_init</a>() {</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span> </div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>  <span class="keywordflow">if</span> (s_lock == NULL)</div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>    s_lock = xSemaphoreCreateRecursiveMutex();</div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>}</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="comment"> * void tarfs_os_init();            --&gt; create a recursive mutex (or no-op)</span></div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="comment"> * void tarfs_os_acquire_mutex();   --&gt; acquire the mutex (or no-op)</span></div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="comment"> * void tarfs_os_release_mutex();   --&gt; release the mutex (or no-op)</span></div>
+<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span><span class="comment"> * These functions take no arguments and return no values. The mutex itself</span></div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span><span class="comment"> * and its implementation must be completely hidden from the filesystem</span></div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="comment"> * through this interface.</span></div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span><span class="comment"> */</span></div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span><span class="keyword">static</span> SemaphoreHandle_t s_lock = NULL;</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span> </div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span></div>
+<div class="foldopen" id="foldopen00147" data-start="{" data-end="}">
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno"><a class="line" href="os_8h.html#ab5608af14341e87e00fae2849cf3d56b">  147</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#ab5608af14341e87e00fae2849cf3d56b">tarfs_os_init</a>() {</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span> </div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>  <span class="keywordflow">if</span> (s_lock == NULL)</div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>    s_lock = xSemaphoreCreateRecursiveMutex();</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>}</div>
 </div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span></div>
-<div class="foldopen" id="foldopen00155" data-start="{" data-end="}">
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno"><a class="line" href="os_8h.html#abe795da684ff176c5dbaada9ea6041cd">  155</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#abe795da684ff176c5dbaada9ea6041cd">tarfs_os_acquire_mutex</a>() {</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span> </div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>  <span class="keywordflow">if</span> (s_lock != NULL) <span class="keywordflow">do</span> { </div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>      <span class="comment">/* absolutely nothing */</span></div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  } <span class="keywordflow">while</span> (pdFALSE == xSemaphoreTake(s_lock, portMAX_DELAY));</div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>}</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span></div>
+<div class="foldopen" id="foldopen00156" data-start="{" data-end="}">
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno"><a class="line" href="os_8h.html#abe795da684ff176c5dbaada9ea6041cd">  156</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#abe795da684ff176c5dbaada9ea6041cd">tarfs_os_acquire_mutex</a>() {</div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span> </div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>  <span class="keywordflow">if</span> (s_lock != NULL) <span class="keywordflow">do</span> { </div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>      <span class="comment">/* absolutely nothing */</span></div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  } <span class="keywordflow">while</span> (pdFALSE == xSemaphoreTake(s_lock, portMAX_DELAY));</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>}</div>
 </div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span></div>
-<div class="foldopen" id="foldopen00165" data-start="{" data-end="}">
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno"><a class="line" href="os_8h.html#aa16f178e3d905a77011546b70115faf2">  165</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#aa16f178e3d905a77011546b70115faf2">tarfs_os_release_mutex</a>() {</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span> </div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>  <span class="keywordflow">if</span> (s_lock != NULL)</div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>    xSemaphoreGive(s_lock);</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>}</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span></div>
+<div class="foldopen" id="foldopen00166" data-start="{" data-end="}">
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno"><a class="line" href="os_8h.html#aa16f178e3d905a77011546b70115faf2">  166</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#aa16f178e3d905a77011546b70115faf2">tarfs_os_release_mutex</a>() {</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span> </div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>  <span class="keywordflow">if</span> (s_lock != NULL)</div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>    xSemaphoreGive(s_lock);</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>}</div>
 </div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span> </div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="comment">/* Maximum mountpoint length (not counting \0 )</span></div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span><span class="comment"> */</span></div>
-<div class="foldopen" id="foldopen00174" data-start="{" data-end="}">
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno"><a class="line" href="os_8h.html#a1ecc10669e5a825b0b7b388883e3e1f7">  174</a></span><span class="keywordtype">size_t</span> <a class="code hl_function" href="os__esp32_8c.html#a1ecc10669e5a825b0b7b388883e3e1f7">tarfs_os_mp_maxlen</a>() {</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span> </div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>  <span class="keywordflow">return</span> <span class="keyword">sizeof</span>(((esp_partition_t *)0)-&gt;label) - 1;</div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>}</div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span> </div>
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="comment">/* Maximum mountpoint length (not counting \0 )</span></div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span><span class="comment"> */</span></div>
+<div class="foldopen" id="foldopen00175" data-start="{" data-end="}">
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno"><a class="line" href="os_8h.html#a1ecc10669e5a825b0b7b388883e3e1f7">  175</a></span><span class="keywordtype">size_t</span> <a class="code hl_function" href="os__esp32_8c.html#a1ecc10669e5a825b0b7b388883e3e1f7">tarfs_os_mp_maxlen</a>() {</div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span> </div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>  <span class="keywordflow">return</span> <span class="keyword">sizeof</span>(((esp_partition_t *)0)-&gt;label) - 1;</div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>}</div>
 </div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span> </div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span><span class="comment">/*</span></div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span><span class="comment"> * Default allocator.</span></div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="comment"> * Allocations of 1 KiB or larger are attempted from SPIRAM first</span></div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="comment"> * when external memory support is enabled. If SPIRAM is unavailable</span></div>
-<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span><span class="comment"> * or the allocation fails, the default heap is used as a fallback.</span></div>
-<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span><span class="comment"> */</span></div>
-<div class="foldopen" id="foldopen00186" data-start="{" data-end="}">
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno"><a class="line" href="os_8h.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">  186</a></span><span class="keywordtype">void</span> *<a class="code hl_function" href="os__esp32_8c.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">tarfs_os_malloc</a>(<span class="keywordtype">size_t</span> <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>) {</div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span> </div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>  <span class="keywordtype">void</span> *ptr = NULL;</div>
-<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span> </div>
-<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span><span class="preprocessor">#if CONFIG_TARFS_EXTMEM</span></div>
-<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span>  <span class="keywordflow">if</span> (<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a> &gt; 1023)  <span class="comment">/* TODO: no magic numbers! */</span></div>
-<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>    ptr = heap_caps_malloc(<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>, MALLOC_CAP_SPIRAM);</div>
-<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span> </div>
-<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>  <span class="keywordflow">if</span> (ptr == NULL)</div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>    <span class="comment">/* fallback to the default allocator */</span></div>
-<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>    ptr = heap_caps_malloc(<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>, MALLOC_CAP_DEFAULT);</div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span> </div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>  <span class="keywordflow">if</span> (ptr == NULL)</div>
-<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>    errno = ENOMEM;</div>
-<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span> </div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>  <span class="keywordflow">return</span> ptr;</div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>}</div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span> </div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span><span class="comment">/*</span></div>
+<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span><span class="comment"> * Default allocator.</span></div>
+<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="comment"> * Allocations of 1 KiB or larger are attempted from SPIRAM first</span></div>
+<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span><span class="comment"> * when external memory support is enabled. If SPIRAM is unavailable</span></div>
+<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span><span class="comment"> * or the allocation fails, the default heap is used as a fallback.</span></div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="comment"> */</span></div>
+<div class="foldopen" id="foldopen00187" data-start="{" data-end="}">
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno"><a class="line" href="os_8h.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">  187</a></span><span class="keywordtype">void</span> *<a class="code hl_function" href="os__esp32_8c.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">tarfs_os_malloc</a>(<span class="keywordtype">size_t</span> <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>) {</div>
+<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span> </div>
+<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span>  <span class="keywordtype">void</span> *ptr = NULL;</div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span> </div>
+<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span><span class="preprocessor">#if CONFIG_TARFS_EXTMEM</span></div>
+<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>  <span class="keywordflow">if</span> (<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a> &gt; 1023)  <span class="comment">/* TODO: no magic numbers! */</span></div>
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>    ptr = heap_caps_malloc(<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>, MALLOC_CAP_SPIRAM);</div>
+<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span> </div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>  <span class="keywordflow">if</span> (ptr == NULL)</div>
+<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>    <span class="comment">/* fallback to the default allocator */</span></div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>    ptr = heap_caps_malloc(<a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>, MALLOC_CAP_DEFAULT);</div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span> </div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>  <span class="keywordflow">if</span> (ptr == NULL)</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>    errno = ENOMEM;</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span> </div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>  <span class="keywordflow">return</span> ptr;</div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>}</div>
 </div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span> </div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span><span class="comment">/* Default free() */</span></div>
-<div class="foldopen" id="foldopen00206" data-start="{" data-end="}">
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno"><a class="line" href="os_8h.html#a70815697a9da0302fe62f32d179940c2">  206</a></span><span class="keywordtype">void</span>  <a class="code hl_function" href="os__esp32_8c.html#a70815697a9da0302fe62f32d179940c2">tarfs_os_free</a>(<span class="keywordtype">void</span> *buffer) {</div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span> </div>
-<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>  <span class="keywordflow">if</span> (buffer != NULL)</div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>    heap_caps_free(buffer);</div>
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span> </div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>}</div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span> </div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span><span class="comment">/* Default free() */</span></div>
+<div class="foldopen" id="foldopen00207" data-start="{" data-end="}">
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno"><a class="line" href="os_8h.html#a70815697a9da0302fe62f32d179940c2">  207</a></span><span class="keywordtype">void</span>  <a class="code hl_function" href="os__esp32_8c.html#a70815697a9da0302fe62f32d179940c2">tarfs_os_free</a>(<span class="keywordtype">void</span> *buffer) {</div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span> </div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>  <span class="keywordflow">if</span> (buffer != NULL)</div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>    heap_caps_free(buffer);</div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span> </div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>}</div>
 </div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span> </div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span></div>
-<div class="foldopen" id="foldopen00221" data-start="{" data-end="}">
-<div class="line"><a id="l00221" name="l00221"></a><span class="lineno"><a class="line" href="os_8h.html#a08913e891c8db4f0d13ca21e2a989e35">  221</a></span><span class="keywordtype">void</span> <span class="keyword">const</span> *<a class="code hl_function" href="os__esp32_8c.html#abe917e899f2dd60dabb723b04bb817b0">tarfs_os_map_tarfile</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *label, <span class="keywordtype">void</span> **os_handle_out, <span class="keywordtype">size_t</span> *size_out) {</div>
-<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span> </div>
-<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>  esp_partition_iterator_t    i;</div>
-<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>  esp_partition_mmap_handle_t handle;</div>
-<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>  <span class="keyword">const</span> esp_partition_t      *part;</div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  </div>
-<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  <span class="keywordtype">void</span> <span class="keyword">const</span> *map;</div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span> </div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  <span class="keywordflow">if</span> (label == NULL || os_handle_out == NULL) {</div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: invalid arguments\r\n&quot;</span>);</div>
-<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>    errno = EFAULT;</div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>    <span class="keywordflow">return</span> NULL;</div>
-<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>  }</div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>  </div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  <span class="comment">/* Fetch pointer to the FLASH partition descriptor by its label */</span></div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  i = esp_partition_find(ESP_PARTITION_TYPE_DATA,</div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>                         ESP_PARTITION_SUBTYPE_ANY,</div>
-<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>                         label);</div>
-<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>  <span class="keywordflow">if</span> (i == NULL) {</div>
-<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: partition not found &#39;%s&#39;\r\n&quot;</span>, label);</div>
-<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>    errno = ENOENT;</div>
-<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span>    <span class="keywordflow">return</span> NULL;</div>
-<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span>  }</div>
-<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span> </div>
-<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span>  part = esp_partition_get(i);</div>
-<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>  esp_partition_iterator_release(i);</div>
-<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span> </div>
-<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>  <span class="comment">/* non-NULL iterator can not yield NULL partition pointer, but just in case */</span></div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>  <span class="keywordflow">if</span> (part == NULL) {</div>
-<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;esp_partition_get() returned NULL, this must not happen!\r\n&quot;</span>);</div>
-<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    errno = EIO;</div>
-<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    <span class="keywordflow">return</span> NULL;</div>
-<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>  }</div>
-<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span> </div>
-<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>  <span class="keywordflow">if</span> (ESP_OK == esp_partition_mmap(part,0,part-&gt;size,ESP_PARTITION_MMAP_DATA,&amp;map,&amp;handle)) {</div>
-<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    *os_handle_out = (<span class="keywordtype">void</span> *)handle;</div>
-<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    <span class="keywordflow">if</span> (size_out)</div>
-<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>      *size_out = part-&gt;size;</div>
-<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span> </div>
-<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: partition &#39;%s&#39; -&gt; vaddr=%p, size=%u\r\n&quot;</span>, label, map, (<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span>)part-&gt;size);</div>
-<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span> </div>
-<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span>    <span class="keywordflow">return</span> map;</div>
-<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>  }</div>
-<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span> </div>
-<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>  <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;esp_partition_mmap() failed\r\n&quot;</span>);</div>
-<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>  errno = ENOMEM;</div>
-<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>  <span class="keywordflow">return</span> NULL;</div>
-<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>}</div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span> </div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span></div>
+<div class="foldopen" id="foldopen00222" data-start="{" data-end="}">
+<div class="line"><a id="l00222" name="l00222"></a><span class="lineno"><a class="line" href="os_8h.html#a08913e891c8db4f0d13ca21e2a989e35">  222</a></span><span class="keywordtype">void</span> <span class="keyword">const</span> *<a class="code hl_function" href="os__esp32_8c.html#abe917e899f2dd60dabb723b04bb817b0">tarfs_os_map_tarfile</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *label, <span class="keywordtype">void</span> **os_handle_out, <span class="keywordtype">size_t</span> *size_out) {</div>
+<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span> </div>
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>  esp_partition_iterator_t    i;</div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>  esp_partition_mmap_handle_t handle;</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  <span class="keyword">const</span> esp_partition_t      *part;</div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  </div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  <span class="keywordtype">void</span> <span class="keyword">const</span> *map;</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span> </div>
+<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>  <span class="keywordflow">if</span> (label == NULL || os_handle_out == NULL) {</div>
+<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: invalid arguments\r\n&quot;</span>);</div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>    errno = EFAULT;</div>
+<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>    <span class="keywordflow">return</span> NULL;</div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>  }</div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  </div>
+<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  <span class="comment">/* Fetch pointer to the FLASH partition descriptor by its label */</span></div>
+<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>  i = esp_partition_find(ESP_PARTITION_TYPE_DATA,</div>
+<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>                         ESP_PARTITION_SUBTYPE_ANY,</div>
+<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>                         label);</div>
+<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>  <span class="keywordflow">if</span> (i == NULL) {</div>
+<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: partition not found &#39;%s&#39;\r\n&quot;</span>, label);</div>
+<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span>    errno = ENOENT;</div>
+<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span>    <span class="keywordflow">return</span> NULL;</div>
+<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span>  }</div>
+<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span> </div>
+<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>  part = esp_partition_get(i);</div>
+<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>  esp_partition_iterator_release(i);</div>
+<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span> </div>
+<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>  <span class="comment">/* non-NULL iterator can not yield NULL partition pointer, but just in case */</span></div>
+<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>  <span class="keywordflow">if</span> (part == NULL) {</div>
+<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;esp_partition_get() returned NULL, this must not happen!\r\n&quot;</span>);</div>
+<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    errno = EIO;</div>
+<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    <span class="keywordflow">return</span> NULL;</div>
+<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>  }</div>
+<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span> </div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>  <span class="keywordflow">if</span> (ESP_OK == esp_partition_mmap(part,0,part-&gt;size,ESP_PARTITION_MMAP_DATA,&amp;map,&amp;handle)) {</div>
+<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    *os_handle_out = (<span class="keywordtype">void</span> *)handle;</div>
+<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>    <span class="keywordflow">if</span> (size_out)</div>
+<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>      *size_out = part-&gt;size;</div>
+<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span> </div>
+<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>    <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;ESP32: partition &#39;%s&#39; -&gt; vaddr=%p, size=%u\r\n&quot;</span>, label, map, (<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span>)part-&gt;size);</div>
+<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span> </div>
+<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    <span class="keywordflow">return</span> map;</div>
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>  }</div>
+<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span> </div>
+<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>  <a class="code hl_define" href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a>(<span class="stringliteral">&quot;esp_partition_mmap() failed\r\n&quot;</span>);</div>
+<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>  errno = ENOMEM;</div>
+<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>  <span class="keywordflow">return</span> NULL;</div>
+<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>}</div>
 </div>
-<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span></div>
-<div class="foldopen" id="foldopen00278" data-start="{" data-end="}">
-<div class="line"><a id="l00278" name="l00278"></a><span class="lineno"><a class="line" href="os_8h.html#a27de2e63148a35324a82b07287e6c98c">  278</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#a39eafc1a0f2add8753288ec0c7e89998">tarfs_os_unmap_tarfile</a>(<span class="keywordtype">void</span> *os_handle, <span class="keyword">const</span> <span class="keywordtype">void</span> *map, <span class="keywordtype">size_t</span> <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>) {</div>
-<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span>  map = map;</div>
-<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>  <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a> = <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>;</div>
-<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>  esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);</div>
-<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>}</div>
+<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span></div>
+<div class="foldopen" id="foldopen00279" data-start="{" data-end="}">
+<div class="line"><a id="l00279" name="l00279"></a><span class="lineno"><a class="line" href="os_8h.html#a27de2e63148a35324a82b07287e6c98c">  279</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="os__esp32_8c.html#a39eafc1a0f2add8753288ec0c7e89998">tarfs_os_unmap_tarfile</a>(<span class="keywordtype">void</span> *os_handle, <span class="keyword">const</span> <span class="keywordtype">void</span> *map, <span class="keywordtype">size_t</span> <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>) {</div>
+<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>  map = map;</div>
+<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>  <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a> = <a class="code hl_variable" href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a>;</div>
+<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>  esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);</div>
+<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>}</div>
 </div>
-<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span> </div>
-<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span><span class="comment">/* If the platform provides a VFS (Virtual File System), two additional</span></div>
-<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span><span class="comment"> * functions should be implemented:</span></div>
-<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span><span class="comment"> * bool tarfs_os_register_fs(const char *prefix, void *context)</span></div>
-<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span><span class="comment"> * bool tarfs_os_unregister_fs(const char *prefix)</span></div>
-<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span><span class="comment"> * TARFS calls tarfs_os_register_fs() when mounting a filesystem.</span></div>
-<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span><span class="comment"> * This function must inform the platform that the path specified by</span></div>
-<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span><span class="comment"> * prefix is now handled by TARFS.</span></div>
-<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span><span class="comment"> * The context argument is an opaque value that the VFS will pass as the</span></div>
-<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span><span class="comment"> * first argument to tarf_open(), tarf_close(), tarf_read(), tarf_write(), etc.</span></div>
-<div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span><span class="comment"> * The implementation must make no assumptions about the type or meaning</span></div>
-<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span><span class="comment"> * of context. It may be a pointer, an integer value, or even NULL.</span></div>
-<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span><span class="comment"> */</span></div>
-<div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span></div>
-<div class="foldopen" id="foldopen00305" data-start="{" data-end="}">
-<div class="line"><a id="l00305" name="l00305"></a><span class="lineno"><a class="line" href="os_8h.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">  305</a></span><span class="keywordtype">bool</span> <a class="code hl_function" href="os__esp32_8c.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">tarfs_os_unregister_fs</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>) {</div>
-<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span> </div>
-<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>  <span class="keywordflow">return</span> ESP_OK == esp_vfs_unregister_fs(<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>);</div>
-<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>}</div>
+<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span> </div>
+<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span><span class="comment">/* If the platform provides a VFS (Virtual File System), two additional</span></div>
+<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span><span class="comment"> * functions should be implemented:</span></div>
+<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span><span class="comment"> * bool tarfs_os_register_fs(const char *prefix, void *context)</span></div>
+<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span><span class="comment"> * bool tarfs_os_unregister_fs(const char *prefix)</span></div>
+<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span><span class="comment"> * TARFS calls tarfs_os_register_fs() when mounting a filesystem.</span></div>
+<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span><span class="comment"> * This function must inform the platform that the path specified by</span></div>
+<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span><span class="comment"> * prefix is now handled by TARFS.</span></div>
+<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span><span class="comment"> * The context argument is an opaque value that the VFS will pass as the</span></div>
+<div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span><span class="comment"> * first argument to tarf_open(), tarf_close(), tarf_read(), tarf_write(), etc.</span></div>
+<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span><span class="comment"> *</span></div>
+<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span><span class="comment"> * The implementation must make no assumptions about the type or meaning</span></div>
+<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span><span class="comment"> * of context. It may be a pointer, an integer value, or even NULL.</span></div>
+<div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span><span class="comment"> */</span></div>
+<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span></div>
+<div class="foldopen" id="foldopen00306" data-start="{" data-end="}">
+<div class="line"><a id="l00306" name="l00306"></a><span class="lineno"><a class="line" href="os_8h.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">  306</a></span><span class="keywordtype">bool</span> <a class="code hl_function" href="os__esp32_8c.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">tarfs_os_unregister_fs</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>) {</div>
+<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span> </div>
+<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>  <span class="keywordflow">return</span> ESP_OK == esp_vfs_unregister_fs(<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>);</div>
+<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>}</div>
 </div>
-<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span> </div>
 <div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span> </div>
-<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span></div>
-<div class="foldopen" id="foldopen00318" data-start="{" data-end="}">
-<div class="line"><a id="l00318" name="l00318"></a><span class="lineno"><a class="line" href="os_8h.html#a33dcfbc4361fea34a05a1ad2e1e8902c">  318</a></span><span class="keywordtype">bool</span> <a class="code hl_function" href="os__esp32_8c.html#a33dcfbc4361fea34a05a1ad2e1e8902c">tarfs_os_register_fs</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>, <span class="keywordtype">void</span> *context) {</div>
-<div class="line"><a id="l00319" name="l00319"></a><span class="lineno">  319</span> </div>
-<div class="line"><a id="l00320" name="l00320"></a><span class="lineno">  320</span>  <span class="keywordflow">return</span> ESP_OK == esp_vfs_register_fs(<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>,</div>
-<div class="line"><a id="l00321" name="l00321"></a><span class="lineno">  321</span>                                      &amp;s_tarfs_fs,</div>
-<div class="line"><a id="l00322" name="l00322"></a><span class="lineno">  322</span>                                       ESP_VFS_FLAG_CONTEXT_PTR |</div>
-<div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span>                                       ESP_VFS_FLAG_STATIC |</div>
-<div class="line"><a id="l00324" name="l00324"></a><span class="lineno">  324</span>                                       ESP_VFS_FLAG_READONLY_FS,</div>
-<div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span>                                       context);</div>
-<div class="line"><a id="l00326" name="l00326"></a><span class="lineno">  326</span>}</div>
+<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span> </div>
+<div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span></div>
+<div class="foldopen" id="foldopen00319" data-start="{" data-end="}">
+<div class="line"><a id="l00319" name="l00319"></a><span class="lineno"><a class="line" href="os_8h.html#a33dcfbc4361fea34a05a1ad2e1e8902c">  319</a></span><span class="keywordtype">bool</span> <a class="code hl_function" href="os__esp32_8c.html#a33dcfbc4361fea34a05a1ad2e1e8902c">tarfs_os_register_fs</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>, <span class="keywordtype">void</span> *context) {</div>
+<div class="line"><a id="l00320" name="l00320"></a><span class="lineno">  320</span> </div>
+<div class="line"><a id="l00321" name="l00321"></a><span class="lineno">  321</span>  <span class="keywordflow">return</span> ESP_OK == esp_vfs_register_fs(<a class="code hl_variable" href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a>,</div>
+<div class="line"><a id="l00322" name="l00322"></a><span class="lineno">  322</span>                                      &amp;s_tarfs_fs,</div>
+<div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span>                                       ESP_VFS_FLAG_CONTEXT_PTR |</div>
+<div class="line"><a id="l00324" name="l00324"></a><span class="lineno">  324</span>                                       ESP_VFS_FLAG_STATIC |</div>
+<div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span>                                       ESP_VFS_FLAG_READONLY_FS,</div>
+<div class="line"><a id="l00326" name="l00326"></a><span class="lineno">  326</span>                                       context);</div>
+<div class="line"><a id="l00327" name="l00327"></a><span class="lineno">  327</span>}</div>
 </div>
 <div class="ttc" id="aconfig_8h_html"><div class="ttname"><a href="config_8h.html">config.h</a></div></div>
 <div class="ttc" id="adir_8c_html_a06ec07540eccaddb0d999b05f6b8ec9a"><div class="ttname"><a href="dir_8c.html#a06ec07540eccaddb0d999b05f6b8ec9a">tard_telldir</a></div><div class="ttdeci">long tard_telldir(void *ctx, DIR *pdir)</div><div class="ttdoc">Return the current directory position.</div><div class="ttdef"><b>Definition</b> <a href="dir_8c_source.html#l00357">dir.c:357</a></div></div>
@@ -406,34 +407,35 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('os__esp32_8c_s
 <div class="ttc" id="adir_8c_html_a8f0216567f14a0b5739ae9e023744959"><div class="ttname"><a href="dir_8c.html#a8f0216567f14a0b5739ae9e023744959">tard_opendir</a></div><div class="ttdeci">DIR * tard_opendir(void *ctx, const char *name)</div><div class="ttdoc">Open a directory for reading.</div><div class="ttdef"><b>Definition</b> <a href="dir_8c_source.html#l00233">dir.c:233</a></div></div>
 <div class="ttc" id="adir_8c_html_ac8cd71a57dc624ccc95297eb8eadd743"><div class="ttname"><a href="dir_8c.html#ac8cd71a57dc624ccc95297eb8eadd743">tard_seekdir</a></div><div class="ttdeci">void tard_seekdir(void *ctx, DIR *pdir, long offset)</div><div class="ttdoc">Reposition a directory stream.</div><div class="ttdef"><b>Definition</b> <a href="dir_8c_source.html#l00371">dir.c:371</a></div></div>
 <div class="ttc" id="adir_8h_html"><div class="ttname"><a href="dir_8h.html">dir.h</a></div></div>
-<div class="ttc" id="afile_8c_html_a089219618f211a38287d5f527fc3df86"><div class="ttname"><a href="file_8c.html#a089219618f211a38287d5f527fc3df86">tarf_stat</a></div><div class="ttdeci">int tarf_stat(void *ctx, const char *path, struct stat *st)</div><div class="ttdoc">stat() system call</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00747">file.c:747</a></div></div>
-<div class="ttc" id="afile_8c_html_a0e40910d250a8805a4575ba30451d49e"><div class="ttname"><a href="file_8c.html#a0e40910d250a8805a4575ba30451d49e">tarf_lseek</a></div><div class="ttdeci">off_t tarf_lseek(void *ctx, int fd, off_t offset, int whence)</div><div class="ttdoc">lseek()</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00490">file.c:490</a></div></div>
-<div class="ttc" id="afile_8c_html_a2530605d098be8046424eb5d1322ac76"><div class="ttname"><a href="file_8c.html#a2530605d098be8046424eb5d1322ac76">tarf_close</a></div><div class="ttdeci">int tarf_close(void *ctx, int fd)</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00402">file.c:402</a></div></div>
-<div class="ttc" id="afile_8c_html_a3945d4d0972159cad9c8e778e7577f8c"><div class="ttname"><a href="file_8c.html#a3945d4d0972159cad9c8e778e7577f8c">tarf_fstat</a></div><div class="ttdeci">int tarf_fstat(void *ctx, int fd, struct stat *st)</div><div class="ttdoc">Get file status information.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00546">file.c:546</a></div></div>
-<div class="ttc" id="afile_8c_html_a3c58296ab4b1da89ae4d9b09d4b20287"><div class="ttname"><a href="file_8c.html#a3c58296ab4b1da89ae4d9b09d4b20287">tarf_pread</a></div><div class="ttdeci">ssize_t tarf_pread(void *ctx, int fd, void *dst, size_t size, off_t offset)</div><div class="ttdoc">Read data from an open TARFS file at a specified offset.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00421">file.c:421</a></div></div>
-<div class="ttc" id="afile_8c_html_a3fb580485804a848a7428ad4e0e0b753"><div class="ttname"><a href="file_8c.html#a3fb580485804a848a7428ad4e0e0b753">tarf_ioctl</a></div><div class="ttdeci">int tarf_ioctl(void *ctx, int fd, int cmd, va_list args)</div><div class="ttdoc">Perform TARFS-specific I/O control operations.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00697">file.c:697</a></div></div>
-<div class="ttc" id="afile_8c_html_a43d50d8bdde2676c91d8cff937584a8a"><div class="ttname"><a href="file_8c.html#a43d50d8bdde2676c91d8cff937584a8a">tarf_read</a></div><div class="ttdeci">ssize_t tarf_read(void *ctx, int fd, void *dst, size_t size)</div><div class="ttdoc">Read data from an open TARFS file.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00469">file.c:469</a></div></div>
-<div class="ttc" id="afile_8c_html_a93253a88c1c98519a518289d1f7b6b18"><div class="ttname"><a href="file_8c.html#a93253a88c1c98519a518289d1f7b6b18">tarf_fcntl</a></div><div class="ttdeci">int tarf_fcntl(void *ctx, int fd, int cmd, int arg)</div><div class="ttdoc">Perform file descriptor control operations.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00673">file.c:673</a></div></div>
-<div class="ttc" id="afile_8c_html_ab42345115fef4cc333a41b9681061476"><div class="ttname"><a href="file_8c.html#ab42345115fef4cc333a41b9681061476">tarf_open</a></div><div class="ttdeci">int tarf_open(void *ctx, const char *path0, int flags, int mode)</div><div class="ttdoc">Open a TARFS file or directory.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00209">file.c:209</a></div></div>
-<div class="ttc" id="afile_8c_html_ade3a4e334d4c5a3bdcc7fa30235edfc1"><div class="ttname"><a href="file_8c.html#ade3a4e334d4c5a3bdcc7fa30235edfc1">tarf_fsync</a></div><div class="ttdeci">int tarf_fsync(void *ctx, int fd)</div><div class="ttdoc">Synchronize file contents.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00659">file.c:659</a></div></div>
+<div class="ttc" id="afile_8c_html_a089219618f211a38287d5f527fc3df86"><div class="ttname"><a href="file_8c.html#a089219618f211a38287d5f527fc3df86">tarf_stat</a></div><div class="ttdeci">int tarf_stat(void *ctx, const char *path, struct stat *st)</div><div class="ttdoc">stat() system call</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00790">file.c:790</a></div></div>
+<div class="ttc" id="afile_8c_html_a0e40910d250a8805a4575ba30451d49e"><div class="ttname"><a href="file_8c.html#a0e40910d250a8805a4575ba30451d49e">tarf_lseek</a></div><div class="ttdeci">off_t tarf_lseek(void *ctx, int fd, off_t offset, int whence)</div><div class="ttdoc">lseek()</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00533">file.c:533</a></div></div>
+<div class="ttc" id="afile_8c_html_a2530605d098be8046424eb5d1322ac76"><div class="ttname"><a href="file_8c.html#a2530605d098be8046424eb5d1322ac76">tarf_close</a></div><div class="ttdeci">int tarf_close(void *ctx, int fd)</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00445">file.c:445</a></div></div>
+<div class="ttc" id="afile_8c_html_a2619ddf9a530d144f0fe76b1c459bc72"><div class="ttname"><a href="file_8c.html#a2619ddf9a530d144f0fe76b1c459bc72">tarf_access</a></div><div class="ttdeci">int tarf_access(void *ctx, const char *path, int amode)</div><div class="ttdoc">Check the accessibility of a file or directory in the TarFS filesystem.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00210">file.c:210</a></div></div>
+<div class="ttc" id="afile_8c_html_a3945d4d0972159cad9c8e778e7577f8c"><div class="ttname"><a href="file_8c.html#a3945d4d0972159cad9c8e778e7577f8c">tarf_fstat</a></div><div class="ttdeci">int tarf_fstat(void *ctx, int fd, struct stat *st)</div><div class="ttdoc">Get file status information.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00589">file.c:589</a></div></div>
+<div class="ttc" id="afile_8c_html_a3c58296ab4b1da89ae4d9b09d4b20287"><div class="ttname"><a href="file_8c.html#a3c58296ab4b1da89ae4d9b09d4b20287">tarf_pread</a></div><div class="ttdeci">ssize_t tarf_pread(void *ctx, int fd, void *dst, size_t size, off_t offset)</div><div class="ttdoc">Read data from an open TARFS file at a specified offset.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00464">file.c:464</a></div></div>
+<div class="ttc" id="afile_8c_html_a3fb580485804a848a7428ad4e0e0b753"><div class="ttname"><a href="file_8c.html#a3fb580485804a848a7428ad4e0e0b753">tarf_ioctl</a></div><div class="ttdeci">int tarf_ioctl(void *ctx, int fd, int cmd, va_list args)</div><div class="ttdoc">Perform TARFS-specific I/O control operations.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00740">file.c:740</a></div></div>
+<div class="ttc" id="afile_8c_html_a43d50d8bdde2676c91d8cff937584a8a"><div class="ttname"><a href="file_8c.html#a43d50d8bdde2676c91d8cff937584a8a">tarf_read</a></div><div class="ttdeci">ssize_t tarf_read(void *ctx, int fd, void *dst, size_t size)</div><div class="ttdoc">Read data from an open TARFS file.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00512">file.c:512</a></div></div>
+<div class="ttc" id="afile_8c_html_a93253a88c1c98519a518289d1f7b6b18"><div class="ttname"><a href="file_8c.html#a93253a88c1c98519a518289d1f7b6b18">tarf_fcntl</a></div><div class="ttdeci">int tarf_fcntl(void *ctx, int fd, int cmd, int arg)</div><div class="ttdoc">Perform file descriptor control operations.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00716">file.c:716</a></div></div>
+<div class="ttc" id="afile_8c_html_ab42345115fef4cc333a41b9681061476"><div class="ttname"><a href="file_8c.html#ab42345115fef4cc333a41b9681061476">tarf_open</a></div><div class="ttdeci">int tarf_open(void *ctx, const char *path0, int flags, int mode)</div><div class="ttdoc">Open a TARFS file or directory.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00252">file.c:252</a></div></div>
+<div class="ttc" id="afile_8c_html_ade3a4e334d4c5a3bdcc7fa30235edfc1"><div class="ttname"><a href="file_8c.html#ade3a4e334d4c5a3bdcc7fa30235edfc1">tarf_fsync</a></div><div class="ttdeci">int tarf_fsync(void *ctx, int fd)</div><div class="ttdoc">Synchronize file contents.</div><div class="ttdef"><b>Definition</b> <a href="file_8c_source.html#l00702">file.c:702</a></div></div>
 <div class="ttc" id="afile_8h_html"><div class="ttname"><a href="file_8h.html">file.h</a></div></div>
 <div class="ttc" id="afs_8h_html"><div class="ttname"><a href="fs_8h.html">fs.h</a></div></div>
 <div class="ttc" id="afs_8h_html_a660988fe0c43b88c562ff0ca5474ca95"><div class="ttname"><a href="fs_8h.html#a660988fe0c43b88c562ff0ca5474ca95">log</a></div><div class="ttdeci">#define log(Format_,...)</div><div class="ttdef"><b>Definition</b> <a href="fs_8h_source.html#l00445">fs.h:445</a></div></div>
 <div class="ttc" id="ainode_8h_html"><div class="ttname"><a href="inode_8h.html">inode.h</a></div></div>
 <div class="ttc" id="aos_8h_html"><div class="ttname"><a href="os_8h.html">os.h</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a1ecc10669e5a825b0b7b388883e3e1f7"><div class="ttname"><a href="os__esp32_8c.html#a1ecc10669e5a825b0b7b388883e3e1f7">tarfs_os_mp_maxlen</a></div><div class="ttdeci">size_t tarfs_os_mp_maxlen()</div><div class="ttdoc">Return the maximum mount point name length supported by the platform.</div><div class="ttdef"><b>Definition</b> <a href="#l00174">os_esp32.c:174</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a33dcfbc4361fea34a05a1ad2e1e8902c"><div class="ttname"><a href="os__esp32_8c.html#a33dcfbc4361fea34a05a1ad2e1e8902c">tarfs_os_register_fs</a></div><div class="ttdeci">bool tarfs_os_register_fs(const char *prefix, void *context)</div><div class="ttdoc">Tell the VFS that TARFS is now handle all the paths starting from &#39;prefix&#39;.</div><div class="ttdef"><b>Definition</b> <a href="#l00318">os_esp32.c:318</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a38fca8f1fb0fd4c8a6cd7eca20375bc8"><div class="ttname"><a href="os__esp32_8c.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">tarfs_os_malloc</a></div><div class="ttdeci">void * tarfs_os_malloc(size_t size)</div><div class="ttdoc">Memory allocation backend.</div><div class="ttdef"><b>Definition</b> <a href="#l00186">os_esp32.c:186</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a39eafc1a0f2add8753288ec0c7e89998"><div class="ttname"><a href="os__esp32_8c.html#a39eafc1a0f2add8753288ec0c7e89998">tarfs_os_unmap_tarfile</a></div><div class="ttdeci">void tarfs_os_unmap_tarfile(void *os_handle, const void *map, size_t size)</div><div class="ttdoc">Opposite of tarfs_os_map_tarfile().</div><div class="ttdef"><b>Definition</b> <a href="#l00278">os_esp32.c:278</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a1ecc10669e5a825b0b7b388883e3e1f7"><div class="ttname"><a href="os__esp32_8c.html#a1ecc10669e5a825b0b7b388883e3e1f7">tarfs_os_mp_maxlen</a></div><div class="ttdeci">size_t tarfs_os_mp_maxlen()</div><div class="ttdoc">Return the maximum mount point name length supported by the platform.</div><div class="ttdef"><b>Definition</b> <a href="#l00175">os_esp32.c:175</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a33dcfbc4361fea34a05a1ad2e1e8902c"><div class="ttname"><a href="os__esp32_8c.html#a33dcfbc4361fea34a05a1ad2e1e8902c">tarfs_os_register_fs</a></div><div class="ttdeci">bool tarfs_os_register_fs(const char *prefix, void *context)</div><div class="ttdoc">Tell the VFS that TARFS is now handle all the paths starting from &#39;prefix&#39;.</div><div class="ttdef"><b>Definition</b> <a href="#l00319">os_esp32.c:319</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a38fca8f1fb0fd4c8a6cd7eca20375bc8"><div class="ttname"><a href="os__esp32_8c.html#a38fca8f1fb0fd4c8a6cd7eca20375bc8">tarfs_os_malloc</a></div><div class="ttdeci">void * tarfs_os_malloc(size_t size)</div><div class="ttdoc">Memory allocation backend.</div><div class="ttdef"><b>Definition</b> <a href="#l00187">os_esp32.c:187</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a39eafc1a0f2add8753288ec0c7e89998"><div class="ttname"><a href="os__esp32_8c.html#a39eafc1a0f2add8753288ec0c7e89998">tarfs_os_unmap_tarfile</a></div><div class="ttdeci">void tarfs_os_unmap_tarfile(void *os_handle, const void *map, size_t size)</div><div class="ttdoc">Opposite of tarfs_os_map_tarfile().</div><div class="ttdef"><b>Definition</b> <a href="#l00279">os_esp32.c:279</a></div></div>
 <div class="ttc" id="aos__esp32_8c_html_a61447eab448ba20cbcf57ed250af45d3a09589901de1005690e0a734c4cb9b956"><div class="ttname"><a href="os__esp32_8c.html#a61447eab448ba20cbcf57ed250af45d3a09589901de1005690e0a734c4cb9b956">ESP_PARTITION_SUBTYPE_DATA_TARFS</a></div><div class="ttdeci">@ ESP_PARTITION_SUBTYPE_DATA_TARFS</div><div class="ttdef"><b>Definition</b> <a href="#l00077">os_esp32.c:77</a></div></div>
 <div class="ttc" id="aos__esp32_8c_html_a61447eab448ba20cbcf57ed250af45d3a686835e0ca5774c68d14ea819c6a009e"><div class="ttname"><a href="os__esp32_8c.html#a61447eab448ba20cbcf57ed250af45d3a686835e0ca5774c68d14ea819c6a009e">ESP_PARTITION_SUBTYPE_DATA_TARFS2</a></div><div class="ttdeci">@ ESP_PARTITION_SUBTYPE_DATA_TARFS2</div><div class="ttdef"><b>Definition</b> <a href="#l00079">os_esp32.c:79</a></div></div>
 <div class="ttc" id="aos__esp32_8c_html_a61447eab448ba20cbcf57ed250af45d3a9ca0247d081af58fb0e1399e9c675d82"><div class="ttname"><a href="os__esp32_8c.html#a61447eab448ba20cbcf57ed250af45d3a9ca0247d081af58fb0e1399e9c675d82">ESP_PARTITION_SUBTYPE_DATA_TARFS1</a></div><div class="ttdeci">@ ESP_PARTITION_SUBTYPE_DATA_TARFS1</div><div class="ttdef"><b>Definition</b> <a href="#l00078">os_esp32.c:78</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a70815697a9da0302fe62f32d179940c2"><div class="ttname"><a href="os__esp32_8c.html#a70815697a9da0302fe62f32d179940c2">tarfs_os_free</a></div><div class="ttdeci">void tarfs_os_free(void *buffer)</div><div class="ttdef"><b>Definition</b> <a href="#l00206">os_esp32.c:206</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_a9dd9dbeb9f6690b22fd4bacb92d34d1e"><div class="ttname"><a href="os__esp32_8c.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">tarfs_os_unregister_fs</a></div><div class="ttdeci">bool tarfs_os_unregister_fs(const char *prefix)</div><div class="ttdoc">Tell the VFS that path &#39;prefix&#39; is not handled by tarfs anymore.</div><div class="ttdef"><b>Definition</b> <a href="#l00305">os_esp32.c:305</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_aa16f178e3d905a77011546b70115faf2"><div class="ttname"><a href="os__esp32_8c.html#aa16f178e3d905a77011546b70115faf2">tarfs_os_release_mutex</a></div><div class="ttdeci">void tarfs_os_release_mutex()</div><div class="ttdoc">Unlock access to s_tarfs[] table and to the s_numfs counter only.</div><div class="ttdef"><b>Definition</b> <a href="#l00165">os_esp32.c:165</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_ab5608af14341e87e00fae2849cf3d56b"><div class="ttname"><a href="os__esp32_8c.html#ab5608af14341e87e00fae2849cf3d56b">tarfs_os_init</a></div><div class="ttdeci">void tarfs_os_init()</div><div class="ttdoc">Create a recursive sync object.</div><div class="ttdef"><b>Definition</b> <a href="#l00146">os_esp32.c:146</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_abe795da684ff176c5dbaada9ea6041cd"><div class="ttname"><a href="os__esp32_8c.html#abe795da684ff176c5dbaada9ea6041cd">tarfs_os_acquire_mutex</a></div><div class="ttdeci">void tarfs_os_acquire_mutex()</div><div class="ttdoc">Lock access to s_tarfs[] table and to the s_numfs counter only.</div><div class="ttdef"><b>Definition</b> <a href="#l00155">os_esp32.c:155</a></div></div>
-<div class="ttc" id="aos__esp32_8c_html_abe917e899f2dd60dabb723b04bb817b0"><div class="ttname"><a href="os__esp32_8c.html#abe917e899f2dd60dabb723b04bb817b0">tarfs_os_map_tarfile</a></div><div class="ttdeci">void const * tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t *size_out)</div><div class="ttdoc">Map a ESP32 flash partition to a virtual address space.</div><div class="ttdef"><b>Definition</b> <a href="#l00221">os_esp32.c:221</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a70815697a9da0302fe62f32d179940c2"><div class="ttname"><a href="os__esp32_8c.html#a70815697a9da0302fe62f32d179940c2">tarfs_os_free</a></div><div class="ttdeci">void tarfs_os_free(void *buffer)</div><div class="ttdef"><b>Definition</b> <a href="#l00207">os_esp32.c:207</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_a9dd9dbeb9f6690b22fd4bacb92d34d1e"><div class="ttname"><a href="os__esp32_8c.html#a9dd9dbeb9f6690b22fd4bacb92d34d1e">tarfs_os_unregister_fs</a></div><div class="ttdeci">bool tarfs_os_unregister_fs(const char *prefix)</div><div class="ttdoc">Tell the VFS that path &#39;prefix&#39; is not handled by tarfs anymore.</div><div class="ttdef"><b>Definition</b> <a href="#l00306">os_esp32.c:306</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_aa16f178e3d905a77011546b70115faf2"><div class="ttname"><a href="os__esp32_8c.html#aa16f178e3d905a77011546b70115faf2">tarfs_os_release_mutex</a></div><div class="ttdeci">void tarfs_os_release_mutex()</div><div class="ttdoc">Unlock access to s_tarfs[] table and to the s_numfs counter only.</div><div class="ttdef"><b>Definition</b> <a href="#l00166">os_esp32.c:166</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_ab5608af14341e87e00fae2849cf3d56b"><div class="ttname"><a href="os__esp32_8c.html#ab5608af14341e87e00fae2849cf3d56b">tarfs_os_init</a></div><div class="ttdeci">void tarfs_os_init()</div><div class="ttdoc">Create a recursive sync object.</div><div class="ttdef"><b>Definition</b> <a href="#l00147">os_esp32.c:147</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_abe795da684ff176c5dbaada9ea6041cd"><div class="ttname"><a href="os__esp32_8c.html#abe795da684ff176c5dbaada9ea6041cd">tarfs_os_acquire_mutex</a></div><div class="ttdeci">void tarfs_os_acquire_mutex()</div><div class="ttdoc">Lock access to s_tarfs[] table and to the s_numfs counter only.</div><div class="ttdef"><b>Definition</b> <a href="#l00156">os_esp32.c:156</a></div></div>
+<div class="ttc" id="aos__esp32_8c_html_abe917e899f2dd60dabb723b04bb817b0"><div class="ttname"><a href="os__esp32_8c.html#abe917e899f2dd60dabb723b04bb817b0">tarfs_os_map_tarfile</a></div><div class="ttdeci">void const * tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t *size_out)</div><div class="ttdoc">Map a ESP32 flash partition to a virtual address space.</div><div class="ttdef"><b>Definition</b> <a href="#l00222">os_esp32.c:222</a></div></div>
 <div class="ttc" id="atar_8h_html_a6279c517515d4696361635bc98b9a5fb"><div class="ttname"><a href="tar_8h.html#a6279c517515d4696361635bc98b9a5fb">prefix</a></div><div class="ttdeci">const char prefix[155]</div><div class="ttdef"><b>Definition</b> <a href="tar_8h_source.html#l00016">tar.h:16</a></div></div>
 <div class="ttc" id="atar_8h_html_ac129dc9d73dee770fe1271622483e621"><div class="ttname"><a href="tar_8h.html#ac129dc9d73dee770fe1271622483e621">size</a></div><div class="ttdeci">const char size[12]</div><div class="ttdef"><b>Definition</b> <a href="tar_8h_source.html#l00005">tar.h:5</a></div></div>
 </div><!-- fragment --></div><!-- contents -->

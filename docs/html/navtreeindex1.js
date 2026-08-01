@@ -1,5 +1,6 @@
 var NAVTREEINDEX1 =
 {
+"md__quick_start.html#autotoc_md33":[0,1,1],
 "md__quick_start.html#autotoc_md35":[0,1,2],
 "md__quick_start.html#autotoc_md37":[0,2],
 "os_8h.html":[4,0,0,11],

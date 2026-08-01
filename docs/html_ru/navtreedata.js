@@ -108,7 +108,7 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"os__esp32_8c.html"
+"os_8h_source.html"
 ];
 
 const SYNCONMSG = 'click to disable panel synchronization';
