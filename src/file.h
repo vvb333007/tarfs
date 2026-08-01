@@ -94,7 +94,7 @@ struct tarfs_fp {
 
 
  /**
-  * Check the accessibility of a file or directory in the TarFS filesystem.
+  * @brief Check the accessibility of a file or directory in the TarFS filesystem.
   *
   * This function checks whether the specified path exists in the mounted TarFS
   * filesystem and whether the requested access mode is supported.
@@ -103,9 +103,9 @@ struct tarfs_fp {
   * Therefore, requests containing X_OK always fail with EPERM, while requests
   * containing W_OK always fail with EROFS.
   *
-  * For regular files, F_OK and R_OK are supported. For directories, only F_OK
-  * is supported, as directories cannot be read using the regular read()
-  * interface.
+  * @note For regular files, F_OK and R_OK are supported. For directories, only F_OK
+  *       is supported, as directories cannot be read using the regular read()
+  *       interface.
   *
   * @param[in] ctx   TarFS filesystem context.
   * @param[in] path  Path to the file or directory to check.
