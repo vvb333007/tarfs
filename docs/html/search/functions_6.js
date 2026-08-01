@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['initref_0',['initref',['../refc_8h.html#a348a6ba25db77d0ca1b404d14ceede52',1,'refc.h']]],
+  ['initrefn_1',['initrefn',['../refc_8h.html#a5755ec154f21c5619654a065966b984f',1,'refc.h']]],
+  ['inode_5falloc_2',['inode_alloc',['../inode_8c.html#aca9ff4771267cba77f49276eac027486',1,'inode_alloc(size_t count):&#160;inode.c'],['../inode_8h.html#aca9ff4771267cba77f49276eac027486',1,'inode_alloc(size_t count):&#160;inode.c']]],
+  ['inode_5falphasort_3',['inode_alphasort',['../inode_8c.html#a235d93eb62b9b338f056e451c34a63d5',1,'inode.c']]],
+  ['inode_5fcompare_4',['inode_compare',['../inode_8c.html#ab2aa92280ca9d3a903f4162b1fbbfbac',1,'inode.c']]],
+  ['inode_5fdumphash_5fsorted_5',['inode_dumphash_sorted',['../inode_8c.html#a2ea95a5a2a68552864d885707f6f29fe',1,'inode_dumphash_sorted(struct tarfs_inode const *const *index, size_t count):&#160;inode.c'],['../inode_8h.html#a2ea95a5a2a68552864d885707f6f29fe',1,'inode_dumphash_sorted(struct tarfs_inode const *const *index, size_t count):&#160;inode.c']]],
+  ['inode_5fdumppath_5fsorted_6',['inode_dumppath_sorted',['../inode_8c.html#a5620fb5820566bdfc59b880ea1fb051c',1,'inode_dumppath_sorted(struct tarfs_inode const *root):&#160;inode.c'],['../inode_8h.html#a5620fb5820566bdfc59b880ea1fb051c',1,'inode_dumppath_sorted(struct tarfs_inode const *root):&#160;inode.c']]],
+  ['inode_5fexchange_7',['inode_exchange',['../inode_8c.html#ab866775f78f1c8b4389fae49c9f0056c',1,'inode.c']]],
+  ['inode_5ffree_8',['inode_free',['../inode_8c.html#a60a518f763496fcbf8afa9fbc3cee988',1,'inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, size_t tar_length):&#160;inode.c'],['../inode_8h.html#a60a518f763496fcbf8afa9fbc3cee988',1,'inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, size_t tar_length):&#160;inode.c']]],
+  ['inode_5fgetinfo_9',['inode_getinfo',['../inode_8c.html#a67ff9f9a30f0c9e95d4322bef238b65f',1,'inode_getinfo(struct tarfs_inode const *const *index, int idx, size_t *size, time_t *mtime):&#160;inode.c'],['../inode_8h.html#a67ff9f9a30f0c9e95d4322bef238b65f',1,'inode_getinfo(struct tarfs_inode const *const *index, int idx, size_t *size, time_t *mtime):&#160;inode.c']]],
+  ['inode_5fislink_10',['inode_islink',['../inode_8c.html#a3e4ab6bdacc5d871a37604b6a3fca704',1,'inode_islink(struct tarfs_inode const *ino):&#160;inode.c'],['../inode_8h.html#a3e4ab6bdacc5d871a37604b6a3fca704',1,'inode_islink(struct tarfs_inode const *ino):&#160;inode.c']]],
+  ['inode_5flookup_11',['inode_lookup',['../inode_8c.html#ad1423afebf81e80db97820fe7ee764fa',1,'inode_lookup(struct tarfs_inode const *const *index, size_t num_inodes, const char *path):&#160;inode.c'],['../inode_8h.html#ad1423afebf81e80db97820fe7ee764fa',1,'inode_lookup(struct tarfs_inode const *const *index, size_t num_inodes, const char *path):&#160;inode.c']]],
+  ['inode_5fmount_12',['inode_mount',['../inode_8c.html#a7f88cb079a07e4683d080673c916ea22',1,'inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link, const char *base_dir):&#160;inode.c'],['../inode_8h.html#a07681dc726b7119a6ddb6d9b633bb280',1,'inode_mount(struct tarfs_fs *fs, const unsigned char *buf, size_t size, const char *rebase_link, const char *path_rebase):&#160;inode.c']]],
+  ['inode_5fmtime_13',['inode_mtime',['../inode_8c.html#adca8be68bcbf7406bb6260b6b8d8eb03',1,'inode.c']]],
+  ['inode_5fpathcmp_14',['inode_pathcmp',['../inode_8c.html#a83ef9140e3ee2246e831cdc89e415254',1,'inode.c']]],
+  ['inode_5fpopulate_15',['inode_populate',['../inode_8c.html#a15dfa52ba9111de7981ce66917426b80',1,'inode.c']]],
+  ['inode_5frawtype_16',['inode_rawtype',['../inode_8c.html#a7dc861a828e36d0ef3cf2dc3771bf61c',1,'inode_rawtype(struct tarfs_inode const *ino):&#160;inode.c'],['../inode_8h.html#a7dc861a828e36d0ef3cf2dc3771bf61c',1,'inode_rawtype(struct tarfs_inode const *ino):&#160;inode.c']]],
+  ['inode_5fresolve_17',['inode_resolve',['../inode_8c.html#a23a0950c59c970241bbd76f52460bc66',1,'inode.c']]],
+  ['inode_5fsiftdown_18',['inode_siftdown',['../inode_8c.html#a351032f1c8c35c3139b12894ce2a2842',1,'inode.c']]],
+  ['inode_5fsort_19',['inode_sort',['../inode_8c.html#a5a747f6e3e88bbd56a330c7cab8ec88a',1,'inode.c']]],
+  ['inode_5ftype_20',['inode_type',['../inode_8c.html#ae767486afccf7de9d6f901bac9f7d224',1,'inode_type(struct tarfs_inode const *ino):&#160;inode.c'],['../inode_8h.html#ae767486afccf7de9d6f901bac9f7d224',1,'inode_type(struct tarfs_inode const *ino):&#160;inode.c']]],
+  ['inode_5funmount_21',['inode_unmount',['../inode_8c.html#a7756545f92a952ccd7347e820793ff2b',1,'inode_unmount(struct tarfs_fs *fs, const void *tar_start, size_t tar_size):&#160;inode.c'],['../inode_8h.html#a7756545f92a952ccd7347e820793ff2b',1,'inode_unmount(struct tarfs_fs *fs, const void *tar_start, size_t tar_size):&#160;inode.c']]],
+  ['is_5fdirect_5fchild_22',['is_direct_child',['../dir_8c.html#ab4f97d4e0b580433e899b9f747a70ab3',1,'dir.c']]],
+  ['is_5fsanefd_23',['is_sanefd',['../dir_8c.html#a0ca3cd02c96e336b478ebb34e3354f80',1,'is_sanefd(struct tarfs_fs *fs, int fd):&#160;dir.c'],['../file_8c.html#a0ca3cd02c96e336b478ebb34e3354f80',1,'is_sanefd(struct tarfs_fs *fs, int fd):&#160;file.c']]]
+];
