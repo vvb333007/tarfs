@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file inode.c
+ * @brief Inode API implementation
  */
 
 #include <stddef.h>

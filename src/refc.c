@@ -9,6 +9,9 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file refc.c
+ * @brief Public Atomic Reference Counter API implementation
  */
 
 

@@ -9,8 +9,37 @@
  *
  * Project:
  *   https://github.com/vvb333007/tarfs
+ *
+ * @file os_esp32.c
+ * @brief Platform porting layer implementation for Espressif MCUs
  */
 
+
+/**
+ * Platform Abstraction Layer
+ *
+ * All architecture-dependent code (ESP32) and platform-dependent
+ * code (FreeRTOS) is contained in this file.
+ *
+ * The minimum implementation required to port TARFS to a new platform
+ * must provide at least one function: tarfs_os_map_tarfile().
+ * This function must return a pointer to the memory containing the TAR
+ * file. On ESP32, this function also performs the actual mmap operation.
+ *
+ * On a platform where the flash memory is already memory-mapped,
+ * tarfs_os_map_tarfile() can be as simple as:
+ *
+ *  return TAR_IMAGE_ADDRESS;
+ *
+ * The function takes one argument and returns additional information
+ * through two output arguments. The first argument is the name (identifier)
+ * of the resource containing the filesystem.
+ *
+ * In the ESP32 implementation, the "resource" is a flash partition,
+ * and the resource name is the name of the partition in the flash.
+ *
+ *
+ */
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -39,6 +68,10 @@
 #include "dir.h"
 #include "inode.h"
 
+/**
+ * Flash Partition Subtype values for TARFS
+ *
+ */
 enum {
 
   ESP_PARTITION_SUBTYPE_DATA_TARFS  = 0xF0, /* !< TARFS partition, v0 */
@@ -47,45 +80,64 @@ enum {
 
 };
 
+/**
+ * "Directory operations" function table.
+ */
+
+#if CONFIG_VFS_SUPPORT_DIR /* <-- defined in ESP-IDF */
 
 static const esp_vfs_dir_ops_t s_tarfs_dir = {
 
     .stat_p      = &tarf_stat,
-    .link_p      = NULL,
-    .unlink_p    = NULL,
-    .rename_p    = NULL,
-
     .opendir_p   = &tard_opendir,
     .closedir_p  = &tard_closedir,
     .readdir_p   = &tard_readdir,
     .seekdir_p   = &tard_seekdir,
     .telldir_p   = &tard_telldir,
-
-    .mkdir_p     = NULL,
-    .rmdir_p     = NULL,
-
-    .truncate_p  = NULL,
-    .ftruncate_p = NULL,
+    .access_p    = &tarf_access,
 };
+#else
+#  warning "Dir support is disabled in VFS"
+#endif
 
+
+/* VFS file operations
+ *
+ */
 static const esp_vfs_fs_ops_t s_tarfs_fs = {
 
-    .write_p = NULL,
     .lseek_p = &tarf_lseek,
     .read_p  = &tarf_read,
     .pread_p = &tarf_pread,
-  
     .open_p  = &tarf_open,
     .close_p = &tarf_close,
     .fstat_p = &tarf_fstat,
     .fcntl_p = &tarf_fcntl,
     .ioctl_p = &tarf_ioctl,
     .fsync_p = &tarf_fsync,
-
+#if CONFIG_VFS_SUPPORT_DIR
     .dir     = &s_tarfs_dir,
+#endif
 };
 
-
+/*
+ * TARFS uses a single recursive mutex, if one is available on the platform.
+ * If recursive mutexes are not available, this is not a problem: TARFS can
+ * still operate without a mutex, but with some limitations.
+ *
+ * In particular, mount() and unmount() will no longer be protected by
+ * the mutex, and this must be taken into account by the platform
+ * implementation.
+ *
+ *
+ * void tarfs_os_init();            --> create a recursive mutex (or no-op)
+ * void tarfs_os_acquire_mutex();   --> acquire the mutex (or no-op)
+ * void tarfs_os_release_mutex();   --> release the mutex (or no-op)
+ *
+ * These functions take no arguments and return no values. The mutex itself
+ * and its implementation must be completely hidden from the filesystem
+ * through this interface.
+ */
 static SemaphoreHandle_t s_lock = NULL;
 
 
@@ -117,7 +169,9 @@ void tarfs_os_release_mutex() {
     xSemaphoreGive(s_lock);
 }
 
-
+/* Maximum mountpoint length (not counting \0 )
+ *
+ */
 size_t tarfs_os_mp_maxlen() {
 
   return sizeof(((esp_partition_t *)0)->label) - 1;
@@ -228,6 +282,22 @@ void tarfs_os_unmap_tarfile(void *os_handle, const void *map, size_t size) {
   esp_partition_munmap((esp_partition_mmap_handle_t)os_handle);
 }
 
+/* If the platform provides a VFS (Virtual File System), two additional
+ * functions should be implemented:
+ *
+ * bool tarfs_os_register_fs(const char *prefix, void *context)
+ * bool tarfs_os_unregister_fs(const char *prefix)
+ *
+ * TARFS calls tarfs_os_register_fs() when mounting a filesystem.
+ * This function must inform the platform that the path specified by
+ * prefix is now handled by TARFS.
+ *
+ * The context argument is an opaque value that the VFS will pass as the
+ * first argument to tarf_open(), tarf_close(), tarf_read(), tarf_write(), etc.
+ *
+ * The implementation must make no assumptions about the type or meaning
+ * of context. It may be a pointer, an integer value, or even NULL.
+ */
 
 /**
  * Tell the VFS that path 'prefix' is not handled by tarfs anymore.

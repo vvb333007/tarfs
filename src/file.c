@@ -214,12 +214,30 @@ int tarf_access(void* ctx, const char *path, int amode) {
   else if (amode & W_OK)
     errno = EROFS;
   else {
-    /* F_OK and R_OK are the same on TARFS: if entry can 
-     * be stat'ed then it can be read and it is defenitely exists. 
+    /*
      * `errno` is set by tarf_stat() if needed
      */
     struct stat st;
-    return tarf_stat(ctx, path, &st);
+    if (tarf_stat(ctx, path, &st) == 0) {
+      if (S_ISREG(st.st_mode)) {
+
+        /* F_OK is 0 on glibc so we have to check it */
+        if ((amode & (F_OK|R_OK)) || amode == F_OK)
+          return 0;
+
+      } else if (S_ISDIR(st.st_mode)) {
+
+        /* Directories can not be read() */
+        if (amode & R_OK) {
+          errno = EISDIR;
+          return -1;
+        }
+        /* Yes, directory do exist */
+        if (amode & F_OK)
+          return 0;
+      }
+      errno = ENOSYS;
+    }
   }
 
   return -1;

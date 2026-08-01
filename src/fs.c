@@ -336,7 +336,8 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
   len = strlen(mountpoint);
 
 #if CONFIG_TARFS_INTEGRITY
-  log("TAR-CRC64 filesystem is expected\r\n");
+  if (tarfs_integrity(-1) > 0)
+    log("TAR-CRC64 filesystem is expected\r\n");
 #endif
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {

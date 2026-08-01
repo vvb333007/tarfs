@@ -19,13 +19,16 @@
  *
  */
 
-#define CONFIG_TARFS_VERSION 0x00000104 /*!< Version number: 0.1.4 */
-//#define CONFIG_TARFS_LOG       1      /*!< Enable verbose logging, lots of text! for development or bug hunting */
+#define CONFIG_TARFS_VERSION 0x00000105 /*!< Version number: 0.1.5 */
+#define CONFIG_TARFS_LOG     0          /*!< Enable verbose logging, lots of text! for development or bug hunting */
 
 #define CONFIG_TARFS_MAX_FS  4          /*!< Max number of mounted TARFS filesystems */
 #define CONFIG_TARFS_MAX_FDS 16         /*!< Max number of active opened files (per filesystem, must be < 33) */
 
-//#define CONFIG_TARFS_INTEGRITY  1     /*!< Check data integrity records. FS must be processed with tarsum utility or mount will fail */
+#define CONFIG_TARFS_INTEGRITY 0        /*!< Check data integrity records. FS image must be processed with
+                                             tarsum utility or, if it isn't, tarfs_integrity(0) must be 
+                                             called before attempting to mount */
+
 #define CONFIG_TARFS_EXTMEM 1           /*!< Use external memory where available (e.g. PSRAM on ESP32) */
 
 #define CONFIG_TARFS_HAVE_FDOPENDIR  1  /*!< Support for fdopendir() */
@@ -41,6 +44,7 @@
 
 /* tarsum utility settings, please do not change */
 #ifdef TARSUM_BUILD
+#  undef CONFIG_TARFS_INTEGRITY
 #  undef CONFIG_TARFS_LOG
 #  undef CONFIG_TARFS_HAVE_FDOPENDIR  /* Incompatible with glibc targets (e.g. Linux or Cygwin)*/
 #  define CONFIG_TARFS_INTEGRITY  1   /* Explicit integrity */

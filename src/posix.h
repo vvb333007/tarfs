@@ -11,7 +11,7 @@
  *   https://github.com/vvb333007/tarfs
  *
  * @file posix.h
- * @brief POSIX extensions API
+ * @brief POSIX extensions API for TARFS (mmap(), sendfile() etc)
  */
 
 #pragma once
