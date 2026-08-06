@@ -117,6 +117,8 @@ int munmap(void *addr, size_t length);
 DIR *fdopendir(int fd);
 #endif /* CONFIG_TARFS_HAVE_FDOPENDIR */
 
+
+
 #if CONFIG_TARFS_HAVE_DUPFD
 /**
  * Create an independent duplicate of a file descriptor.

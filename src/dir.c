@@ -64,7 +64,6 @@
  */
 
 
-
 /**
  * @brief TARFS DIR structure
  */
@@ -74,11 +73,13 @@ struct tarfs_dir {
     struct dirent di_ent;       /*!< dirent to return to the caller */
     size_t        di_off;       /*!< offset to the current dir; actually - the next inode to read */
     int           di_fd;
+    int           di_gfd;
     char         *di_prefix;    /*!< Directory name with trailing slash removed (populated by opendir()) */
     struct tarfs_inode const *di_ino;
     struct tarfs_inode const *di_cino;
 
 };
+
 
 /* remove subpath component of the path */
 static const char *remove_subpath(const char *path, const char *subpath) {
@@ -389,11 +390,8 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 }
 
 /**
- * The function tard_dirfd() returns the file descriptor associated with the directory stream pdir.
- * TODO: right now we can implement posix's dirfd() on ESP32 for number of reasons:
- * TODO: 1. there is a no-op implementation of dirfd() in ESP-IDF/newlib      
- * TODO: 2. there is no mechanism to convert local FD to a global FD except for ugly hack with offsets
-*/
+ * @brief The function tard_dirfd() returns the file descriptor associated with the directory stream pdir.
+ */
 int tard_dirfd(void* ctx, DIR *pdir) {
 
   ctx = ctx;

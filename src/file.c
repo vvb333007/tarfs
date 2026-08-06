@@ -899,7 +899,7 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
 
   struct tarfs_fs *fs = NULL;
 
-  int fs_idx = (intptr_t )ctx; 
+  int fs_idx = (int)(intptr_t )ctx; 
 
   if (false == (fs_idx >= 0 && 
                 fs_idx < TARFS_MAX_FS && 

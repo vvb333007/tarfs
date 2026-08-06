@@ -670,7 +670,10 @@ size_t inode_populate(struct tarfs_inode *inodes,
     
     size_t off = 0;
     unsigned int hdr_no = 0;
-    unsigned int bad = 0, total_bad = 0, total_badcrc = 0;
+    unsigned int bad = 0, total_bad = 0;
+#if CONFIG_TARFS_INTEGRITY
+    unsigned int total_badcrc = 0;
+#endif
     const char *pax_entry_path = NULL, *pax_entry_link = NULL, *pax_entry_end;
     uintptr_t tar_end = (uintptr_t )((const uint8_t *)tar_start + tar_length);
 

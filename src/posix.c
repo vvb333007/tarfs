@@ -87,6 +87,7 @@ int munmap(void *addr, size_t length) {
         return tarf_munmap((void *)(uintptr_t )i, addr, length);
       }
     }
+    tarfs_unlock();
   }
   log("address %p does not belong to mmap()\r\n", addr);
   errno = EINVAL;
@@ -121,6 +122,14 @@ int dupfd(int fd) {
 #endif /* CONFIG_TARFS_HAVE_DUPFD */
 
 
+
+#if CONFIG_TARFS_HAVE_DIRFD
+void tard_set_gfd(void *, int);
+int tard_get_gfd(void *dirp);
+#endif
+
+
+
 #if CONFIG_TARFS_HAVE_FDOPENDIR
 /**
  * @brief Associate an open directory file descriptor with a directory stream.
@@ -138,8 +147,11 @@ DIR *fdopendir(int fd) {
   /* Convert our global fd to local fd number so tarf_ and tard_ functions can be used 
    * FIOGETFD returns the FS index and local fd 
    */
-  if (ioctl(fd, FIOGETFD, &io) >= 0)
-    return tard_fdopendir((void *)(uintptr_t)io.fs_idx, io.fd);
+  if (ioctl(fd, FIOGETFD, &io) >= 0) {
+    DIR *d = tard_fdopendir((void *)(uintptr_t)io.fs_idx, io.fd);
+
+    return d;
+  }
 
   return NULL;
 }

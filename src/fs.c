@@ -321,9 +321,9 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
     link_rebase = "";
 
   if (path_rebase) {
-    strncpy(&base_dir[1], path_rebase, sizeof(base_dir)-1);
+    strncpy(&base_dir[1], path_rebase, sizeof(base_dir)-2);
   } else {
-    if (false == tar_rootdir(map, size, &base_dir[1], sizeof(base_dir) - 1))
+    if (false == tar_rootdir(map, size, &base_dir[1], sizeof(base_dir) - 2))
       base_dir[0] = '\0';
   }
 

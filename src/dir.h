@@ -16,6 +16,7 @@
 
 #pragma once
 
+
 /**
  * TARFS Directory API: tard_opendir(), tard_fdopendir(), tard_closedir(),
  * tard_telldir(), tard_seekdir()
@@ -40,6 +41,11 @@
  * directory traversal.
  */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __CYGWIN__
 /* Glibc-based systems dont expose DIR so we use a placeholder */
   typedef struct { int a; int b; } fake_DIR;
@@ -47,10 +53,6 @@
 # define DIR fake_DIR
 #endif
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 
 /**
@@ -143,7 +145,7 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset);
 
 
 /**
- * @brief The function dirfd() returns the file descriptor associated with the directory stream pdir.
+ * @brief The function tard_dirfd() returns the file descriptor associated with the directory stream pdir.
  * 
  * This file descriptor is the one used internally by the directory
  * stream.  As a result, it is useful only for functions which do not
@@ -156,7 +158,6 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset);
  * @return a file descriptor
 */
 int tard_dirfd(void* ctx, DIR *pdir);
-
 
 #ifdef __cplusplus
 };
