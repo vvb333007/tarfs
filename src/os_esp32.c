@@ -157,7 +157,7 @@ void tarfs_os_acquire_mutex() {
 
   if (s_lock != NULL) do { 
       /* absolutely nothing */
-  } while (pdFALSE == xSemaphoreTake(s_lock, portMAX_DELAY));
+  } while (pdFALSE == xSemaphoreTakeRecursive(s_lock, portMAX_DELAY));
 }
 
 /**
@@ -166,7 +166,7 @@ void tarfs_os_acquire_mutex() {
 void tarfs_os_release_mutex() {
 
   if (s_lock != NULL)
-    xSemaphoreGive(s_lock);
+    xSemaphoreGiveRecursive(s_lock);
 }
 
 /* Maximum mountpoint length (not counting \0 )
