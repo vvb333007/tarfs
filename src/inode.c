@@ -41,6 +41,7 @@
  */
 
 
+// TODO: get rid of puts(), replace with log()
 
 
 /**
@@ -592,7 +593,8 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
           dest = inode_lookup((struct tarfs_inode const * const *)index, count, link_name);
           if (dest < 0) {
             
-            log("failed to resolve '%s' in two attempts\r\n", link_name);
+            /* inode_lookup() returns -errno on errors */
+            log("failed to resolve '%s' in two attempts, errno=%d\r\n", link_name, dest);
             break;
           }
         }
@@ -603,7 +605,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
         }
           
         if (type != TART_HARDLINK && type != TART_SYMLINK) {
-#if CONFIG_TARFS_LOG
+#if 0
           puts("Linked: ");
           tar_print((const char *)index[i]->in_path, NULL);
           printf(" --> ");
@@ -1049,6 +1051,8 @@ void inode_dumphash_sorted(struct tarfs_inode const * const * index, size_t coun
     puts("");
   }
 #else
+  index = index;
+  count = count;
   puts("Enable CONFIG_TARFS_LOG to use inode_dumphash_sorted()");
 #endif
 }
@@ -1080,6 +1084,7 @@ void inode_dumppath_sorted(struct tarfs_inode const * root) {
   puts("\r\nLegend: * - Symlink or Hardlink");
   puts("        X - Bad (unresolved) hardlink or symlink");
 #else
+  root = root;
   puts("Enable CONFIG_TARFS_LOG to use inode_dumppath_sorted()");
 #endif
 }

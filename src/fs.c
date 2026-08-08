@@ -262,37 +262,36 @@ int tarfs_unref(struct tarfs_fs *fs) {
 }
 
 /** 
- *
+ * Unmount TAR filesystem by its index (tarfs_mount() returns filesystem index of the mounted filesystem)
  */
-int tarfs_unmount(const char *mountpoint) {
+int tarfs_unmount_fs(int fs_idx) {
   
-  int slot,
-      err = 0;
-
-  struct tarfs_fs *fs;
-
+  int err = EINVAL;
   refc_type_t prev_refc;
-
-  if (mountpoint == NULL) {
-    errno = EFAULT;
-    return -1;
-  }
 
   tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
   
-  if ((slot = findfs(mountpoint)) >= 0) {
-
-    fs = s_tarfs[slot];
-
-    prev_refc = tarfs_unref(fs);
+  if (fs_idx >= 0 && fs_idx < CONFIG_TARFS_MAX_FS) {
+    /* tarfs_unref() is ok with NULL argument */
+    prev_refc = tarfs_unref( s_tarfs[fs_idx] );
 
     if (prev_refc > 1) {
-      log("Filesystem %s is in use (%u open fds), unmount delayed\r\n", mountpoint, prev_refc - 1);
-      err = EAGAIN;
-    }
 
-  } else
-    err = ENOENT;
+      log("Filesystem %d is in use (%u active users), unmount delayed\r\n", fs_idx, prev_refc - 1);
+      err = EBUSY;
+
+    } else if (prev_refc == 0) { /* tarfs_unref(NULL) returns 0 */
+
+      log("Filesystem %d is not mounted, stale fs_idx\r\n", fs_idx);
+      err = ENOENT;
+
+    } else {
+
+      /* Success! */
+      err = 0;
+
+    }
+  }
 
   tarfs_unlock();
 
@@ -302,6 +301,25 @@ int tarfs_unmount(const char *mountpoint) {
   }
 
   return 0;
+}
+
+/** 
+ * Unmount by mountpoint name
+ */
+int tarfs_unmount(const char *mountpoint) {
+  
+  int ret;
+
+  if (mountpoint == NULL) {
+    errno = EFAULT;
+    return -1;
+  }
+
+  /* calls tarfs_lock() also but we use recursive mutex.  */
+  tarfs_lock();
+  ret = tarfs_unmount_fs( findfs(mountpoint) ); 
+  tarfs_unlock();
+  return ret;
 }
 
 /* Mount TARfile which is already mmaped/loaded into RAM
@@ -351,15 +369,15 @@ unmap_and_return_error:
     log("mountpoint: '%s'\r\n", mountpoint);
 
     if (base_dir[1] == '\0') {
-      log("WARN: tarfile has no root directory\r\n");
+      log("Warning: tarfile has no root directory\r\n");
     } else {
-      log("common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
+      log("Common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
     }
 
     if (*link_rebase != '\0') {
-      log("absolute path rewrite: '%s'\r\n",link_rebase);
+      log("Absolute path rewrite: '%s'\r\n",link_rebase);
     } else {
-      log("preserving absolute paths in hardlinks/symlinks\r\n");
+      log("Preserving absolute paths in hardlinks/symlinks\r\n");
     }
 
     /* Allocate FS descriptor */
@@ -371,10 +389,24 @@ unmap_and_return_error:
     /* Allocate free FS slot */
     /* ------- locked -------*/
     tarfs_lock();
-    if (0 > (slot = findfs( NULL ))) {
+
+    /* Find a new slot in the FS table */
+    slot = findfs( NULL );
+
+    /* Check if requested mountpoint is not occupied by another filesystem,
+     * check if FS limit is not reached 
+     */
+    if ((findfs( mountpoint ) >= 0) || (slot < 0)) {
+
       tarfs_unlock();
       tarfs_os_free(fs);
-      log("too many mounted filesystems (%u)\r\n",s_numfs);
+
+      /* With CONFIG_TARFS_LOG set to 0 code below compiles to an empty statement (log() macro is a no-op)*/
+      if (slot < 0)
+        log("too many mounted filesystems (%u)\r\n",s_numfs);
+      else
+        log("mount point '%s' is in use by another filesystem\r\n", mountpoint);
+
       errno = EBUSY;
       goto unmap_and_return_error;
     }
@@ -385,7 +417,7 @@ unmap_and_return_error:
     tarfs_unlock();
   /* ------- unlocked -------*/
 
-    log("allocated new FS descriptor s_tarfs[%d] = %p\r\n", slot, (void *)fs);
+    log("Allocated FS descriptor %p, slot# %d is used\r\n", (void *)fs, slot);
 
     /* set refcounter to 1 */
     initref(&fs->fs_ref);
@@ -395,13 +427,13 @@ unmap_and_return_error:
     fs->fs_handle = 0;     /* populated by tarfs_mount() if required */
     fs->fs_size   = size;
 
-    /* Copy mountpoint. Trailing zero is there already */
+    /* Copy the mountpoint. Trailing zero is there already */
     memcpy(fs->fs_mountpoint, mountpoint, len);
 
-    log("mounting..\r\n");
+    log("Mounting..\r\n");
     if (inode_mount(fs, map, size, link_rebase, &base_dir[1]) < 0) {
       if (fs->fs_ino == NULL) {
-        log("filesystem is unusable, no valid inodes were found\r\n");
+        log("Filesystem is unusable, no valid inodes were found\r\n");
         tarfs_lock();
         s_tarfs[slot] = NULL;
         s_numfs--;
@@ -409,10 +441,8 @@ unmap_and_return_error:
         /* errno must be set in inode_mount() */
         goto unmap_and_return_error;
       } 
-      log("WARN: running in degraded mode\r\n");
+      log("Warning: filesystem is in degraded mode\r\n");
     }
-
-//  log("addr %p:%u --> %u inodes successfully mounted\r\n", map, (unsigned int)size, (unsigned int)fs->fs_nino);
 
   /* Registering VFS */
   log("registering TARFS in VFS..\r\n");
@@ -422,12 +452,14 @@ unmap_and_return_error:
     log("VFS registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
 
-  log("mount is done. filesystem slot is %d\r\n", slot);
+  log("Mount is done. filesystem slot is %d\r\n", slot);
 
-  log("-----------\r\n%u blocks (%u bytes) were skipped as BAD\n"
+  log("\r\n----------- STATS -----------\r\n"
+      "%u blocks (%u bytes) were skipped as BAD\n"
       "TAR archive has %u files, %u links and %u dirs\r\n"
       "TAR data/headers ratio: %u data bytes, %u header bytes\r\n"
-      "RAM overhead (total RAM used by the FS): %u bytes\r\n-----------\r\n", 
+      "RAM overhead (total RAM used by the FS): %u bytes\r\n"
+      "--\r\n",
        fs->fs_stats.badblocks, 
        fs->fs_stats.badblocks * 512,
        fs->fs_stats.files,
@@ -443,7 +475,7 @@ unmap_and_return_error:
 
 /**
  * Actual mount procedure
- * We expect sane label pointer (ASCIIZ) and a sane mountpoint (i.e. len>1, 
+ * We expect a sane label pointer (ASCIIZ) and a sane mountpoint (i.e. len>1, 
  * fisrt sym is `/`, last sym != `/`)
  */
 int tarfs_mount(const char *label, const char *mountpoint, const char *link_rebase, const char *path_rebase) {
@@ -455,7 +487,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 
 
   /* Actual memory mapping */
-  log("loading OS-specific resource '%s'..\r\n", label);
+  log("Mapping resource '%s'..\r\n", label);
 
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
 
@@ -467,9 +499,6 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
       log("success, filesystem slot %d was assigned\r\n", slot);
 
       struct tarfs_fs *fs = tarfs_getfs(slot);
-
-      log("resource handle is %p, commit_unmount() will do tarfs_os_unmap_tarfile()\r\n", (void *)os_handle);
-
       fs->fs_handle = (uintptr_t)os_handle;
 
       return slot;

@@ -912,6 +912,10 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
 
   log("unmapping ptr=%p (len=%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
   tarfs_unref(fs);
+
+  addr = addr;
+  length = length;
+
   return 0;
 }
 

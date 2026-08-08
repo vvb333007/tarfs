@@ -246,11 +246,31 @@ int tarfs_mount_memory(const void *addr, size_t length,
                        const char *link_rebase,
                        const char *path_rebase);
 /**
- * Unmount tar file system
+ * Unmount tar file system by its mount point
  * @return 0  on success
  *         <0 FS is scheduled for unmount, but unmount is delayed because FS has some active users
+ *
+ * EINVAL mountpoint resolved to invalid fs index
+ * EFAULT mountpoint is NULL
+ * EBUSY  Scheduled for unmount, will be unmounted later
+ * ENOENT Filesystem is not mounted
+ *
  */
 int  tarfs_unmount(const char *mountpoint);
+
+
+/**
+ * Unmount tar file system by its index
+ * @return 0  on success
+ *         <0 FS is scheduled for unmount, but unmount is delayed because FS has some active users
+ *
+ * EINVAL fs index is invalid
+ * ENOENT fs is not mounted
+ * EBUSY Scheduled for unmount 
+ *
+ */
+int tarfs_unmount_fs(int fs_idx);
+
 
 /**
  * Perform a deep filesystem integrity check.

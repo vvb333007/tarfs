@@ -19,8 +19,8 @@
  *
  */
 
-#define CONFIG_TARFS_VERSION 0x00000105 /*!< Version number: 0.1.5 */
-//#define CONFIG_TARFS_LOG     1          /*!< Enable verbose logging, lots of text! for development or bug hunting */
+#define CONFIG_TARFS_VERSION 0x00000106 /*!< Version number: 0.1.6 */
+//#define CONFIG_TARFS_LOG     1        /*!< Enable verbose logging, lots of text! for development or bug hunting */
 
 #define CONFIG_TARFS_MAX_FS  4          /*!< Max number of mounted TARFS filesystems */
 #define CONFIG_TARFS_MAX_FDS 16         /*!< Max number of active opened files (per filesystem, must be < 33) */
@@ -41,7 +41,7 @@
 
 
 #define CONFIG_TARFS_COUNTERS 1         /*!< Support runtime stats */
-//#define CONFIG_TARFS_BIG_ENDIAN 1     /*!< Set to 1 on bige-endian architectures */
+//#define CONFIG_TARFS_BIG_ENDIAN 1     /*!< Set to 1 on big-endian architectures */
 //#define CONFIG_TARFS_HAVE_STATVFS_H 1 /*!< If platform provides its own sys/statvfs.h, this macro shuould be uncommented */
 
 /* tarsum utility settings, please do not change */
@@ -49,7 +49,6 @@
 #  undef CONFIG_TARFS_INTEGRITY
 #  undef CONFIG_TARFS_LOG
 #  undef CONFIG_TARFS_HAVE_FDOPENDIR  /* Incompatible with glibc targets (e.g. Linux or Cygwin)*/
-
 #  define CONFIG_TARFS_INTEGRITY  1   /* Explicit integrity */
 #  define CONFIG_TARFS_LOG 1          /* Explicit logging if building tarsum utility */
 #endif
