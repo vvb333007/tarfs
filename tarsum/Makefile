@@ -8,8 +8,8 @@ CC      := gcc
 # Directories
 OBJDIR  := .
 
-# Flags
-CFLAGS  := -Wall -Wextra -Wno-sign-compare -Os -pedantic -I../src
+# Flags -Wno-sign-compare  -fanalyzer
+CFLAGS  := -Wall -Wextra -Os -pedantic -I../src
 CFLAGS  += -DTARSUM_BUILD=1
 CFLAGS += -MMD -MP 
 
