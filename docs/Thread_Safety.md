@@ -10,8 +10,6 @@ In particluar, TARFS does not serialize normal file I/O with a global mutex.
 
 The only global mutex used by TARFS protects the table of mounted filesystems. It is used only for operations that modify or inspect this table and is held for a very short time.
 
-This provides thread safety without putting a mutex into the normal `read()`/`pread()` data path.
-
 ---
 
 ## What TARFS guarantees
