@@ -12,8 +12,8 @@ OUTPUT_DIRECTORY       = .
 # Input
 #-------------------------------------------------
 
-INPUT                  = ../src ../README.md QuickStart.md Native_API.md FAQ.md
-FILE_PATTERNS          = *.h *.c ../README.md QuickStart.md Native_API.md FAQ.md
+INPUT                  = ../src ../README.md QuickStart.md Native_API.md FAQ.md Thread_Safety.md
+FILE_PATTERNS          = *.h *.c ../README.md QuickStart.md Native_API.md FAQ.md Thread_Safety.md
 RECURSIVE              = YES
 
 #-------------------------------------------------

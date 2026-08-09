@@ -12,8 +12,8 @@ OUTPUT_DIRECTORY       = .
 # Input
 #-------------------------------------------------
 
-INPUT                  = ../src README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md
-FILE_PATTERNS          = *.h *.c README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md
+INPUT                  = ../src README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md Thread_Safety_RU.md
+FILE_PATTERNS          = *.h *.c README_RU.md QuickStart_RU.md Native_API_RU.md FAQ_RU.md Thread_Safety_RU.md
 RECURSIVE              = NO
 
 #-------------------------------------------------
