@@ -265,13 +265,13 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
   /* Quick reject */
   if (path == NULL) {
-    ADD_STATS(fs->fs_nfail, 1);
+
     errno = EFAULT;
     return -1;
   }
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
 
-      ADD_STATS(fs->fs_nfail, 1);
+
       errno = EROFS;
 
       return -1;
@@ -282,7 +282,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   */
   if ( NULL == (fs = tarfs_getfs_addref(fs_idx))) { 
 
-    ADD_STATS(fs->fs_nfail, 1);
+
 
     tarfs_log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO;
@@ -545,7 +545,7 @@ off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
 
   if (whence == SEEK_SET) {
 
-    if (offset >= 0 && offset <= fp->fp_size) {
+    if (offset >= 0 && (size_t)offset <= fp->fp_size) {
       fp->fp_pos = offset;
       return (off_t)fp->fp_pos;
     }
@@ -570,7 +570,7 @@ off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
   } else if (whence == SEEK_CUR) {
 
     off_t new_offset = offset + (off_t)fp->fp_pos;
-    if (new_offset >= 0 && new_offset <= fp->fp_size) {
+    if (new_offset >= 0 && (size_t)new_offset <= fp->fp_size) {
       fp->fp_pos = new_offset;
       return (off_t)fp->fp_pos;
     }
@@ -865,7 +865,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
   /* Check if args are compatible with the fp */
   if (fp->fp_vaddr == 0 ||
       offset < 0 || 
-      offset > fp->fp_size || 
+      (size_t)offset > fp->fp_size || 
       length > (fp->fp_size - offset)) {
 
       tarfs_log("failed: offset=%u, fp_size=%u, length=%u\r\n", (unsigned int)offset, (unsigned int)fp->fp_size, (unsigned int)length);
@@ -959,8 +959,8 @@ ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) 
       pos = *offset;
 
       /* sanity checks: we don't trust user-supplied position */
-      if (pos   <  0 || pos   >  fp->fp_size) {
-        tarfs_log("bad user-supplied pos=%d\r\n",(int)pos);
+      if (pos   <  0 || (size_t)pos   >  fp->fp_size) {
+        tarfs_log("bad user-supplied pos=%ld\r\n",(long int)pos);
         errno = EINVAL;
         return -1;
       }

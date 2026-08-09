@@ -83,7 +83,7 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
 
     size_t line_start,i = 0, j, digi = 0;
     const char *line;
-    int templ_len = strlen(templ);
+    unsigned int templ_len = (unsigned int)strlen(templ);
 
     while (i < size)
     {
@@ -122,7 +122,7 @@ static const char* path_from_pax_header(const char *buf, size_t size, const char
         {
             /* Check if found key value ends with \r \n or NUL within the buf */
             bool good_line = false;
-            for (int i=templ_len; i < (len - digi - 1); i++)
+            for (unsigned int i = templ_len; i < (len - digi - 1); i++)
               if (line[i] == 0 || line[i] == '\r' || line[i] == '\n') {
                 good_line = true;
                 break;
@@ -347,7 +347,7 @@ void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, s
 
   if (index != NULL) {
     /* free all paths if there were any */
-    for (int i = 0; i < count; i++) {
+    for (unsigned int i = 0; i < count; i++) {
       if (index[i]->in_path != 0) {
         /* address is from the tar file range or beyond? */
         if (index[i]->in_path < tar_start || index[i]->in_path >= (tar_start + tar_length)) {
@@ -439,11 +439,11 @@ int inode_lookup(struct tarfs_inode const * const *index, size_t num_inodes, con
 
 
       /* Scan collision chain, left to right */
-      for (int i = first;  i < num_inodes && index[i]->in_hash == hash; i++) {
+      for (unsigned int i = first;  i < num_inodes && index[i]->in_hash == hash; i++) {
         //struct tarhdr *hdr = (struct tarhdr *)index[i]->in_vaddr;
         if (inode_pathcmp(index[i], path)) {
           tarfs_log("found inode#%u, hash=<e8bb5ed2> path='%s'\r\n", i, path);
-          return i;
+          return (int)i;
         }
       }
 
@@ -538,7 +538,7 @@ bool inode_islink(struct tarfs_inode const *ino) {
  */
 time_t inode_mtime(struct tarfs_fs *fs, int idx, size_t *size) {
 
-  if (fs != NULL && idx >= 0 && idx < fs->fs_nino) {
+  if (fs != NULL && idx >= 0 && (unsigned )idx < fs->fs_nino) {
 
       struct tarfs_inode const *ino;
 
@@ -567,7 +567,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
   int floating = 0, resolved = 0, attempted = 0;
 
 
-  for (int i = 0; i < count; i++ ) {
+  for (size_t i = 0; i < count; i++ ) {
 
     char *link_name = (char *)index[i]->in_next;
 
@@ -627,7 +627,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
       } while(--depth > 0);
 
       if (index[i]->in_dvaddr == 0) {
-        tarfs_log("inode #%d is a floating link\r\n",i);
+        tarfs_log("inode #%u is a floating link\r\n",(unsigned int)i);
         floating++;
       }
 
@@ -636,7 +636,7 @@ int inode_resolve(struct tarfs_inode **index, size_t count) {
 
   tarfs_log("memory cleanup, release unneded memory chunks\r\n");
 
-  for (int i = 0; i < count; i++ ) {
+  for (size_t i = 0; i < count; i++ ) {
     
     const char *link_name = (const char *)index[i]->in_next;
     if (link_name != NULL) {

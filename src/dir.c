@@ -317,7 +317,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
       if (*p == '/') /* normally yes */
         p++;
 
-      int len = tar_strlen(p, NULL);
+      unsigned int len = (unsigned int)tar_strlen(p, NULL);
       if (len < sizeof(dir->di_ent.d_name)) {
 
         memcpy(dir->di_ent.d_name, p, len);
@@ -369,9 +369,16 @@ long tard_telldir(void* ctx, DIR* pdir) {
  * Sets the current position within the directory stream to a value
  * previously obtained by tard_telldir().
  */
-void tard_seekdir(void* ctx, DIR* pdir, long offset) {
+void tard_seekdir(void* ctx, DIR* pdir, long offset0) {
 
   struct tarfs_dir * dir = (struct tarfs_dir *)pdir;
+  size_t offset = (size_t)offset0;
+
+  if (offset0 < 0) {
+    /* seekdir() has void return value, so the only way to report errors is through errno. */
+    errno = EINVAL;
+    return ;
+  }
 
   /* We cant setp backwards - we are using single-linked list
    * so instead we perform full rewind() and then simply do 'offset' numbers of readdir() calls

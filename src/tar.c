@@ -391,10 +391,15 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
             if (hdr->name[0]) {
 
               /* Check if guessed root is a valid mountpoint name (latin1, proper length )*/
-              int l = tar_strlen(hdr->name, &hdr->name[0] + sizeof(hdr->name));
-              if (l < sizeof(hdr->name) && l <= tarfs_os_mp_maxlen() && l < out_len) {
+              unsigned int l = (unsigned int )tar_strlen(hdr->name, &hdr->name[0] + sizeof(hdr->name));
+              if (l > 0 && 
+                  l < sizeof(hdr->name) && 
+                  l <= tarfs_os_mp_maxlen() && 
+                  l < out_len) {
+
                 memcpy(base_dir, hdr->name, l - 1 );
-                base_dir[l-1] = 0;
+                base_dir[l - 1] = 0;
+
                 return true;
               }
             }
