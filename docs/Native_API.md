@@ -1,3 +1,5 @@
+AI-assisted translation (RU-ENG)
+
 ## Native API
 
 On systems that do not provide a Virtual File System (VFS), the standard file I/O functions such as `open()` and `read()` may be unavailable or tightly coupled to the underlying storage system.

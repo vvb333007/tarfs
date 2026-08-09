@@ -1,3 +1,5 @@
+AI-assisted translation (RU-ENG)
+
 # TARFS FAQ
 
 ## What is TARFS?

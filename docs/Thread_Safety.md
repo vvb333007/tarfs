@@ -1,3 +1,5 @@
+AI-assisted translation (RU-ENG)
+
 ## TARFS - Multithreading, Thread Safety and Locking
 
 TARFS is designed to be safe for concurrent use from multiple threads while being lockless in its hotpath.
@@ -14,21 +16,8 @@ The only global mutex used by TARFS protects the table of mounted filesystems. I
 
 ## What TARFS guarantees
 
-TARFS guarantees that concurrent operations will not corrupt the global mounted-filesystem table or cause TARFS itself to access freed filesystem descriptors as a result of a TARFS-internal race.
-
-The following operations are safe to call concurrently:
-
-* `tarfs_mount()`
-* `tarfs_mount_memory()`
-* `tarfs_unmount()`
-* `tarfs_unmount_fs()`
-* `open()`
-* `close()`
-* `read()`
-* `pread()`
-* `mmap()/munmap()`
-etc
-
+TARFS guarantees that concurrent operations will not corrupt the global mounted-filesystem table or 
+cause TARFS itself to access freed filesystem descriptors as a result of a TARFS-internal race.
 
 ---
 
@@ -46,7 +35,9 @@ Concurrent `pread()` operations on the same file descriptor do not interfere wit
 
 TARFS `read()` has an important property concerning concurrent `seek()` or `read()` operations.
 
-When `read()` starts, it obtains the current file position and performs the actual filesystem access using that position. The actual data access is performed independently of subsequent changes to the file position.
+When `read()` starts, it obtains the current file position and performs the actual filesystem 
+access using that position. The actual data access is performed independently of subsequent 
+changes to the file position.
 
 Therefore once  `read()` has started, another thread calling `seek()` or `read()` can not redirect that 
 already-running `read()` to another location.
@@ -62,6 +53,9 @@ Thread A: continues reading from offset 1000
 ```
 
 The `read()` already in progress continues to operate on the offset it captured when it started.
+
+Read operations are atomic: they can not be interrupted.
+
 
 ### Important:
 
@@ -81,6 +75,10 @@ as one indivisible operation must provide its own synchronization.
 **TARFS protects its internal state; it does not protect application-level protocols!**
 
 ---
+## `lseek()` and `seekdir()`
+
+Both functions can be called concurently
+
 
 ## `readdir()` and `closedir()`
 
@@ -108,10 +106,20 @@ directory traversal: some entries may be skipped. If multiple threads need to it
 
 ## `close()`
 
-`close()` may be called concurrently with other TARFS operations. `close()` WILL NOT interrupt already-started read() operation - so `close()` coupled with `tarfs_unmount()` and a `read()` **at the same time is an UB**
+`close()` may be called concurrently with other TARFS operations. `close()` WILL NOT interrupt 
+already-started read() operation - so `close()` coupled with `tarfs_unmount()` and a 
+`read()` **at the same time is an UB**.
 
-TARFS uses reference counting for file system objects. This allows any object that is logically unmounted or closed to remain alive while active users still hold references to it.
+`close()` and `tarfs_unmount()` will start unmounting process, while `read()` operation may be still
+active. This will result in MMU unmapping memory being used --> MMU error.
 
+Just `close()`+`read()` or `tarfs_unmount()`+`read()` is safe.
+
+TARFS uses reference counting for file system objects: this allows any object that is logically unmounted or closed to remain alive while active users still 
+hold references to it. close()+tarfs_unmount() will drop reference counter to zero.
+
+
+---
 
 ## `tarfs_unmount()` and `tarfs_unmount_fs()`
 
@@ -119,36 +127,13 @@ The `tarfs_unmount()` operation does not blindly free a filesystem descriptor wh
 operation is using it: the filesystem enters a delayed unmount state until its active references are 
 released.
 
-
-### Application side:
-
-The application should still ensure that it does not intentionally use a file descriptor after it has been 
-closed. If application never unmounts a TARFS filesystem then it is ok to `close()` file in one thread while being `read()` in another thread
-
-
-For example:
-
-```text
-Thread A: close(fd)
-Thread B: read(fd)
-```
-
-is an application-level race. TARFS does not define which logical operation the application intended.
-
-The guarantee is that TARFSs internal data structures remain consistent and are not freed prematurely merely because another thread released a reference.
-
-
-
----
-
-## `tarfs_unmount()`
-
 `tarfs_unmount()` can be safely called from multiple threads.
 
-The operation:
+Operations like:
 
 ```c
 tarfs_unmount("/www");
+tarfs_unmount_fs(0);
 ```
 
 performs the lookup of the mountpoint and the corresponding unmount operation while holding the TARFS filesystem-table mutex.

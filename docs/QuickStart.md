@@ -1,3 +1,5 @@
+AI-assisted translation (RU-ENG)
+
 # Creating a TARFS Filesystem Image, Setp by step guide.
 
 TARFS stores the filesystem as a standard POSIX TAR archive.
