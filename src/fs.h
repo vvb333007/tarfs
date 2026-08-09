@@ -444,26 +444,26 @@ static inline void tarfs_init()   { tarfs_os_init(); }
 
 /* Logging, used internally by the tarfs library; Must be enabled in config.h (see CONFIG_TARFS_LOG macro)
  *
- * log() macro does all output (printf-like)
- * tarfs_logging() controls output of log() macro.
+ * tarfs_log() macro does all output (printf-like)
+ * tarfs_logging() controls output of tarfs_log() macro.
  *
  */
 #if CONFIG_TARFS_LOG
 
-#define log( Format_, ... ) do { if (g_tarfs_log) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ ); } while(0)
+#define tarfs_log( Format_, ... ) do { if (g_tarfs_log) printf( "%s(): " Format_, __func__,  ##__VA_ARGS__ ); } while(0)
 
 static inline void tarfs_logging(bool en) {
 
   g_tarfs_log = en;
-  log("tarfs core logging enabled\r\n"); /* if it is disabled we don't see it */
+  tarfs_log("tarfs core logging enabled\r\n"); /* if it is disabled we don't see it */
 
 }
 #else
 
 /* No-ops when logging is not compiled in 
  */
-#define log( Format_, ... ) do {} while(0)
-#define tarfs_logging( X_ ) do {} while(0)
+#define tarfs_log( Format_, ... ) do { } while(0)
+#define tarfs_logging( X_ ) do { } while(0)
 
 #endif /* CONFIG_TARFS_LOG */
 

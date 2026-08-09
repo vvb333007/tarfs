@@ -49,15 +49,15 @@ int main(int argc, char **argv) {
     unsigned char *buf = (unsigned char *)tarfs_os_map_tarfile(filename, &os_handle, &size);
 
     if (buf == NULL) {
-      log("failed to load '%s', errno=%d\n", filename, errno);
+      tarfs_log("failed to load '%s', errno=%d\n", filename, errno);
       return -1;
     }
 
-    log("TAR file '%s' loaded (%ld bytes), processing..\n", filename, size);
+    tarfs_log("TAR file '%s' loaded (%ld bytes), processing..\n", filename, size);
 
     processed = tar_addsum(buf, size);
 
-    log("Done: %d entries were processed\r\n", processed);      
+    tarfs_log("Done: %d entries were processed\r\n", processed);      
 #if 0
 /* for CRC64 integrity test, DO NOT UNCOMMENT! */
     memset(buf + 0, 0x5a, 200);
@@ -70,11 +70,11 @@ int main(int argc, char **argv) {
 
         fwrite(buf, size, 1, f);
         fclose(f);
-        log("output file '%s' has been created\r\n", filename2);      
+        tarfs_log("output file '%s' has been created\r\n", filename2);      
         goto unmap_and_exit;
       }
     }
-    log("No output produced: %s\r\n", processed ? "can not create output file" : "no updatable entries");
+    tarfs_log("No output produced: %s\r\n", processed ? "can not create output file" : "no updatable entries");
 unmap_and_exit:
     tarfs_os_unmap_tarfile(os_handle, buf, size);
     return 0;

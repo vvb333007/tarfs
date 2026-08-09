@@ -211,9 +211,9 @@ int inode_mount(struct tarfs_fs *fs,
 
 /**
  * @brief Dump the inode hash table in sorted order.
- *
+ * 
  * Debug helper used to inspect the inode index.
- *
+ * @note THIS FUNCTION MUST NOT BE USED IN PRODUCTION!
  * @param index Inode index.
  * @param count Number of entries.
  */
@@ -225,6 +225,7 @@ void inode_dumphash_sorted(struct tarfs_inode const * const *index,
  *
  * Debug helper that recursively prints the filesystem hierarchy.
  *
+ * @note THIS FUNCTION MUST NOT BE USED IN PRODUCTION!
  * @param root Root inode.
  */
 void inode_dumppath_sorted(struct tarfs_inode const *root);

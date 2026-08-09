@@ -359,8 +359,8 @@ bad_header:
 
     unsigned int total = files + links + dirs;
 
-    log("headers processed: %u, number of bad metadata headers: %u\r\n", hdr_no, bad_total);
-    log("# of inodes calculated: %u (%u files, %u dirs, %u links\r\n",total, files, dirs, links);
+    tarfs_log("headers processed: %u, number of bad metadata headers: %u\r\n", hdr_no, bad_total);
+    tarfs_log("# of inodes calculated: %u (%u files, %u dirs, %u links\r\n",total, files, dirs, links);
 
     return total;
 }
@@ -406,12 +406,14 @@ bool tar_rootdir(const uint8_t *tar_start, size_t tar_length, char *base_dir, si
 
     off += (((size_t)size + 511) & ~511u) + sizeof(tarhdr_t);
   }
-  log("failed to guess root directory\r\n");
+  tarfs_log("failed to guess root directory\r\n");
   return false;
 }
 
-#if CONFIG_TARFS_LOG
-/* Displays string `buf`, which may or may not end with NUL: the line end
+
+/* THIS FUNCTION MUST NOT BE USED IN PRODUCTION!
+ *
+ * Displays string `buf`, which may or may not end with NUL: the line end
  * markers are \r, \n and \0.
  *
  * We dont go past the `end` pointer even if we didnt find any line 
@@ -431,14 +433,18 @@ void tar_print(const char *buf, const char *end) {
       break;
   }
 
-  /* XXX: get rid of stack buffer here */
+  /* XXX: get rid of stack buffer here. 
+   * Badly formed TAR archive may result in a stack overflow exception.
+   * This is the reason why tar_print() can not be used in production.
+   * tar_print can only be used for debugging!
+   */
   char b[len + 1];
   memcpy(b,text,len);
   b[len] = 0;
 
   printf("%s",b);
 }
-#endif
+
 
 
 #if TARSUM_BUILD && CONFIG_TARFS_INTEGRITY

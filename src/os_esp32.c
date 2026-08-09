@@ -228,7 +228,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
   void const *map;
 
   if (label == NULL || os_handle_out == NULL) {
-    log("ESP32: invalid arguments\r\n");
+    tarfs_log("ESP32: invalid arguments\r\n");
     errno = EFAULT;
     return NULL;
   }
@@ -238,7 +238,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
                          ESP_PARTITION_SUBTYPE_ANY,
                          label);
   if (i == NULL) {
-    log("ESP32: partition not found '%s'\r\n", label);
+    tarfs_log("ESP32: partition not found '%s'\r\n", label);
     errno = ENOENT;
     return NULL;
   }
@@ -248,7 +248,7 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
 
   /* non-NULL iterator can not yield NULL partition pointer, but just in case */
   if (part == NULL) {
-    log("esp_partition_get() returned NULL, this must not happen!\r\n");
+    tarfs_log("esp_partition_get() returned NULL, this must not happen!\r\n");
     errno = EIO;
     return NULL;
   }
@@ -258,12 +258,12 @@ void const *tarfs_os_map_tarfile(const char *label, void **os_handle_out, size_t
     if (size_out)
       *size_out = part->size;
 
-    log("ESP32: partition '%s' -> vaddr=%p, size=%u\r\n", label, map, (unsigned int)part->size);
+    tarfs_log("ESP32: partition '%s' -> vaddr=%p, size=%u\r\n", label, map, (unsigned int)part->size);
 
     return map;
   }
 
-  log("esp_partition_mmap() failed\r\n");
+  tarfs_log("esp_partition_mmap() failed\r\n");
   errno = ENOMEM;
   return NULL;
 }

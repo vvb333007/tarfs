@@ -89,7 +89,7 @@ int munmap(void *addr, size_t length) {
     }
     tarfs_unlock();
   }
-  log("address %p does not belong to mmap()\r\n", addr);
+  tarfs_log("Address %p is not ours!\r\n", addr);
   errno = EINVAL;
   return -1;
 }

@@ -175,16 +175,6 @@ char *tar_strdup1(const char *s1, const char *s1_end);
  */
 uint32_t tar_octal(const char *p, size_t max_len);
 
-#if CONFIG_TARFS_LOG
-/* Devel only:
- * Displays CTS `buf`; `end` is the UTS_limit
- *
- * We dont go past the `end` pointer even if we didnt find any line 
- * terminator
- */
-void tar_print(const char *buf, const char *end);
-#endif /* CONFIG_TARFS_LOG */
-
 
 /** Validate a TAR header.
  *

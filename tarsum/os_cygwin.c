@@ -84,7 +84,7 @@ void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, siz
     fseek(f, 0, SEEK_SET);
 
     if (size <= 0) {
-        log("Invalid file size\n");
+        tarfs_log("Invalid file size\n");
         fclose(f);
         return NULL;
     }
@@ -95,7 +95,7 @@ void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, siz
     // выделяем буфер
     unsigned char *buf = (unsigned char *)tarfs_os_malloc(size);
     if (!buf) {
-        log("malloc failed (%ld bytes)\n", size);
+        tarfs_log("malloc failed (%ld bytes)\n", size);
         fclose(f);
         return NULL;
     }
@@ -108,7 +108,7 @@ void const *tarfs_os_map_tarfile(const char *filename, void **os_handle_out, siz
     // читаем файл целиком
     size_t read_bytes = fread(buf, 1, size, f);
     if (read_bytes != (size_t)size) {
-        log("fread failed: got %zu / %ld bytes\n", read_bytes, size);
+        tarfs_log("fread failed: got %zu / %ld bytes\n", read_bytes, size);
         tarfs_os_free(buf);
         fclose(f);
         return NULL;

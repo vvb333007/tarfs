@@ -88,12 +88,12 @@
                 fs_idx < TARFS_MAX_FS && \
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { \
 \
-    log("FS#%d is not mounted\r\n",fs_idx); \
+    tarfs_log("FS#%d is not mounted\r\n",fs_idx); \
     errno = EIO; \
     return (TYPE)(-1); \
   } \
   if (!is_sanefd(fs, fd)) { \
-    log("FS#%d, fd#%d is not open\r\n", fs_idx, fd); \
+    tarfs_log("FS#%d, fd#%d is not open\r\n", fs_idx, fd); \
     errno = EBADF; \
     return (TYPE)(-1); \
   }
@@ -284,7 +284,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 
     ADD_STATS(fs->fs_nfail, 1);
 
-    log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
+    tarfs_log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO;
 
     return -1; 
@@ -342,7 +342,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
       }
 
       if (alt_path != NULL) {
-        log("trying '%s' instead..\r\n",alt_path);
+        tarfs_log("trying '%s' instead..\r\n",alt_path);
         idx = inode_lookup(fs->fs_ino, fs->fs_nino,alt_path);
         tarfs_os_free(alt_path);
         alt_path = NULL;
@@ -351,7 +351,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   } /* Seconf attempt */
 
   if (idx < 0) {
-    log("path '%s' not found\r\n",path);
+    tarfs_log("path '%s' not found\r\n",path);
     if (errno == 0)
       errno = -idx;
     goto unref_and_exit;
@@ -364,7 +364,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   struct tarfs_inode const *inode = fs->fs_ino[idx];
   if (inode->in_dvaddr == 0) {
     ADD_STATS(fs->fs_nfail, 1);
-    log("floating inode '%s', no data\r\n", path);
+    tarfs_log("floating inode '%s', no data\r\n", path);
     errno = EIO;
     goto unref_and_exit;
   }
@@ -378,7 +378,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
    */
   if ((flags & O_DIRECTORY) != 0) {
     if (type != TART_DIR) {
-      log("O_DIRECTORY specified for a non-directory object\r\n");
+      tarfs_log("O_DIRECTORY specified for a non-directory object\r\n");
       errno = ENOTDIR;
       goto unref_and_exit;
     }
@@ -389,7 +389,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     size = 0;
   } else {
     if (type == TART_DIR) {
-      log("target is a directory, O_DIRECTORY flag is required\r\n");
+      tarfs_log("target is a directory, O_DIRECTORY flag is required\r\n");
       errno = EISDIR;
       goto unref_and_exit;
     }
@@ -399,7 +399,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
 #if CONFIG_TARFS_INTEGRITY
     if (fs->fs_opencrc) {
       if (tar_baddata((struct tarhdr const *)inode->in_dvaddr, size)) {
-        log("data integrity check failed for '%s'\r\n", path);
+        tarfs_log("data integrity check failed for '%s'\r\n", path);
         errno = EIO;
         goto unref_and_exit;
       }
@@ -414,7 +414,7 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
    */
   if ((fd = allocfd(fs)) >= 0) {
     struct tarfs_fp *fp = &fs->fs_fd[fd];
-    log("fd=%d allocated\r\n", fd);
+    tarfs_log("fd=%d allocated\r\n", fd);
 
 
     fp->fp_vaddr = inode->in_dvaddr + sizeof(struct tarhdr);
@@ -422,12 +422,12 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     fp->fp_size  = size;
     fp->fp_idx   = idx; /* inode index, used by opendir()/readdir() */
 
-    log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
+    tarfs_log("success, ino=%d, type=%c, path=%s, fd=%d, size=%u, vaddr=%p\r\n",idx, type, path, fd,(unsigned int)fp->fp_size, (void *)fp->fp_vaddr);
 
     return fd;
   }
 
-  log("allocfd failed for path=%s\r\n",path);
+  tarfs_log("allocfd failed for path=%s\r\n",path);
   errno = EMFILE;
 
   ADD_STATS(fs->fs_nfail, 1);
@@ -447,7 +447,7 @@ int tarf_close(void* ctx, int fd) {
   
   PROLOGUE( int );
 
-  log("closing fd=%d, fs_idx=%d\r\n", fd, fs_idx);
+  tarfs_log("closing fd=%d, fs_idx=%d\r\n", fd, fs_idx);
 
   freefd(fs, fd);
   tarfs_unref(fs);
@@ -576,7 +576,7 @@ off_t tarf_lseek(void* ctx, int fd, off_t offset, int whence) {
     }
   }
   
-  log("bad whence(%d) or/and offset(%ld)\r\n", whence, offset);
+  tarfs_log("bad whence(%d) or/and offset(%ld)\r\n", whence, offset);
 
   errno = EINVAL;
   return (off_t)(-1);
@@ -639,7 +639,7 @@ int tarf_lstat(void* ctx, const char *path, struct stat * st) {
   /* Locate the inode, by open()ing it*/
   if ((fd = tarf_open(ctx, path, 0, 0)) < 0) {
     if ((fd = tarf_open(ctx, path, O_DIRECTORY, 0)) < 0) {
-      log("path not found: %s\r\n", path);
+      tarfs_log("path not found: %s\r\n", path);
       return -1;
     }
   }
@@ -649,7 +649,7 @@ int tarf_lstat(void* ctx, const char *path, struct stat * st) {
    */
   if ((fs = tarfs_getfs(fs_idx)) == NULL) { 
 
-    log("bad filesystem context: %d\r\n",fs_idx); 
+    tarfs_log("bad filesystem context: %d\r\n",fs_idx); 
     errno = EIO; 
     return -1; 
   }
@@ -794,7 +794,7 @@ int tarf_stat(void* ctx, const char * path, struct stat * st) {
 
     if ((fd = tarf_open(ctx, path, O_RDONLY, 0)) < 0) {
       if ((fd = tarf_open(ctx, path, O_RDONLY | O_DIRECTORY, 0)) < 0) {
-        log("path does not exist (not file not directory)");
+        tarfs_log("path does not exist (not file not directory)");
         return -1;
       }
     }
@@ -825,12 +825,12 @@ int tarf_dupfd(void *ctx, int fd) {
 
     fs->fs_fd[dup] = fs->fs_fd[fd];
     tarfs_addref(fs);
-    log("fd=%d was duplicated as fd=%d\r\n", fd, dup);
+    tarfs_log("fd=%d was duplicated as fd=%d\r\n", fd, dup);
 
   } else {
 
     errno = EMFILE;
-    log("fd=%d NOT duplicated, EMFILE!\r\n", fd);
+    tarfs_log("fd=%d NOT duplicated, EMFILE!\r\n", fd);
 
   }
   return dup;
@@ -855,7 +855,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       ((flags & MAP_ANONYMOUS) && fd < 0) ||
       ((prot & (PROT_WRITE|PROT_EXEC)) != 0)) {
 
-    log("Unsupported combination of flags/protection\r\n");
+    tarfs_log("Unsupported combination of flags/protection\r\n");
     errno = EINVAL; 
     return MAP_FAILED;
   }
@@ -868,7 +868,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
       offset > fp->fp_size || 
       length > (fp->fp_size - offset)) {
 
-      log("failed: offset=%u, fp_size=%u, length=%u\r\n", (unsigned int)offset, (unsigned int)fp->fp_size, (unsigned int)length);
+      tarfs_log("failed: offset=%u, fp_size=%u, length=%u\r\n", (unsigned int)offset, (unsigned int)fp->fp_size, (unsigned int)length);
       errno = EINVAL;
 
       return MAP_FAILED;
@@ -877,7 +877,7 @@ void *tarf_mmap(void *ctx, void *addr, size_t length, int prot, int flags, int f
   tarfs_addref(fs);
   ADD_STATS(fs->fs_bmmap, length);
 
-  log("fd=%d, mapped %u bytes vaddr=%p, offset=%d\r\n",fd, (unsigned int)length, (void *)fp->fp_vaddr, (int)offset);
+  tarfs_log("fd=%d, mapped %u bytes vaddr=%p, offset=%d\r\n",fd, (unsigned int)length, (void *)fp->fp_vaddr, (int)offset);
 
   /* Partition is mmaped already by mount, here we just calculate the right 
    * memory offset
@@ -905,12 +905,12 @@ int tarf_munmap(void *ctx, void *addr, size_t length) {
                 fs_idx < TARFS_MAX_FS && 
                 ((fs = tarfs_getfs(fs_idx)) != NULL))) { 
 
-    log("filesystem #%d is not mounted\r\n",fs_idx); 
+    tarfs_log("filesystem #%d is not mounted\r\n",fs_idx); 
     errno = EIO; 
     return -1; 
   }
 
-  log("unmapping ptr=%p (len=%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
+  tarfs_log("unmapping ptr=%p (len=%u) from fs_idx=%d\r\n",(void *)addr, (unsigned int)length, fs_idx); 
   tarfs_unref(fs);
 
   addr = addr;
@@ -947,7 +947,7 @@ ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) 
      */
     if (fp->fp_vaddr == 0) {
 
-      log("bad virtual address, fd=%d\r\n", fd);
+      tarfs_log("bad virtual address, fd=%d\r\n", fd);
       errno = EIO;
       return -1;
     }
@@ -960,7 +960,7 @@ ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) 
 
       /* sanity checks: we don't trust user-supplied position */
       if (pos   <  0 || pos   >  fp->fp_size) {
-        log("bad user-supplied pos=%d\r\n",(int)pos);
+        tarfs_log("bad user-supplied pos=%d\r\n",(int)pos);
         errno = EINVAL;
         return -1;
       }
@@ -986,16 +986,16 @@ ssize_t tarf_sendfile(void *ctx, int sock, int fd, off_t *offset, size_t count) 
         if (errno == EINTR)
           continue;
 
-        log("send failed\r\n");
+        tarfs_log("send failed\r\n");
         break;
       }
 
       if (n == 0) {
-          log("eof\r\n");
+          tarfs_log("eof\r\n");
           break;
       }
 
-      log("sent %u\r\n", (unsigned int)n);
+      tarfs_log("sent %u\r\n", (unsigned int)n);
       total += n;
     }
 

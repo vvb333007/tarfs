@@ -172,7 +172,7 @@ DIR* tard_fdopendir(void* ctx, int fd) {
   struct tarfs_fs *fs = tarfs_getfs_addref((int)(uintptr_t)ctx);
   if (fs == NULL) {
 
-    log("filesystem %d has gone, fd == %d is dead\r\n", (int)(uintptr_t)ctx, fd);
+    tarfs_log("filesystem %d has gone, fd == %d is dead\r\n", (int)(uintptr_t)ctx, fd);
 
     errno = ENODEV;
     return NULL;
@@ -181,7 +181,7 @@ DIR* tard_fdopendir(void* ctx, int fd) {
   /* Check if fd is still alive */
   if (!is_sanefd(fs, fd)) {
 
-    log("fd == %d is dead\r\n", fd);
+    tarfs_log("fd == %d is dead\r\n", fd);
     
     tarfs_unref(fs);
     errno = EBADF;
@@ -209,7 +209,7 @@ DIR* tard_fdopendir(void* ctx, int fd) {
       if (dir->di_prefix[nlen - 1] == '/')
         dir->di_prefix[nlen - 1] = '\0';
 
-      log("prefix: '%s' opened, fd=%d\r\n", dir->di_prefix, fd);
+      tarfs_log("prefix: '%s' opened, fd=%d\r\n", dir->di_prefix, fd);
       /* Success! */
       return (DIR*)dir;
     }
@@ -244,7 +244,7 @@ DIR* tard_opendir(void* ctx, const char* name) {
       tarf_close(ctx, fd);
     }
     /* tarf_open() sets errno */
-    log("failed to open()/fdopendir() '%s'\r\n", name);
+    tarfs_log("failed to open()/fdopendir() '%s'\r\n", name);
   } else
     errno = EFAULT;
 
@@ -266,7 +266,7 @@ int tard_closedir(void* ctx, DIR* pdir) {
 
     struct tarfs_dir *dir = (struct tarfs_dir *)pdir;
 
-    log("closing dir fd=%d\r\n", dir->di_fd);
+    tarfs_log("closing dir fd=%d\r\n", dir->di_fd);
 
     tarf_close(ctx, dir->di_fd);
 
@@ -306,7 +306,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
     int x = is_direct_child((char const *)cur->in_path, dir->di_prefix);
 
     if (x < 0) {
-      log("end of directory '%s' reached\r\n", dir->di_prefix);
+      tarfs_log("end of directory '%s' reached\r\n", dir->di_prefix);
       return NULL;
     }
 
@@ -344,7 +344,7 @@ struct dirent* tard_readdir(void* ctx, DIR* pdir) {
     }
   }  
 
-  log("end of alphalist is reached\r\n");
+  tarfs_log("end of alphalist is reached\r\n");
   return NULL;
 }
 
@@ -383,7 +383,7 @@ void tard_seekdir(void* ctx, DIR* pdir, long offset) {
 
   while(dir->di_off < offset) {
     if (NULL == tard_readdir(ctx, pdir)) {
-      log("offset %ld is not reachable, stopped at offset %u\r\n", offset, (unsigned int)dir->di_off);
+      tarfs_log("offset %ld is not reachable, stopped at offset %u\r\n", offset, (unsigned int)dir->di_off);
       break;
     }
   }

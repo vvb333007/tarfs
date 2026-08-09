@@ -40,7 +40,7 @@ static _Atomic int       s_numfs = 0;                    /*!< Number of mounted 
 static struct tarfs_fs  *s_tarfs[TARFS_MAX_FS] = { 0 };  /*!< Pointers to filesystem descriptors */
 
 #if CONFIG_TARFS_LOG
-bool g_tarfs_log = true; /*!< Enable/disable logging via log() macro */
+bool g_tarfs_log = true; /*!< Enable/disable logging via tarfs_log() macro */
 #endif
 
 #if CONFIG_TARFS_INTEGRITY
@@ -56,7 +56,7 @@ struct tarfs_fs *tarfs_getfs(int i) {
   if (i>=0 && i < TARFS_MAX_FS)
     return s_tarfs[i];
 
-  log("filesystem #%d does not exist!\r\n",i);
+  tarfs_log("filesystem #%d does not exist!\r\n",i);
 
   return NULL;
 
@@ -84,7 +84,7 @@ struct tarfs_fs *tarfs_getfs_addref(int i) {
   tarfs_unlock();
 
   if (fs == NULL)
-    log("filesystem #%d does not exist!\r\n",i);
+    tarfs_log("filesystem #%d does not exist!\r\n",i);
 
   return fs;
 }
@@ -104,7 +104,7 @@ static int findfs(const char *mountpoint) {
     /* We are interested in empty slots only if mountpoint is NULL */
     if (s_tarfs[i] == NULL) {
       if (mountpoint == NULL) {
-        log("empty slot #%d found\r\n", i);
+        tarfs_log("empty slot #%d found\r\n", i);
         return i;
       }
 
@@ -117,7 +117,7 @@ static int findfs(const char *mountpoint) {
 
     /* Exact name match? Return slot number */
     if (!strcmp(s_tarfs[i]->fs_mountpoint, mountpoint)) {
-      log("mountpoint %s slot #%d found\r\n", mountpoint, i);
+      tarfs_log("mountpoint %s slot #%d found\r\n", mountpoint, i);
       return i;
     }
   }
@@ -125,12 +125,12 @@ static int findfs(const char *mountpoint) {
   /* Log, set errno and return -1 */
 
   if (mountpoint == NULL) {
-    log("can not find empty slot\r\n");
+    tarfs_log("can not find empty slot\r\n");
     errno = EBUSY;
     return -1;
   }
 
-  log("can not find slot (%s)\r\n", mountpoint);
+  tarfs_log("can not find slot (%s)\r\n", mountpoint);
   errno = ENOENT;
   return -1;
 }
@@ -195,17 +195,17 @@ static void commit_unmount(void *ctx) {
   if (fs == NULL)
     return ;
 
-  log("unmounting FS '%s' started\r\n", fs->fs_mountpoint);
+  tarfs_log("unmounting FS '%s' started\r\n", fs->fs_mountpoint);
 
 
-  log("unregistering VFS\r\n");
+  tarfs_log("unregistering VFS\r\n");
 
   /* If we can not properly unregister our FS we don't remove tarfs_fs entry
    * to prevent crashes: unregistered fs can still call read()/write()/open()
    */  
   if (!tarfs_os_unregister_fs(fs->fs_mountpoint)) {
 
-    log(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
+    tarfs_log(" failed to unregister '%s', memory leaked!\r\n", fs->fs_mountpoint);
     /* This will create a memory leak, but prevents crashes */
     return ;
   }
@@ -215,13 +215,13 @@ static void commit_unmount(void *ctx) {
    */
   /* Clear slot: pointer is going to become invalid
    */
-  log("clearing slot..\r\n");
+  tarfs_log("clearing slot..\r\n");
   tarfs_lock();
   for (i = 0; i< TARFS_MAX_FS; i++)
     if (s_tarfs[i] == fs) {
       s_numfs--;
       s_tarfs[i] = NULL;
-      log("FS slot %d cleared\r\n", i);
+      tarfs_log("FS slot %d cleared\r\n", i);
       break;
     }
   tarfs_unlock();
@@ -229,7 +229,7 @@ static void commit_unmount(void *ctx) {
   /* Release all associated memory: inodes, inode index*/
   if (fs->fs_ino != NULL && fs->fs_nino > 0) {
 
-    log(" deleting inodes (%u)\r\n", (unsigned int)fs->fs_nino);
+    tarfs_log(" deleting inodes (%u)\r\n", (unsigned int)fs->fs_nino);
     inode_unmount(fs, (const void *)fs->fs_vaddr, fs->fs_size);
     fs->fs_ino = NULL;
   }
@@ -237,13 +237,13 @@ static void commit_unmount(void *ctx) {
   /* Release the FS image */
   if (fs->fs_vaddr != NULL) {
     if (fs->fs_handle != 0) {
-      log(" unmapping filesystem image, vaddr=%p, size=%u\r\n", (const void *)fs->fs_vaddr, (unsigned int)fs->fs_size);
+      tarfs_log(" unmapping filesystem image, vaddr=%p, size=%u\r\n", (const void *)fs->fs_vaddr, (unsigned int)fs->fs_size);
       tarfs_os_unmap_tarfile((void *)fs->fs_handle, (void *)fs->fs_vaddr, fs->fs_size);
     }
     fs->fs_vaddr = NULL;
   }
 
-  log("deleting FS descriptor %p\r\n", (void *)fs);
+  tarfs_log("deleting FS descriptor %p\r\n", (void *)fs);
   tarfs_os_free(fs);
 }
 
@@ -277,12 +277,12 @@ int tarfs_unmount_fs(int fs_idx) {
 
     if (prev_refc > 1) {
 
-      log("Filesystem %d is in use (%u active users), unmount delayed\r\n", fs_idx, prev_refc - 1);
+      tarfs_log("Filesystem %d is in use (%u active users), unmount delayed\r\n", fs_idx, prev_refc - 1);
       err = EBUSY;
 
     } else if (prev_refc == 0) { /* tarfs_unref(NULL) returns 0 */
 
-      log("Filesystem %d is not mounted, stale fs_idx\r\n", fs_idx);
+      tarfs_log("Filesystem %d is not mounted, stale fs_idx\r\n", fs_idx);
       err = ENOENT;
 
     } else {
@@ -348,36 +348,36 @@ int tarfs_mount_memory(const void *map, size_t size, const char *mountpoint, con
   if (mountpoint == NULL)
     mountpoint = base_dir;
   else {
-    log("detected MP '%s' is overriden with '%s'\r\n", base_dir, mountpoint);
+    tarfs_log("detected MP '%s' is overriden with '%s'\r\n", base_dir, mountpoint);
   }
 
   len = strlen(mountpoint);
 
 #if CONFIG_TARFS_INTEGRITY
   if (tarfs_integrity(-1) > 0)
-    log("TAR-CRC64 filesystem is expected\r\n");
+    tarfs_log("TAR-CRC64 filesystem is expected\r\n");
 #endif
 
     if (false == (len > 1 && mountpoint[0] == '/' && mountpoint[len - 1] != '/')) {
-      log("mountpoint is too short or invalid '%s'\r\n", mountpoint);
+      tarfs_log("mountpoint is too short or invalid '%s'\r\n", mountpoint);
       errno = EINVAL;
 unmap_and_return_error:
       
       return -1;
     }
 
-    log("mountpoint: '%s'\r\n", mountpoint);
+    tarfs_log("mountpoint: '%s'\r\n", mountpoint);
 
     if (base_dir[1] == '\0') {
-      log("Warning: tarfile has no root directory\r\n");
+      tarfs_log("Warning: tarfile has no root directory\r\n");
     } else {
-      log("Common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
+      tarfs_log("Common prefix: '%s' (will be stripped)\r\n", &base_dir[1]);
     }
 
     if (*link_rebase != '\0') {
-      log("Absolute path rewrite: '%s'\r\n",link_rebase);
+      tarfs_log("Absolute path rewrite: '%s'\r\n",link_rebase);
     } else {
-      log("Preserving absolute paths in hardlinks/symlinks\r\n");
+      tarfs_log("Preserving absolute paths in hardlinks/symlinks\r\n");
     }
 
     /* Allocate FS descriptor */
@@ -401,11 +401,11 @@ unmap_and_return_error:
       tarfs_unlock();
       tarfs_os_free(fs);
 
-      /* With CONFIG_TARFS_LOG set to 0 code below compiles to an empty statement (log() macro is a no-op)*/
+      /* With CONFIG_TARFS_LOG set to 0 code below compiles to an empty statement (tarfs_log() macro is a no-op)*/
       if (slot < 0)
-        log("too many mounted filesystems (%u)\r\n",s_numfs);
+        tarfs_log("too many mounted filesystems (%u)\r\n",s_numfs);
       else
-        log("mount point '%s' is in use by another filesystem\r\n", mountpoint);
+        tarfs_log("mount point '%s' is in use by another filesystem\r\n", mountpoint);
 
       errno = EBUSY;
       goto unmap_and_return_error;
@@ -417,7 +417,7 @@ unmap_and_return_error:
     tarfs_unlock();
   /* ------- unlocked -------*/
 
-    log("Allocated FS descriptor %p, slot# %d is used\r\n", (void *)fs, slot);
+    tarfs_log("Allocated FS descriptor %p, slot# %d is used\r\n", (void *)fs, slot);
 
     /* set refcounter to 1 */
     initref(&fs->fs_ref);
@@ -430,10 +430,10 @@ unmap_and_return_error:
     /* Copy the mountpoint. Trailing zero is there already */
     memcpy(fs->fs_mountpoint, mountpoint, len);
 
-    log("Mounting..\r\n");
+    tarfs_log("Mounting..\r\n");
     if (inode_mount(fs, map, size, link_rebase, &base_dir[1]) < 0) {
       if (fs->fs_ino == NULL) {
-        log("Filesystem is unusable, no valid inodes were found\r\n");
+        tarfs_log("Filesystem is unusable, no valid inodes were found\r\n");
         tarfs_lock();
         s_tarfs[slot] = NULL;
         s_numfs--;
@@ -441,20 +441,20 @@ unmap_and_return_error:
         /* errno must be set in inode_mount() */
         goto unmap_and_return_error;
       } 
-      log("Warning: filesystem is in degraded mode\r\n");
+      tarfs_log("Warning: filesystem is in degraded mode\r\n");
     }
 
   /* Registering VFS */
-  log("registering TARFS in VFS..\r\n");
+  tarfs_log("registering TARFS in VFS..\r\n");
   if (tarfs_os_register_fs(mountpoint, (void *)(intptr_t)slot) == false) {
-    log("Can not register POSIX handlers, only native tarfs API is available\r\n");
+    tarfs_log("Can not register POSIX handlers, only native tarfs API is available\r\n");
   } else {
-    log("VFS registered. (prefix '%s' in VFS)\r\n", mountpoint);
+    tarfs_log("VFS registered. (prefix '%s' in VFS)\r\n", mountpoint);
   }
 
-  log("Mount is done. filesystem slot is %d\r\n", slot);
+  tarfs_log("Mount is done. filesystem slot is %d\r\n", slot);
 
-  log("\r\n----------- STATS -----------\r\n"
+  tarfs_log("\r\n----------- STATS -----------\r\n"
       "%u blocks (%u bytes) were skipped as BAD\n"
       "TAR archive has %u files, %u links and %u dirs\r\n"
       "TAR data/headers ratio: %u data bytes, %u header bytes\r\n"
@@ -487,16 +487,16 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
 
 
   /* Actual memory mapping */
-  log("Mapping resource '%s'..\r\n", label);
+  tarfs_log("Mapping resource '%s'..\r\n", label);
 
   if (NULL != (map = tarfs_os_map_tarfile( label, &os_handle, &size))) {
 
-    log("resource is available at %p, %u bytes. mounting from memory..\r\n", map, (unsigned int)size);
+    tarfs_log("resource is available at %p, %u bytes. mounting from memory..\r\n", map, (unsigned int)size);
 
     slot = tarfs_mount_memory(map, size, mountpoint, link_rebase, path_rebase);
     if (slot >= 0) {
 
-      log("success, filesystem slot %d was assigned\r\n", slot);
+      tarfs_log("success, filesystem slot %d was assigned\r\n", slot);
 
       struct tarfs_fs *fs = tarfs_getfs(slot);
       fs->fs_handle = (uintptr_t)os_handle;
@@ -509,7 +509,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
   if (errno == 0)
     errno = EIO;
 
-  log("failed to mmap() the FS image (errno=%d, label=%s)\r\n", errno, label);
+  tarfs_log("failed to mmap() the FS image (errno=%d, label=%s)\r\n", errno, label);
 
   return -1;
 }
@@ -803,7 +803,7 @@ int tarfs_integrity_on_open(int fs_idx, int en) {
 
   if (fs == NULL) {
 
-    log("no such filesystem: %d\r\n", fs_idx);
+    tarfs_log("no such filesystem: %d\r\n", fs_idx);
     errno = ENODEV;
 
     return -1;
@@ -815,10 +815,10 @@ int tarfs_integrity_on_open(int fs_idx, int en) {
     fs->fs_opencrc = (int)(bool)en;
   tarfs_unref(fs);
 
-  log(" CRC64 on each open() : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow open)" : "disabled"));
+  tarfs_log(" CRC64 on each open() : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow open)" : "disabled"));
   return ret;
 #else
-  log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
+  tarfs_log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
   return 0;
 #endif
 }
@@ -836,7 +836,7 @@ int tarfs_integrity(int en) {
   int ret = s_tarfs_crc64;
 
   if (en >= 0) {
-    log(" CRC64 on mount : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow mount)" : "disabled"));
+    tarfs_log(" CRC64 on mount : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow mount)" : "disabled"));
     s_tarfs_crc64 = en;
   }
 
@@ -845,7 +845,7 @@ int tarfs_integrity(int en) {
 #else
 
   if (en >= 0)
-    log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
+    tarfs_log("CONFIG_TARFS_INTEGRITY is disabled, flag ignored\r\n");
 
   return 0;
 
