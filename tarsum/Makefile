@@ -8,10 +8,10 @@ CC      := gcc
 # Directories
 OBJDIR  := .
 
-# Flags -Wno-sign-compare  -fanalyzer
+# Flags -Wno-sign-compare  
 CFLAGS  := -Wall -Wextra -Os -pedantic -I../src
 CFLAGS  += -DTARSUM_BUILD=1
-CFLAGS += -MMD -MP 
+CFLAGS += -MMD -MP -fanalyzer
 
 # Common sources
 COMMON_SRC := \

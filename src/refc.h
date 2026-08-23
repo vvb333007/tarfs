@@ -30,8 +30,21 @@
 
 #pragma once
 
-/* Compilation issues (C / C++): these two languages use different atomic libraries, with different
- * syntax. This is completely safe, as C++ code does not touch tarfs atomics
+/* The default object deallocator is free().
+ * This implies that objects containing a refcounter must be allocated with malloc()
+ * or its equivalent. If user code uses a custom allocator, the default deallocator
+ * must be redefined before including this file:
+ *
+ * #define REFC_FREE heap_caps_free
+ * #include "refc.h"
+ *
+ */
+#ifndef REFC_FREE
+#  define REFC_FREE free
+#endif
+
+
+/* Compilation issues (C / C++)
  */
 #ifdef __cplusplus
 #  undef _Atomic
@@ -42,7 +55,7 @@
 /**
  * @brief Reference counter type.
  *
- * Native CPU integer size is usually the fastest option.
+ * Native CPU unsigned integer size is usually the fastest option.
  */
 typedef unsigned int refc_type_t;
 
@@ -189,7 +202,7 @@ refc_type_t unrefxn(refc_t *r,
  */
 static inline refc_type_t unref(refc_t *ref, void *object) {
 
-  return unrefxn(ref, object, 1, free);
+  return unrefxn(ref, object, 1, REFC_FREE);
 }
 
 /**
@@ -208,7 +221,7 @@ static inline refc_type_t unref(refc_t *ref, void *object) {
  */
 static inline refc_type_t unrefn(refc_t *ref, void *object, refc_type_t n) {
 
-  return unrefxn(ref, object, n, free);
+  return unrefxn(ref, object, n, REFC_FREE);
 }
 
 /**

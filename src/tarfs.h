@@ -11,7 +11,7 @@
  *   https://github.com/vvb333007/tarfs
  *
  * @file tarfs.h
- * @brief Main include file for the library
+ * @brief Main include file for the library. Includes all necessary header files
  */
 
 #pragma once
