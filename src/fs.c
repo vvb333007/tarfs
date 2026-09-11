@@ -258,6 +258,7 @@ int tarfs_addref(struct tarfs_fs *fs) {
  *
  */
 int tarfs_unref(struct tarfs_fs *fs) {
+  
   return fs == NULL ? 0 : unrefx(&fs->fs_ref, fs, commit_unmount);
 }
 
@@ -267,20 +268,25 @@ int tarfs_unref(struct tarfs_fs *fs) {
 int tarfs_unmount_fs(int fs_idx) {
   
   int err = EINVAL;
-  refc_type_t prev_refc;
+  refc_type_t prev_refc = 0;
 
   tarfs_lock(); /* protect s_tarfs[] array, protects from a concurrent tarfs_unmount/mount */
   
   if (fs_idx >= 0 && fs_idx < CONFIG_TARFS_MAX_FS) {
     /* tarfs_unref() is ok with NULL argument */
-    prev_refc = tarfs_unref( s_tarfs[fs_idx] );
+
+    if (s_tarfs[fs_idx] != NULL) {
+      // Mark the filesystem as "deny all future open()/opendir()" calls
+      // Unref the filesystem
+      s_tarfs[fs_idx]->fs_noopen = 1;      
+      prev_refc = tarfs_unref( s_tarfs[fs_idx] );
+    }
 
     if (prev_refc > 1) {
 
       tarfs_log("Filesystem %d is in use (%u active users), unmount delayed\r\n", fs_idx, prev_refc - 1);
       err = EBUSY;
-
-    } else if (prev_refc == 0) { /* tarfs_unref(NULL) returns 0 */
+    } else if (prev_refc == 0) { /* dead/non-existent object */
 
       tarfs_log("Filesystem %d is not mounted, stale fs_idx\r\n", fs_idx);
       err = ENOENT;

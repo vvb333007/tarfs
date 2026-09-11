@@ -45,22 +45,24 @@ refc_type_t addrefn(refc_t *ref, refc_type_t n) {
     return 0;
 
   r = atomic_load_explicit(ref, memory_order_relaxed);
-  lim = ((refc_type_t )(-1)) - n;
 
-  do {
+  if ( n > 0) {
+    lim = ((refc_type_t )(-1)) - n;
 
-    /* refcounter is dead or will be overflow by the addition of `n`? return `false` */
-    if (r < 1 || r > lim)
-      return 0;
+    do {
 
-    /* CAS, acquire */
-  } while (!atomic_compare_exchange_weak_explicit( 
-              ref,
-             &r,
-              r + n,
-              memory_order_acquire,
-              memory_order_relaxed));
+      /* is refcounter dead or will it be overflowed by the addition of /n/? */
+      if (r < 1 || r > lim)
+        return 0;
 
+      /* CAS, acquire */
+    } while (!atomic_compare_exchange_weak_explicit( 
+                ref,
+               &r,
+                r + n,
+                memory_order_acquire,
+                memory_order_relaxed));
+  }
   return r + n;
 }
 
@@ -69,9 +71,42 @@ refc_type_t addrefn(refc_t *ref, refc_type_t n) {
  * Release references and optionally destroy object. (see refc.h for full comments)
  *
  * Decrease reference counter by /n/. When reference counter reaches
- * zero, destructor function /dtor/ is called: in case of `n` > 0, object is unreferenced one by one
- * so the destructor is called exactly once, even if `n` is larger than current ref counter value
+ * zero, destructor function /dtor/ is called: in case of /n/ > 0, object is unreferenced one by one
+ * so the destructor is called exactly once, even if /n/ is larger than current ref counter value
  */
+#if 1
+refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (*dtor)(void *)) {
+
+  refc_type_t cur, next;
+
+  if (r == NULL)
+    return 0;
+
+  cur = atomic_load_explicit(r, memory_order_relaxed);
+
+  if ( n > 0) {
+    do {
+      if (cur == 0)
+        return 0;  /* dead already / being destroyed: no destructor only report a failure */
+
+      next = (n >= cur) ? 0 : cur - n;
+
+      /* CAS, release */
+    } while (!atomic_compare_exchange_weak_explicit(
+                r, &cur, next,
+                memory_order_release,
+                memory_order_relaxed));
+
+    if (next == 0) {
+      atomic_thread_fence(memory_order_acquire);
+      if (dtor != NULL)
+        dtor(object ? object : r);
+    }
+  }
+
+  return cur;   /* value BEFORE this operation */
+}
+#else
 refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (* dtor)(void *)) {
 
   if (r != NULL && n > 0) {
@@ -93,3 +128,5 @@ refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (* dtor)(void *
   }
   return 0;
 }
+#endif
+

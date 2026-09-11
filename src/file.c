@@ -269,12 +269,10 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
     errno = EFAULT;
     return -1;
   }
+
   if (((flags &  O_ACCMODE) == O_WRONLY) || (flags &  O_TRUNC)) {
-
-
-      errno = EROFS;
-
-      return -1;
+    errno = EROFS;
+    return -1;
   }
 
   /* Check fs_idx and grab the filesystem
@@ -282,13 +280,18 @@ int tarf_open(void* ctx, const char * path0, int flags, int mode) {
   */
   if ( NULL == (fs = tarfs_getfs_addref(fs_idx))) { 
 
-
-
     tarfs_log("bad filesystem context: %d, %p\r\n",fs_idx, (void *)fs); 
     errno = EIO;
 
     return -1; 
   } 
+
+  /* check if unmount() was called on this FS*/
+  if (fs->fs_noopen) {
+    tarfs_log("can't open(%s) from an unmounted FS\r\n",path); 
+    errno = ENOENT;
+    goto unref_and_exit;
+  }
 
   /* Find corresponding inode.
    * If user asks for a directory, we try to open what was asked and, if it fails, we

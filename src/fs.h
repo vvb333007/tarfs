@@ -106,6 +106,7 @@ struct tarfs_fs {
   struct tarfs_fp               fs_fd[TARFS_MAX_FDS]; /*!< Open files descriptors */
   time_t                        fs_mtime;             /*!< Read from the root directory entry or, if unavailable, time(NULL) is used instead */
   uint16_t                      fs_opencrc:1;         /*!< A flag to enable/disable CRC64 verification on open() */
+  uint16_t                      fs_noopen:1;          /*!< A flag to disable open()/opendir() calls. Used by tarfs_unmount_fs(), checked by tarfs_open() and tarfs_opendir() */
   uint16_t                      fs_reserved:15;       /*!< Reserved for future extensions */
   struct tarfs_stats            fs_stats;             /*!< FS immutable statistics */
 #if CONFIG_TARFS_COUNTERS                             /*!< Mutable statistics: */
