@@ -15,9 +15,10 @@
  */
 
 
-// if (addref(&str->ref)) {
+// if (addref(&str->ref) > 0) {
 //   use(str);
-//   unref(&str->ref);
+//   unref(&str->ref);  // or unrefx(&str->ref, destructor_function);
+//
 // }
 //
 //
@@ -74,7 +75,6 @@ refc_type_t addrefn(refc_t *ref, refc_type_t n) {
  * zero, destructor function /dtor/ is called: in case of /n/ > 0, object is unreferenced one by one
  * so the destructor is called exactly once, even if /n/ is larger than current ref counter value
  */
-#if 1
 refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (*dtor)(void *)) {
 
   refc_type_t cur, next;
@@ -106,27 +106,3 @@ refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (*dtor)(void *)
 
   return cur;   /* value BEFORE this operation */
 }
-#else
-refc_type_t unrefxn(refc_t *r, void *object, refc_type_t n, void (* dtor)(void *)) {
-
-  if (r != NULL && n > 0) {
-
-    int prev;
-
-    do {
-      
-      if ((prev = atomic_fetch_sub_explicit(r, 1, memory_order_release)) == 1) { 
-        atomic_thread_fence(memory_order_acquire);
-        /* call dtor() with either /object/ or /r/ as its argument */
-        if (dtor != NULL)
-          dtor(object ? object : r);
-        break;
-      }
-    } while(--n);
-    /* Successfully decremented, return old value to  the user */
-    return prev;
-  }
-  return 0;
-}
-#endif
-
