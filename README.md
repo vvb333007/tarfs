@@ -48,13 +48,15 @@ a fully writable filesystem to store such data is often unnecessary.
 
 #### 3.1 Nothing revolutionary
 
-TARFS does not introduce a new filesystem format. It simply provides a reasonably POSIX-compatible filesystem interface (POSIX in terms of the API) over a standard TAR archive.
+TARFS does not introduce a new filesystem format.
+
+It simply provides a reasonably POSIX-compatible filesystem interface (POSIX in terms of the API) over a standard TAR archive.
 
 It is written in C, requires only a single platform-dependent source file, and is intended for microcontrollers capable of memory-mapping Flash.
 
 Potential targets include:
 
-* STM32
+* STM32                    <-- via quad spi mapping API
 * RP2040
 * SAMD21/SAMD51
 * nRF52
@@ -74,7 +76,8 @@ image. The embedded archive can then be mounted using the `tarfs_mount_from_memo
 
 TARFS is designed for memory-constrained microcontrollers.
 
-The filesystem requires **24 bytes of RAM per file or directory**. A filesystem containing 1000 entries occupies slightly less than **24 KB** of RAM.
+The filesystem requires **24 bytes of RAM per file or directory** (on 32-bit systems inode isze is 20 bytes + 
+4 bytes inode pointer). A filesystem containing 1000 entries occupies slightly less than **24 KB** of RAM.
 
 The number of active `mmap()` mappings is unlimited because `mmap()` does not allocate any resources. It simply returns a pointer into the mapped archive.
 
@@ -82,6 +85,7 @@ The filesystem index stores direct pointers to file names already present inside
 
 During normal operation TARFS performs **no dynamic memory allocation at all**. 
 Memory allocation only occurs during `mount()` , `unmount()` and `fdopendir()`.
+
 
 Because only few heap allocations are performed during mounting, heap fragmentation is practically eliminated.
 
