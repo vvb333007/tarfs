@@ -276,6 +276,12 @@ int tarfs_unmount_fs(int fs_idx) {
     /* tarfs_unref() is ok with NULL argument */
 
     if (s_tarfs[fs_idx] != NULL) {
+
+      // Was tarfs_unmount_fs() already called on this FS?
+      if (s_tarfs[fs_idx]->fs_noopen) {
+        err = EBUSY;
+        
+      }
       // Mark the filesystem as "deny all future open()/opendir()" calls
       // Unref the filesystem
       s_tarfs[fs_idx]->fs_noopen = 1;      
@@ -444,6 +450,7 @@ unmap_and_return_error:
         s_tarfs[slot] = NULL;
         s_numfs--;
         tarfs_unlock();
+        tarfs_os_free(fs);
         /* errno must be set in inode_mount() */
         goto unmap_and_return_error;
       } 
@@ -500,6 +507,7 @@ int tarfs_mount(const char *label, const char *mountpoint, const char *link_reba
     tarfs_log("resource is available at %p, %u bytes. mounting from memory..\r\n", map, (unsigned int)size);
 
     slot = tarfs_mount_memory(map, size, mountpoint, link_rebase, path_rebase);
+    // TODO: guard against unmount() in THIS window
     if (slot >= 0) {
 
       tarfs_log("success, filesystem slot %d was assigned\r\n", slot);
@@ -529,7 +537,7 @@ void *tarfs_calloc(size_t count, size_t size) {
   void *buffer;
 
   if ((buffer = tarfs_os_malloc(size * count)) != NULL)
-    memset(buffer, 0, size);
+    memset(buffer, 0, size * count);
 
   return buffer;
 }
@@ -842,7 +850,7 @@ int tarfs_integrity(int en) {
   int ret = s_tarfs_crc64;
 
   if (en >= 0) {
-    tarfs_log(" CRC64 on mount : %s\r\n", en < 0 ? "unchanged" : (en ? "enabled (slow mount)" : "disabled"));
+    tarfs_log(" CRC64 on mount : %s\r\n", en ? "enabled (slow mount)" : "disabled");
     s_tarfs_crc64 = en;
   }
 
