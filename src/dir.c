@@ -147,11 +147,11 @@ static int is_direct_child(const char *path, const char *prefix) {
 
     slash = strchr(tail, '/');
 
-    /* файл */
+    /* a file */
     if (slash == NULL)
         return 1;
 
-    /* каталог первого уровня */
+    /* top */
     return slash[1] == '\0' || slash[1] == '\r' || slash[1] == '\n';
 }
 

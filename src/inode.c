@@ -368,7 +368,7 @@ void inode_free(struct tarfs_inode **index, size_t count, uintptr_t tar_start, s
 static bool inode_pathcmp(const struct tarfs_inode *inode, const char *src) {
 
   if (inode == NULL || src == NULL)
-    return NULL;
+    return false;
 
   //struct tarhdr const *in_vaddr = (struct tarhdr const *)inode->in_vaddr;
   const char *in_path = (const char *)inode->in_path;
@@ -532,7 +532,7 @@ bool inode_islink(struct tarfs_inode const *ino) {
 }
 
 
-
+#if 0
 /* 
  *
  */
@@ -557,6 +557,7 @@ time_t inode_mtime(struct tarfs_fs *fs, int idx, size_t *size) {
   }
   return TART_BAD;
 }
+#endif
 
 
 /* Scan through inodes, find all inodes with types 1 and 2 (links)
