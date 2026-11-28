@@ -139,7 +139,7 @@ from a 4MiB file on ESP32-S3 240MHz, Flash: 80MHz quad).
 
 With the exception of `mount()` and `unmount()`, TARFS does not use synchronization primitives.
 
-The entire runtime data path is lock-free. Some race conditions are possible, but they are limited to well-defined situations and are documented.
+The entire runtime data path is lock-free.
 
 Inodes are located using binary search on the filename hash.
 
